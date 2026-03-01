@@ -1,0 +1,110 @@
+{
+    "result": [
+        {
+            "active_time": 1772373718,
+            "biz_type": 0,
+            "category": "msp",
+            "create_time": 1740491457,
+            "icon": "smart/icon/bay1627386467137Cb6K/26b3eecc601f809c66c1fc41c378f02b.jpg",
+            "id": "bfb69fa0d9a31595751qfz",
+            "ip": "77.248.98.40",
+            "lat": "0",
+            "local_key": "Wqgd^&nPvM:8Bjl|",
+            "lon": "0",
+            "model": "",
+            "name": "smart cat litter box",
+            "online": true,
+            "owner_id": "226306310",
+            "product_id": "gdwv2yydnuhhvopa",
+            "product_name": "smart cat litter box",
+            "status": [
+                {
+                    "code": "cat_weight",
+                    "value": 2230
+                },
+                {
+                    "code": "excretion_times_day",
+                    "value": 1
+                },
+                {
+                    "code": "excretion_time_day",
+                    "value": 60
+                },
+                {
+                    "code": "deodorization",
+                    "value": false
+                },
+                {
+                    "code": "fault",
+                    "value": 0
+                }
+            ],
+            "sub": false,
+            "time_zone": "+01:00",
+            "uid": "eu1740491339494RJAIy",
+            "update_time": 1772373720,
+            "uuid": "9f19e06f765eab51",
+            "mapping": {
+                "6": {
+                    "code": "cat_weight",
+                    "type": "Integer",
+                    "values": {
+                        "unit": "kg",
+                        "min": 0,
+                        "max": 10000,
+                        "scale": 3,
+                        "step": 1
+                    }
+                },
+                "7": {
+                    "code": "excretion_times_day",
+                    "type": "Integer",
+                    "values": {
+                        "unit": "times",
+                        "min": 0,
+                        "max": 60,
+                        "scale": 0,
+                        "step": 1
+                    }
+                },
+                "8": {
+                    "code": "excretion_time_day",
+                    "type": "Integer",
+                    "values": {
+                        "unit": "s",
+                        "min": 0,
+                        "max": 1800,
+                        "scale": 0,
+                        "step": 1
+                    }
+                },
+                "17": {
+                    "code": "deodorization",
+                    "type": "Boolean",
+                    "values": {}
+                },
+                "22": {
+                    "code": "fault",
+                    "type": "Bitmap",
+                    "values": {
+                        "label": [
+                            "motor_fault",
+                            "program_fault",
+                            "g_sensor_fault"
+                        ]
+                    }
+                }
+            }
+        }
+    ],
+    "success": true,
+    "t": 1772376501370,
+    "tid": "b12ce64d157d11f18410e21ddda0be51",
+    "file": {
+        "name": "tuya-raw.json",
+        "description": "Full raw list of Tuya devices.",
+        "account": "sukk7w34kvkkukheppa8",
+        "date": "2026-03-01T15:48:21.678761",
+        "tinytuya": "1.17.6"
+    }
+}

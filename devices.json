@@ -1,0 +1,70 @@
+[
+    {
+        "name": "smart cat litter box",
+        "id": "bfb69fa0d9a31595751qfz",
+        "key": "Wqgd^&nPvM:8Bjl|",
+        "mac": "f8:17:2d:15:10:53",
+        "uuid": "9f19e06f765eab51",
+        "sn": "10017320501491",
+        "category": "msp",
+        "product_name": "smart cat litter box",
+        "product_id": "gdwv2yydnuhhvopa",
+        "biz_type": 0,
+        "model": "",
+        "sub": false,
+        "icon": "https://images.tuyaeu.com/smart/icon/bay1627386467137Cb6K/26b3eecc601f809c66c1fc41c378f02b.jpg",
+        "mapping": {
+            "6": {
+                "code": "cat_weight",
+                "type": "Integer",
+                "values": {
+                    "unit": "kg",
+                    "min": 0,
+                    "max": 10000,
+                    "scale": 3,
+                    "step": 1
+                }
+            },
+            "7": {
+                "code": "excretion_times_day",
+                "type": "Integer",
+                "values": {
+                    "unit": "times",
+                    "min": 0,
+                    "max": 60,
+                    "scale": 0,
+                    "step": 1
+                }
+            },
+            "8": {
+                "code": "excretion_time_day",
+                "type": "Integer",
+                "values": {
+                    "unit": "s",
+                    "min": 0,
+                    "max": 1800,
+                    "scale": 0,
+                    "step": 1
+                }
+            },
+            "17": {
+                "code": "deodorization",
+                "type": "Boolean",
+                "values": {}
+            },
+            "22": {
+                "code": "fault",
+                "type": "Bitmap",
+                "values": {
+                    "label": [
+                        "motor_fault",
+                        "program_fault",
+                        "g_sensor_fault"
+                    ]
+                }
+            }
+        },
+        "ip": "192.168.68.110",
+        "version": "3.4"
+    }
+]
