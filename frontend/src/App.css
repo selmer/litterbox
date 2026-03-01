@@ -1,0 +1,219 @@
+/* ===================== CAT CARD ===================== */
+.cat-card {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.cat-card--placeholder {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.cat-card__photo {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cat-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cat-card__photo--placeholder {
+  border-style: dashed;
+}
+
+.cat-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cat-card__name {
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.cat-card__weight {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--text-primary);
+}
+
+.cat-card__weight span {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.cat-card__placeholder-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: var(--space-1);
+}
+
+.cat-inactive {
+  opacity: 0.6;
+}
+
+/* ===================== CHART ===================== */
+.chart-range-controls {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.chart-range-btn {
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chart-range-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.chart-range-btn.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent-mid);
+}
+
+.chart-tooltip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+}
+
+.chart-tooltip__date {
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+  font-size: 11px;
+}
+
+.chart-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ===================== MODAL ===================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  width: 100%;
+  max-width: 360px;
+  box-shadow: var(--shadow-md);
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin-bottom: var(--space-3);
+  color: var(--text-primary);
+}
+
+/* ===================== FORMS ===================== */
+.cat-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.form-input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: var(--accent);
+}
+
+.form-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ===================== ALERT ===================== */
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.alert a {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.alert-yellow {
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="dark"] .alert-yellow {
+  color: #fcd34d;
+}
