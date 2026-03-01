@@ -1,0 +1,36 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Environment & secrets
+.env
+*.env
+
+# Database
+*.sqlite
+*.db
+
+# Alembic
+# (keep versions/ tracked but ignore any local overrides)
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tinytuya generated files
+snapshot.json
+devices.json
+tinytuya.json
