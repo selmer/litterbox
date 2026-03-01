@@ -32,7 +32,6 @@ def get_dashboard(db: Session = Depends(get_db)):
             .filter(
                 Visit.cat_id == cat.id,
                 Visit.started_at >= today_start,
-                Visit.ended_at.isnot(None),
             )
             .all()
         )
@@ -43,7 +42,6 @@ def get_dashboard(db: Session = Depends(get_db)):
             db.query(Visit)
             .filter(
                 Visit.cat_id == cat.id,
-                Visit.ended_at.isnot(None),
             )
             .order_by(Visit.started_at.desc())
             .first()
