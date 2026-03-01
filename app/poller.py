@@ -11,13 +11,26 @@ from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visi
 logger = logging.getLogger(__name__)
 
 # --- Device configuration (override via environment variables) ---
-DEVICE_ID = os.getenv("TUYA_DEVICE_ID", "bfb69fa0d9a31595751qfz")
-DEVICE_IP = os.getenv("TUYA_DEVICE_IP", "192.168.68.110")
+DEVICE_ID = os.getenv("TUYA_DEVICE_ID")
+if not DEVICE_ID:
+    raise ValueError("DEVICE_IP environment variable not set")
+
+DEVICE_IP = os.getenv("TUYA_DEVICE_IP")
+if not DEVICE_IP:
+    raise ValueError("DEVICE_IP environment variable not set")
+
 DEVICE_VERSION = float(os.getenv("TUYA_DEVICE_VERSION", "3.4"))
+if not DEVICE_IP:
+    raise ValueError("DEVICE_IP environment variable not set")
 
 # Tuya cloud credentials for key refresh
 TUYA_API_KEY = os.getenv("TUYA_API_KEY", "sukk7w34kvkkukheppa8")
-TUYA_API_SECRET = os.getenv("TUYA_API_SECRET", "fcd88e59cd5a4e2da851a17ad3a3caf4")
+if not TUYA_API_KEY:
+    raise ValueError("TUYA_API_KEY environment variable not set")
+
+TUYA_API_SECRET = os.getenv("TUYA_API_SECRET")
+if not TUYA_API_SECRET:
+    raise ValueError("TUYA_API_SECRET environment variable not set")
 TUYA_API_REGION = os.getenv("TUYA_API_REGION", "eu")
 
 # How often to take a full snapshot of all DPs (in seconds)
