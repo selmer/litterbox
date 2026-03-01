@@ -41,10 +41,13 @@ export default function CatCard({ cat, isPlaceholder = false }) {
       <div className="cat-card__body">
         <div className="flex-between mb-2">
           <div className="cat-card__name">{cat.cat_name || cat.name}</div>
-          {cat.last_visit_weight_kg && (
+          {(cat.last_visit_weight_kg || cat.reference_weight_kg) && (
             <div className="cat-card__weight">
-              {cat.last_visit_weight_kg.toFixed(3)}
+              {(cat.last_visit_weight_kg || cat.reference_weight_kg).toFixed(3)}
               <span> kg</span>
+              {!cat.last_visit_weight_kg && (
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>ref</span>
+              )}
             </div>
           )}
         </div>
