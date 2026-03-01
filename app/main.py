@@ -4,18 +4,21 @@ import time
 import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-from app.database import engine
-from app.models import Base
 from app.routers import cats, visits, cleaning_cycles, dashboard
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "5"))
+
+FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
 
 def run_poller():
@@ -60,6 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# API routes
 app.include_router(cats.router)
 app.include_router(visits.router)
 app.include_router(cleaning_cycles.router)
@@ -69,3 +73,15 @@ app.include_router(dashboard.router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# Serve React frontend — must come AFTER API routes
+if FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    def serve_frontend(full_path: str):
+        """Catch-all route that serves the React app for any non-API path."""
+        return FileResponse(FRONTEND_DIST / "index.html")
+else:
+    logger.warning(f"Frontend dist not found at {FRONTEND_DIST} — UI will not be served")
