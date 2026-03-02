@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 
 from app.routers import cats, visits, cleaning_cycles, dashboard
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "5"))
