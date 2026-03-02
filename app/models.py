@@ -17,7 +17,6 @@ class Cat(Base):
     name = Column(String, nullable=False)
     active = Column(Boolean, default=True, nullable=False)
     reference_weight_kg = Column(Float, nullable=True)
-    photo_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     visits = relationship("Visit", back_populates="cat")
