@@ -19,7 +19,6 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-files: "3"    
     restart: unless-stopped
 
   db:
