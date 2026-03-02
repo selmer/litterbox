@@ -53,14 +53,14 @@ def fetch_device_key() -> Optional[str]:
             apiRegion=TUYA_API_REGION,
             apiKey=TUYA_API_KEY,
             apiSecret=TUYA_API_SECRET,
+            apiDeviceID=DEVICE_ID,
         )
-        devices = cloud.getdevices()
-        for device in devices:
-            if device.get("id") == DEVICE_ID:
-                key = device.get("key")
-                logger.info("Device key fetched successfully")
-                return key
-        logger.warning("Device not found in cloud response")
+        result = cloud.getdevicedetails(DEVICE_ID)
+        key = result.get("local_key")
+        if key:
+            logger.info("Device key fetched successfully")
+            return key
+        logger.warning(f"No local_key in device details response: {result}")
     except Exception as e:
         logger.error(f"Failed to fetch device key: {e}")
     return None
