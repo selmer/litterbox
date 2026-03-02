@@ -1,0 +1,6 @@
+{
+    "apiKey": "your_api_key_here",
+    "apiSecret": "your_api_secret_here",
+    "apiRegion": "eu",
+    "apiDeviceID": "your_device_id_here"
+}
