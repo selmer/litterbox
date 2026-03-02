@@ -27,15 +27,15 @@ TUYA_API_REGION = os.getenv("TUYA_API_REGION", "eu")
 
 SNAPSHOT_INTERVAL_SECONDS = int(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "300"))
 
-# How long after the last weight reading before we close the visit
-VISIT_TIMEOUT_SECONDS = int(os.getenv("VISIT_TIMEOUT_SECONDS", "60"))
+
 
 SETTINGS_DPS = {"deodorization", "Clean_notice", "child_lock", "induction_delay",
                 "induction_interval", "odourless", "capacity_calibration", "sand_surface_calibration"}
 
 DP_CAT_WEIGHT = "cat_weight"
 DP_CLEANING_CYCLE = "smart_clean"
-
+DP_EXCRETION_TIMES = "excretion_times_day"
+DP_EXCRETION_TIME = "excretion_time_day"
 
 def make_cloud() -> tinytuya.Cloud:
     return tinytuya.Cloud(
@@ -50,7 +50,7 @@ class LitterboxPoller:
     """
     Stateful poller that tracks the litterbox's DP changes via Tuya cloud API.
     Visit detection is based on weight readings — a visit starts when a weight
-    is received and closes after VISIT_TIMEOUT_SECONDS of no new weight.
+    is received.
     """
 
     def __init__(self, db_session):
@@ -58,7 +58,6 @@ class LitterboxPoller:
         self.cloud: Optional[tinytuya.Cloud] = None
         self.previous_dps: dict = {}
         self.current_visit: Optional[Visit] = None
-        self.last_weight_at: Optional[datetime] = None
         self.current_cleaning_cycle: Optional[CleaningCycle] = None
         self.last_snapshot_at: Optional[datetime] = None
         self._init_cloud()
@@ -106,22 +105,10 @@ class LitterboxPoller:
 
         now = datetime.now(timezone.utc)
 
-        self._check_visit_timeout(now)
         self._handle_changes(dps, now)
         self._maybe_snapshot(dps, now)
 
         self.previous_dps = dps
-
-    def _check_visit_timeout(self, now: datetime):
-        """Close an open visit if we haven't seen a weight update recently."""
-        if self.current_visit is None:
-            return
-        if self.last_weight_at is None:
-            return
-        elapsed = (now - self.last_weight_at).total_seconds()
-        if elapsed >= VISIT_TIMEOUT_SECONDS:
-            logger.info(f"Visit timed out after {elapsed:.0f}s of no weight reading — closing")
-            self._close_visit(now)
 
     def _handle_changes(self, dps: dict, now: datetime):
         for dp, value in dps.items():
@@ -133,17 +120,40 @@ class LitterboxPoller:
             if dp == DP_CAT_WEIGHT and value != 0:
                 self._handle_weight_update(value, now)
 
+            elif dp == DP_EXCRETION_TIMES:
+                self._handle_visit_complete(dps, now)
+
             elif dp == DP_CLEANING_CYCLE:
                 self._handle_cleaning_cycle(value, now)
 
             elif dp in SETTINGS_DPS:
                 self._record_setting_change(dp, value, now)
 
+    def _handle_visit_complete(self, dps: dict, now: datetime):
+        duration = dps.get(DP_EXCRETION_TIME)
+        logger.info(f"Visit completed — duration: {duration}s")
+
+        if self.current_visit is None:
+            # Visit completed but we missed the weight — create one now
+            weight_raw = dps.get(DP_CAT_WEIGHT, 0)
+            weight_kg = round(weight_raw / 1000, 3) if weight_raw else None
+            self.current_visit = Visit(
+                started_at=now - __import__('datetime').timedelta(seconds=duration or 0),
+                weight_kg=weight_kg,
+            )
+            self.db.add(self.current_visit)
+
+        self.current_visit.ended_at = now
+        self.current_visit.duration_seconds = duration
+        self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
+        self.db.commit()
+        self.current_visit = None
+    
+
     def _handle_weight_update(self, raw_weight: int, now: datetime):
         weight_kg = round(raw_weight / 1000, 3)
         logger.info(f"Weight reading: {weight_kg} kg")
 
-        self.last_weight_at = now
 
         if self.current_visit is None:
             # New visit — weight reading is our trigger
@@ -158,27 +168,6 @@ class LitterboxPoller:
             # Update weight on existing visit (take the latest reading)
             self.current_visit.weight_kg = weight_kg
             self.db.commit()
-
-    def _close_visit(self, now: datetime):
-        """Finalise the current visit — identify cat and set end time."""
-        if self.current_visit is None:
-            return
-
-        self.current_visit.ended_at = now
-        self.current_visit.duration_seconds = int(
-            (now - self.current_visit.started_at).total_seconds()
-        )
-
-        if self.current_visit.weight_kg:
-            self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
-
-        self.db.commit()
-        logger.info(
-            f"Visit closed — duration: {self.current_visit.duration_seconds}s, "
-            f"weight: {self.current_visit.weight_kg} kg"
-        )
-        self.current_visit = None
-        self.last_weight_at = None
 
     def _identify_visit_cat(self, visit: Visit, weight_kg: float):
         active_cats = self.db.query(Cat).filter(Cat.active == True).all()
