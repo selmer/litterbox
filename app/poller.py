@@ -62,7 +62,7 @@ def fetch_device_key() -> Optional[str]:
                 return key
         logger.warning("Device not found in cloud response")
     except Exception as e:
-        logger.error(f"Failed to fetch device key: {e}")
+        logger.exception("Failed to fetch device key")
     return None
 
 
@@ -116,7 +116,7 @@ class LitterboxPoller:
         try:
             data = self.device.status()
         except Exception as e:
-            logger.error(f"Failed to read device status: {e}")
+            logger.exception("Failed to read device status")
             return
 
         if not data or "dps" not in data:
