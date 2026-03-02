@@ -1,6 +1,4 @@
-import { useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { uploadCatPhoto } from '../api/client'
 
 const PLACEHOLDER_EMOJI = '🐱'
 
@@ -12,27 +10,7 @@ function formatDuration(seconds) {
   return `${m}m ${s}s`
 }
 
-export default function CatCard({ cat, isPlaceholder = false, onPhotoUploaded }) {
-  const fileInputRef = useRef(null)
-  const [uploading, setUploading] = useState(false)
-
-  const catId = cat.cat_id || cat.id
-
-  async function handleFileChange(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    try {
-      await uploadCatPhoto(catId, file)
-      onPhotoUploaded?.()
-    } catch (err) {
-      console.error('Failed to upload photo', err)
-    } finally {
-      setUploading(false)
-      e.target.value = ''
-    }
-  }
-
+export default function CatCard({ cat, isPlaceholder = false }) {
   if (isPlaceholder) {
     return (
       <div className="card cat-card cat-card--placeholder">
@@ -51,34 +29,10 @@ export default function CatCard({ cat, isPlaceholder = false, onPhotoUploaded })
     ? formatDistanceToNow(new Date(cat.last_visit_at), { addSuffix: true })
     : null
 
-  const canUpload = !!onPhotoUploaded
-
   return (
     <div className="card cat-card">
-      <div
-        className={`cat-card__photo${canUpload ? ' cat-card__photo--uploadable' : ''}`}
-        onClick={() => canUpload && fileInputRef.current?.click()}
-        title={canUpload ? 'Click to upload a photo' : undefined}
-      >
-        {uploading ? (
-          <span className="cat-card__photo-uploading">⏳</span>
-        ) : cat.photo_url ? (
-          <img src={cat.photo_url} alt={cat.name} />
-        ) : (
-          <span>{PLACEHOLDER_EMOJI}</span>
-        )}
-        {canUpload && !uploading && (
-          <div className="cat-card__photo-overlay">
-            <span>📷</span>
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
+      <div className="cat-card__photo">
+        <span>{PLACEHOLDER_EMOJI}</span>
       </div>
 
       <div className="cat-card__body">
