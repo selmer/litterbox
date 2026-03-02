@@ -38,7 +38,7 @@ def run_poller():
                 dashboard_state.last_successful_poll_at = datetime.now(timezone.utc)
                 time.sleep(POLL_INTERVAL_SECONDS)
         except Exception as e:
-            logger.error(f"Poller crashed, restarting: {e}")
+            logger.exception("Poller crashed, restarting")
             time.sleep(10)
         finally:
             if db:
