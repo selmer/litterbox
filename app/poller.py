@@ -63,7 +63,7 @@ class LitterboxPoller:
             self.cloud = make_cloud()
             logger.info("Cloud connection initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize cloud connection: {e}")
+            logger.exception("Failed to initialize cloud connection")
             self.cloud = None
 
     def poll(self):
@@ -76,7 +76,7 @@ class LitterboxPoller:
         try:
             result = self.cloud.getstatus(DEVICE_ID)
         except Exception as e:
-            logger.error(f"Failed to read device status from cloud: {e}")
+            logger.exception("Failed to read device status from cloud")
             self._init_cloud()
             return
 
