@@ -34,3 +34,6 @@ Thumbs.db
 snapshot.json
 devices.json
 tinytuya.json
+
+# Uploaded cat photos (user content)
+uploads/cat_photos/

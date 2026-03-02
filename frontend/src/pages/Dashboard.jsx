@@ -108,7 +108,7 @@ export default function Dashboard() {
       {/* Cat cards */}
       <div className="grid-2 mb-6">
         {dashboard.cats.map(cat => {
-          return <CatCard key={cat.cat_id} cat={cat} />
+          return <CatCard key={cat.cat_id} cat={cat} onPhotoUploaded={fetchDashboard} />
         })}
         {inactiveCats.map(cat => (
           <CatCard key={cat.id} cat={cat} isPlaceholder />

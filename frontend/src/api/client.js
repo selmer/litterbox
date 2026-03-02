@@ -23,6 +23,14 @@ export const createCat = (data) =>
 export const updateCat = (id, data) =>
   api.patch(`/cats/${id}`, data).then(r => r.data)
 
+export const uploadCatPhoto = (id, file) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post(`/cats/${id}/photo`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
+
 // --- Visits ---
 
 export const getVisits = ({ limit = 50, catId } = {}) =>
