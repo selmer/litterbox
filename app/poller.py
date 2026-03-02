@@ -10,20 +10,11 @@ from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visi
 
 logger = logging.getLogger(__name__)
 
-# --- Device configuration (override via environment variables) ---
+# --- Device configuration ---
 DEVICE_ID = os.getenv("TUYA_DEVICE_ID")
 if not DEVICE_ID:
-    raise ValueError("DEVICE_IP environment variable not set")
+    raise ValueError("TUYA_DEVICE_ID environment variable not set")
 
-DEVICE_IP = os.getenv("TUYA_DEVICE_IP")
-if not DEVICE_IP:
-    raise ValueError("DEVICE_IP environment variable not set")
-
-DEVICE_VERSION = float(os.getenv("TUYA_DEVICE_VERSION", "3.4"))
-if not DEVICE_IP:
-    raise ValueError("DEVICE_IP environment variable not set")
-
-# Tuya cloud credentials for key refresh
 TUYA_API_KEY = os.getenv("TUYA_API_KEY")
 if not TUYA_API_KEY:
     raise ValueError("TUYA_API_KEY environment variable not set")
@@ -31,108 +22,78 @@ if not TUYA_API_KEY:
 TUYA_API_SECRET = os.getenv("TUYA_API_SECRET")
 if not TUYA_API_SECRET:
     raise ValueError("TUYA_API_SECRET environment variable not set")
+
 TUYA_API_REGION = os.getenv("TUYA_API_REGION", "eu")
 
-# How often to take a full snapshot of all DPs (in seconds)
 SNAPSHOT_INTERVAL_SECONDS = int(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "300"))
 
-# DPs that represent device settings (changes get logged to settings_history)
 SETTINGS_DPS = {"17", "111", "114", "117", "118", "120", "124", "125"}
 
-# DP codes
-DP_CAT_WEIGHT = "6"
-DP_OBJECT_IN_BOX = "104"
-DP_CLEANING_CYCLE = "121"
+DP_CAT_WEIGHT = "cat_weight"
+DP_OBJECT_IN_BOX = "monitoring"
+DP_CLEANING_CYCLE = "smart_clean"
 
 
-def fetch_device_key() -> Optional[str]:
-    """Fetch the current local key from Tuya cloud."""
-    try:
-        logger.info("Fetching device key from Tuya cloud...")
-        cloud = tinytuya.Cloud(
-            apiRegion=TUYA_API_REGION,
-            apiKey=TUYA_API_KEY,
-            apiSecret=TUYA_API_SECRET,
-            apiDeviceID=DEVICE_ID,
-        )
-        result = cloud.getdevicedetails(DEVICE_ID)
-        key = result.get("local_key")
-        if key:
-            logger.info("Device key fetched successfully")
-            return key
-        logger.warning(f"No local_key in device details response: {result}")
-    except Exception as e:
-        logger.error(f"Failed to fetch device key: {e}")
-    return None
-
-
-def make_device(key: str) -> tinytuya.OutletDevice:
-    d = tinytuya.OutletDevice(
-        dev_id=DEVICE_ID,
-        address=DEVICE_IP,
-        local_key=key,
-        version=DEVICE_VERSION,
+def make_cloud() -> tinytuya.Cloud:
+    return tinytuya.Cloud(
+        apiRegion=TUYA_API_REGION,
+        apiKey=TUYA_API_KEY,
+        apiSecret=TUYA_API_SECRET,
+        apiDeviceID=DEVICE_ID,
     )
-    return d
 
 
 class LitterboxPoller:
     """
-    Stateful poller that tracks the litterbox's DP changes and writes
-    visits, cleaning cycles, snapshots, and settings changes to the DB.
+    Stateful poller that tracks the litterbox's DP changes via Tuya cloud API
+    and writes visits, cleaning cycles, snapshots, and settings changes to the DB.
     """
 
     def __init__(self, db_session):
         self.db = db_session
-        self.device: Optional[tinytuya.OutletDevice] = None
-        self.device_key: Optional[str] = None
+        self.cloud: Optional[tinytuya.Cloud] = None
         self.previous_dps: dict = {}
         self.current_visit: Optional[Visit] = None
         self.current_cleaning_cycle: Optional[CleaningCycle] = None
         self.last_snapshot_at: Optional[datetime] = None
-        self._init_device()
+        self._init_cloud()
 
-    def _init_device(self):
-        """Fetch key from cloud and initialize the device connection."""
-        key = fetch_device_key()
-        if key:
-            self.device_key = key
-            self.device = make_device(key)
-        else:
-            logger.error("Could not initialize device — no key available")
-
-    def _refresh_device(self):
-        """Re-fetch key and reinitialize device — called on 914 errors."""
-        logger.info("Refreshing device key due to 914 error...")
-        self._init_device()
+    def _init_cloud(self):
+        try:
+            self.cloud = make_cloud()
+            logger.info("Cloud connection initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize cloud connection: {e}")
+            self.cloud = None
 
     def poll(self):
         """Single poll cycle — call this in a loop."""
-        if self.device is None:
-            logger.warning("Device not initialized, retrying...")
-            self._init_device()
+        if self.cloud is None:
+            logger.warning("Cloud not initialized, retrying...")
+            self._init_cloud()
             return
 
         try:
-            data = self.device.status()
+            result = self.cloud.getstatus(DEVICE_ID)
         except Exception as e:
-            logger.error(f"Failed to read device status: {e}")
+            logger.error(f"Failed to read device status from cloud: {e}")
+            self._init_cloud()
             return
 
-        if not data or "dps" not in data:
-            err = data.get("Err") if data else None
-            if err == "914":
-                self._refresh_device()
-            else:
-                logger.warning(f"Unexpected device response: {data}")
+        if not result or not result.get("success"):
+            logger.warning(f"Unexpected cloud response: {result}")
             return
 
-        dps = data["dps"]
+        # Convert list of {code, value} to a dict keyed by code
+        dps = {item["code"]: item["value"] for item in result.get("result", [])}
+
+        if not dps:
+            logger.warning("Empty DPs in cloud response")
+            return
+
         now = datetime.now(timezone.utc)
-
         self._handle_changes(dps, now)
         self._maybe_snapshot(dps, now)
-
         self.previous_dps = dps
 
     def _handle_changes(self, dps: dict, now: datetime):
@@ -148,7 +109,7 @@ class LitterboxPoller:
             elif dp == DP_CLEANING_CYCLE:
                 self._handle_cleaning_cycle(value, now)
 
-            elif dp == DP_CAT_WEIGHT and not value == 0:
+            elif dp == DP_CAT_WEIGHT and value != 0:
                 self._handle_weight_update(value)
 
             elif dp in SETTINGS_DPS:
@@ -180,15 +141,10 @@ class LitterboxPoller:
         self.current_visit.weight_kg = weight_kg
         self._identify_visit_cat(self.current_visit, weight_kg)
         self.db.commit()
-
         self.current_visit = None  # visit fully recorded
 
     def _identify_visit_cat(self, visit: Visit, weight_kg: float):
-        active_cats = (
-            self.db.query(Cat)
-            .filter(Cat.active == True)
-            .all()
-        )
+        active_cats = self.db.query(Cat).filter(Cat.active == True).all()
         cat_dicts = [
             {"id": c.id, "name": c.name, "reference_weight_kg": c.reference_weight_kg}
             for c in active_cats
@@ -200,7 +156,6 @@ class LitterboxPoller:
             visit.identified_by = match.identified_by
             logger.info(f"Visit assigned to {match.cat_name} (deviation: {match.deviation_kg} kg)")
 
-            # Gradually update reference weight
             cat = next(c for c in active_cats if c.id == match.cat_id)
             if cat.reference_weight_kg is not None:
                 cat.reference_weight_kg = update_reference_weight(
