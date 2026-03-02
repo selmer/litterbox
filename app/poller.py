@@ -24,7 +24,7 @@ if not DEVICE_IP:
     raise ValueError("DEVICE_IP environment variable not set")
 
 # Tuya cloud credentials for key refresh
-TUYA_API_KEY = os.getenv("TUYA_API_KEY", "sukk7w34kvkkukheppa8")
+TUYA_API_KEY = os.getenv("TUYA_API_KEY")
 if not TUYA_API_KEY:
     raise ValueError("TUYA_API_KEY environment variable not set")
 
