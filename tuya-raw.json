@@ -6,7 +6,7 @@
             "category": "msp",
             "create_time": 1740491457,
             "icon": "smart/icon/bay1627386467137Cb6K/26b3eecc601f809c66c1fc41c378f02b.jpg",
-            "id": "REDACTED",
+            "id": "bfb69fa0d9a31595751qfz",
             "ip": "77.248.98.40",
             "lat": "0",
             "local_key": "Wqgd^&nPvM:8Bjl|",
@@ -103,7 +103,7 @@
     "file": {
         "name": "tuya-raw.json",
         "description": "Full raw list of Tuya devices.",
-        "account": "REDACTED",
+        "account": "sukk7w34kvkkukheppa8",
         "date": "2026-03-01T15:48:21.678761",
         "tinytuya": "1.17.6"
     }

@@ -5,7 +5,7 @@ import json
 ##Polls the litterbox for output
 
 d = tinytuya.OutletDevice(
-    dev_id="REDACTED",
+    dev_id="bfb69fa0d9a31595751qfz",
     address="192.168.68.110",
     local_key="@4XOjSgO$r/sqZG:",
     version=3.4
