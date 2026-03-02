@@ -67,8 +67,16 @@ class LitterboxPoller:
         try:
             self.cloud = make_cloud()
             logger.info("Cloud connection initialized")
+            # Prime previous_dps silently to avoid firing events on startup
+            result = self.cloud.getstatus(DEVICE_ID)
+            if result and result.get("success"):
+                self.previous_dps = {
+                    item["code"]: item["value"]
+                    for item in result.get("result", [])
+                }
+                logger.info("Initial device state loaded")
         except Exception as e:
-            logger.exception("Failed to initialize cloud connection")
+            logger.error(f"Failed to initialize cloud connection: {e}")
             self.cloud = None
 
     def poll(self):
