@@ -21,7 +21,6 @@ class CatOut(BaseModel):
     name: str
     active: bool
     reference_weight_kg: Optional[float]
-    photo_url: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -78,7 +77,6 @@ class CatDashboard(BaseModel):
     cat_id: int
     cat_name: str
     reference_weight_kg: Optional[float]
-    photo_url: Optional[str] = None
     visits_today: int
     time_in_box_today_seconds: int
     last_visit_at: Optional[datetime]
