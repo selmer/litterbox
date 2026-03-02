@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "5"))
 
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
-UPLOADS_DIR = Path(__file__).parent.parent / "uploads"
 
 
 def run_poller():
@@ -75,10 +74,6 @@ app.include_router(dashboard.router)
 def health():
     return {"status": "ok"}
 
-
-# Serve uploaded cat photos
-UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Serve React frontend — must come AFTER API routes
 if FRONTEND_DIST.exists():
