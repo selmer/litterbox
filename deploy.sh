@@ -28,7 +28,7 @@ fi
 echo "🚀 Deploying to NAS..."
 ssh "$NAS_USER@$NAS_HOST" "
   cd $NAS_PATH &&
-  sudo git pull &&
+  git pull &&
   sudo docker compose up --build -d
 "
 
