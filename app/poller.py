@@ -32,6 +32,7 @@ SNAPSHOT_INTERVAL_SECONDS = int(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "300"))
 SETTINGS_DPS = {"deodorization", "Clean_notice", "child_lock", "induction_delay",
                 "induction_interval", "odourless", "capacity_calibration", "sand_surface_calibration"}
 
+VISIT_TIMEOUT_SECONDS = 300  # 5 minutes fallback
 DP_CAT_WEIGHT = "cat_weight"
 DP_CLEANING_CYCLE = "smart_clean"
 DP_EXCRETION_TIMES = "excretion_times_day"
@@ -60,6 +61,7 @@ class LitterboxPoller:
         self.current_visit: Optional[Visit] = None
         self.current_cleaning_cycle: Optional[CleaningCycle] = None
         self.last_snapshot_at: Optional[datetime] = None
+        self.last_weight_at = None
         self._init_cloud()
 
     def _init_cloud(self):
@@ -104,7 +106,7 @@ class LitterboxPoller:
             return
 
         now = datetime.now(timezone.utc)
-
+        self._check_visit_timeout(now)        
         self._handle_changes(dps, now)
         self._maybe_snapshot(dps, now)
 
@@ -149,11 +151,26 @@ class LitterboxPoller:
         self.db.commit()
         self.current_visit = None
     
+    def _check_visit_timeout(self, now: datetime):
+        """Fallback: close visit if no completion event received within 5 minutes."""
+        if self.current_visit is None:
+            return
+        if self.last_weight_at is None:
+            return
+        elapsed = (now - self.last_weight_at).total_seconds()
+        if elapsed >= VISIT_TIMEOUT_SECONDS:
+            logger.info(f"Visit timed out after {elapsed:.0f}s — closing as fallback")
+            self.current_visit.ended_at = now
+            self.current_visit.duration_seconds = int(elapsed)
+            self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
+            self.db.commit()
+            self.current_visit = None
+            self.last_weight_at = None
 
     def _handle_weight_update(self, raw_weight: int, now: datetime):
         weight_kg = round(raw_weight / 1000, 3)
         logger.info(f"Weight reading: {weight_kg} kg")
-
+        self.last_weight_at = now
 
         if self.current_visit is None:
             # New visit — weight reading is our trigger
