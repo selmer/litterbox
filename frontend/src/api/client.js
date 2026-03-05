@@ -28,6 +28,9 @@ export const updateCat = (id, data) =>
 export const getVisits = ({ limit = 50, catId } = {}) =>
   api.get('/visits', { params: { limit, cat_id: catId } }).then(r => r.data)
 
+export const createVisit = (data) =>
+  api.post('/visits', data).then(r => r.data)
+
 export const updateVisit = (id, data) =>
   api.patch(`/visits/${id}`, data).then(r => r.data)
 

@@ -6,9 +6,25 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Visit
-from app.schemas import VisitOut, VisitUpdate, WeightHistory, WeightDataPoint
+from app.schemas import VisitOut, VisitCreate, VisitUpdate, WeightHistory, WeightDataPoint
 
 router = APIRouter(prefix="/visits", tags=["visits"])
+
+
+@router.post("", response_model=VisitOut, status_code=201)
+def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
+    """Creates a manual visit entry."""
+    visit = Visit(
+        cat_id=visit_data.cat_id,
+        identified_by="manual",
+        started_at=visit_data.started_at,
+        duration_seconds=visit_data.duration_seconds,
+        weight_kg=visit_data.weight_kg,
+    )
+    db.add(visit)
+    db.commit()
+    db.refresh(visit)
+    return visit
 
 
 @router.get("", response_model=list[VisitOut])
