@@ -16,7 +16,7 @@ from app.routers import cats, visits, cleaning_cycles, dashboard
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "5"))
+POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
 
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
