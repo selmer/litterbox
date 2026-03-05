@@ -14,7 +14,7 @@ function IdentificationBadge({ identifiedBy, catId }) {
   return <span className="badge badge-green">auto</span>
 }
 
-export default function VisitsList({ visits, cats = [], onReassign }) {
+export default function VisitsList({ visits, cats = [], onReassign, onDelete }) {
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
@@ -37,6 +37,7 @@ export default function VisitsList({ visits, cats = [], onReassign }) {
             <th>Weight</th>
             <th>ID</th>
             {onReassign && <th></th>}
+            {onDelete && <th></th>}
           </tr>
         </thead>
         <tbody>
@@ -65,6 +66,17 @@ export default function VisitsList({ visits, cats = [], onReassign }) {
                     onClick={() => onReassign(visit)}
                   >
                     reassign
+                  </button>
+                </td>
+              )}
+              {onDelete && (
+                <td>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    style={{ color: 'var(--color-danger, #e53e3e)' }}
+                    onClick={() => onDelete(visit)}
+                  >
+                    delete
                   </button>
                 </td>
               )}

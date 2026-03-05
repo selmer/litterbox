@@ -6,9 +6,25 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Visit
-from app.schemas import VisitOut, VisitUpdate, WeightHistory, WeightDataPoint
+from app.schemas import VisitOut, VisitCreate, VisitUpdate, WeightHistory, WeightDataPoint
 
 router = APIRouter(prefix="/visits", tags=["visits"])
+
+
+@router.post("", response_model=VisitOut, status_code=201)
+def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
+    """Creates a manual visit entry."""
+    visit = Visit(
+        cat_id=visit_data.cat_id,
+        identified_by="manual",
+        started_at=visit_data.started_at,
+        duration_seconds=visit_data.duration_seconds,
+        weight_kg=visit_data.weight_kg,
+    )
+    db.add(visit)
+    db.commit()
+    db.refresh(visit)
+    return visit
 
 
 @router.get("", response_model=list[VisitOut])
@@ -104,3 +120,14 @@ def update_visit(visit_id: int, update: VisitUpdate, db: Session = Depends(get_d
     db.commit()
     db.refresh(visit)
     return visit
+
+
+@router.delete("/{visit_id}", status_code=204)
+def delete_visit(visit_id: int, db: Session = Depends(get_db)):
+    """Deletes a visit record."""
+    from fastapi import HTTPException
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    db.delete(visit)
+    db.commit()
