@@ -43,6 +43,13 @@ class VisitOut(BaseModel):
         from_attributes = True
 
 
+class VisitCreate(BaseModel):
+    cat_id: int
+    started_at: datetime
+    duration_seconds: int
+    weight_kg: float
+
+
 class VisitUpdate(BaseModel):
     cat_id: Optional[int] = None
     identified_by: Optional[str] = None

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getVisits, getCats, updateVisit } from '../api/client'
+import { getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
 
 export default function Visits() {
@@ -22,6 +22,15 @@ export default function Visits() {
     }
     fetch()
   }, [])
+
+  async function handleDelete(visit) {
+    try {
+      await deleteVisit(visit.id)
+      setVisits(prev => prev.filter(v => v.id !== visit.id))
+    } catch (e) {
+      console.error('Failed to delete visit', e)
+    }
+  }
 
   async function handleReassign(visit) {
     setReassigning(visit)
@@ -84,6 +93,7 @@ export default function Visits() {
         }
         cats={cats}
         onReassign={handleReassign}
+        onDelete={handleDelete}
       />
 
       {/* Reassign modal */}
