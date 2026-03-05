@@ -104,3 +104,14 @@ def update_visit(visit_id: int, update: VisitUpdate, db: Session = Depends(get_d
     db.commit()
     db.refresh(visit)
     return visit
+
+
+@router.delete("/{visit_id}", status_code=204)
+def delete_visit(visit_id: int, db: Session = Depends(get_db)):
+    """Deletes a visit record."""
+    from fastapi import HTTPException
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    db.delete(visit)
+    db.commit()
