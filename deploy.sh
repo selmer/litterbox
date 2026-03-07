@@ -30,7 +30,9 @@ cd ..
 # Commit and push if there are changes
 if [[ -n $(git status --porcelain) ]]; then
   echo "📝 Committing changes..."
-  git add -A
+  # Use 'git add -u' instead of 'git add -A' to only stage already-tracked files,
+  # preventing accidental staging of untracked secrets, .env files, or binaries.
+  git add -u
   git commit -m "${1:-deploy: update}"
   git push
 else
