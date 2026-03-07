@@ -32,6 +32,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Java binaries (e.g. BFG Repo Cleaner)
+*.jar
+
 # Tinytuya generated files
 snapshot.json
 devices.json
