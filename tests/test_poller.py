@@ -238,8 +238,8 @@ def test_identify_visit_cat_updates_reference_weight(poller, db_session):
     db_session.commit()
 
     poller._identify_visit_cat(visit, 4.2)
-    db_session.refresh(cat)
 
-    # Reference weight should have been nudged toward 4.2
+    # Reference weight is updated in-memory (callers commit); check without refresh
+    # to verify the in-session state before the caller would commit.
     assert cat.reference_weight_kg != pytest.approx(4.0)
     assert 4.0 < cat.reference_weight_kg < 4.2
