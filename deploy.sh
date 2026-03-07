@@ -10,6 +10,10 @@ echo "🐱 Litterbox deploy starting..."
 echo "pulling git data"
 git pull
 
+# Install/update dependencies
+echo "📦 Installing dependencies..."
+pip install -r requirements.txt -q
+
 # Run tests before deploying — abort if any test fails
 echo "🧪 Running tests..."
 python3 -m pytest tests/ -v
