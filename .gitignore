@@ -9,6 +9,7 @@ __pycache__/
 dist/
 build/
 
+
 # Environment & secrets
 .env
 *.env
@@ -37,3 +38,12 @@ tinytuya.json
 
 # Uploaded cat photos (user content)
 uploads/cat_photos/
+__pycache__/conftest.cpython-314-pytest-9.0.2.pyc
+app/__pycache__/__init__.cpython-314.pyc
+app/__pycache__/cat_identifier.cpython-314.pyc
+app/__pycache__/database.cpython-314.pyc
+app/__pycache__/main.cpython-314.pyc
+app/__pycache__/models.cpython-314.pyc
+app/__pycache__/poller.cpython-314.pyc
+tests/test_api_visits.py
+tests/__pycache__/test_cat_identifier.cpython-314-pytest-9.0.2.pyc
