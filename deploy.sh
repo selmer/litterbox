@@ -10,6 +10,8 @@ echo "🐱 Litterbox deploy starting..."
 # Build frontend
 echo "📦 Building frontend..."
 cd frontend
+npm install
+sudo chown -R $(whoami) node_modules
 npm run build
 cd ..
 
