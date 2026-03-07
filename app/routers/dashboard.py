@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
@@ -9,8 +10,13 @@ from app.schemas import CatDashboard, DashboardOut
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
-# How long since the last successful poll before we consider the poller unhealthy
-POLLER_HEALTHY_THRESHOLD_SECONDS = 30
+# Mirror the same env var as the poller so the health window scales automatically.
+# Defaults to 2× the poll interval — healthy as long as the last poll was within
+# the previous two cycles. Override via POLLER_HEALTHY_THRESHOLD_SECONDS if needed.
+_poll_interval = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
+POLLER_HEALTHY_THRESHOLD_SECONDS = int(
+    os.getenv("POLLER_HEALTHY_THRESHOLD_SECONDS", str(_poll_interval * 2))
+)
 
 # Shared state updated by the poller — imported in main.py
 last_successful_poll_at: datetime = None
@@ -65,7 +71,6 @@ def get_dashboard(db: Session = Depends(get_db)):
         .filter(
             Visit.cat_id.is_(None),
             Visit.started_at >= today_start,
-            Visit.ended_at.isnot(None),
         )
         .count()
     )
