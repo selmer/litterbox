@@ -1,14 +1,23 @@
-import tinytuya
+import os
 import time
-import json
 
-##Polls the litterbox for output
+import tinytuya
+from dotenv import load_dotenv
+
+load_dotenv()
+
+## Polls the litterbox for output
+
+dev_id = os.environ["TUYA_DEV_ID"]
+address = os.environ["TUYA_ADDRESS"]
+local_key = os.environ["TUYA_LOCAL_KEY"]
+version = float(os.environ.get("TUYA_VERSION", "3.4"))
 
 d = tinytuya.OutletDevice(
-    dev_id="bfb69fa0d9a31595751qfz",
-    address="192.168.68.110",
-    local_key="@4XOjSgO$r/sqZG:",
-    version=3.4
+    dev_id=dev_id,
+    address=address,
+    local_key=local_key,
+    version=version,
 )
 
 d.set_socketPersistent(True)
@@ -21,7 +30,7 @@ KNOWN_DPS = {
     "22": "fault",
 }
 
-print("👀 Watching for changes... (Ctrl+C to stop)\n")
+print("Watching for changes... (Ctrl+C to stop)\n")
 
 previous = {}
 
@@ -37,13 +46,13 @@ while True:
                 previous[k] = v
 
         if changes:
-            print(f"⏰ {time.strftime('%H:%M:%S')} — Changes detected:")
+            print(f"{time.strftime('%H:%M:%S')} — Changes detected:")
             for dp, change in changes.items():
                 label = KNOWN_DPS.get(dp, f"DP {dp} (unknown)")
-                print(f"  [{dp}] {label}: {change['old']} → {change['new']}")
+                print(f"  [{dp}] {label}: {change['old']} -> {change['new']}")
             print()
 
     except Exception as e:
-        print(f"⚠️  Error: {e}")
+        print(f"Error: {e}")
 
     time.sleep(5)
