@@ -1,25 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import CatPhotoUpload from './CatPhotoUpload'
+import { uploadCatPhoto, deleteCatPhoto } from '../api/client'
 
 const PLACEHOLDER_EMOJI = '🐱'
 
 function getCatId(cat) {
   return cat.cat_id || cat.id
-}
-
-function getStoredPhoto(catId) {
-  if (!catId) return null
-  return localStorage.getItem(`cat_photo_${catId}`) || null
-}
-
-function storePhoto(catId, dataUrl) {
-  if (!catId) return
-  if (dataUrl === null) {
-    localStorage.removeItem(`cat_photo_${catId}`)
-  } else {
-    localStorage.setItem(`cat_photo_${catId}`, dataUrl)
-  }
 }
 
 function formatDuration(seconds) {
@@ -30,18 +17,33 @@ function formatDuration(seconds) {
   return `${m}m ${s}s`
 }
 
-export default function CatCard({ cat, isPlaceholder = false, onAddVisit }) {
+export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhotoChange }) {
   const catId = getCatId(cat)
-  const [photo, setPhoto] = useState(() => getStoredPhoto(catId))
+  const [photo, setPhoto] = useState(cat.photo_url || null)
   const [showUpload, setShowUpload] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
-  useEffect(() => {
-    setPhoto(getStoredPhoto(catId))
-  }, [catId])
-
-  function handleSavePhoto(dataUrl) {
-    storePhoto(catId, dataUrl)
-    setPhoto(dataUrl)
+  async function handleSavePhoto(dataUrl) {
+    const catIdValue = catId
+    if (dataUrl === null) {
+      try {
+        setUploading(true)
+        const updated = await deleteCatPhoto(catIdValue)
+        setPhoto(updated.photo_url || null)
+        onPhotoChange?.(updated)
+      } finally {
+        setUploading(false)
+      }
+    } else {
+      try {
+        setUploading(true)
+        const updated = await uploadCatPhoto(catIdValue, dataUrl)
+        setPhoto(updated.photo_url || null)
+        onPhotoChange?.(updated)
+      } finally {
+        setUploading(false)
+      }
+    }
     setShowUpload(false)
   }
 
@@ -69,11 +71,11 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit }) {
       <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-start', width: '100%' }}>
         <div
           className="cat-card__photo cat-card__photo--clickable"
-          onClick={() => setShowUpload(true)}
+          onClick={() => !uploading && setShowUpload(true)}
           title="Click to change photo"
           role="button"
           tabIndex={0}
-          onKeyDown={e => e.key === 'Enter' && setShowUpload(true)}
+          onKeyDown={e => e.key === 'Enter' && !uploading && setShowUpload(true)}
         >
           {photo ? <img src={photo} alt={cat.cat_name || cat.name} /> : <span>{PLACEHOLDER_EMOJI}</span>}
         </div>

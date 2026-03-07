@@ -46,6 +46,14 @@ export const getWeightHistory = ({ fromDate, toDate, catId } = {}) =>
     },
   }).then(r => r.data)
 
+// --- Cat photos ---
+
+export const uploadCatPhoto = (catId, photoData) =>
+  api.post(`/cats/${catId}/photo`, { photo_data: photoData }).then(r => r.data)
+
+export const deleteCatPhoto = (catId) =>
+  api.delete(`/cats/${catId}/photo`).then(r => r.data)
+
 // --- Cleaning cycles ---
 
 export const getCleaningCycles = (limit = 50) =>

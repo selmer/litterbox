@@ -79,6 +79,7 @@ def get_dashboard(db: Session = Depends(get_db)):
             cat_id=cat.id,
             cat_name=cat.name,
             reference_weight_kg=cat.reference_weight_kg,
+            photo_url=f"/uploads/cat_photos/{cat.id}.jpg" if cat.photo_path else None,
             visits_today=visits_today,
             time_in_box_today_seconds=time_in_box_today_seconds,
             last_visit_at=last_visit_at,
