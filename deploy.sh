@@ -6,7 +6,9 @@ NAS_HOST="192.168.68.115"
 NAS_PATH="/volume2/docker/litterbox"
 
 echo "🐱 Litterbox deploy starting..."
-
+# pulling git data
+echo "pulling git data" 
+git pull
 # Build frontend
 echo "📦 Building frontend..."
 cd frontend
