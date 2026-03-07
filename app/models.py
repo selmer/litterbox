@@ -41,9 +41,9 @@ class Visit(Base):
     __tablename__ = "visits"
 
     id = Column(Integer, primary_key=True)
-    cat_id = Column(Integer, ForeignKey("cats.id"), nullable=True)
+    cat_id = Column(Integer, ForeignKey("cats.id"), nullable=True, index=True)
     identified_by = Column(String, nullable=True)  # 'auto' or 'manual'
-    started_at = Column(TZDateTime(timezone=True), nullable=False)
+    started_at = Column(TZDateTime(timezone=True), nullable=False, index=True)
     ended_at = Column(TZDateTime(timezone=True), nullable=True)
     duration_seconds = Column(Integer, nullable=True)
     weight_kg = Column(Float, nullable=True)
