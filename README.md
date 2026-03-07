@@ -39,6 +39,45 @@ The test suite is also run automatically by `deploy.sh` before every deploy. If 
 | `tests/test_api_dashboard.py` | Dashboard aggregation (visits today, cleaning cycles, poller health) |
 | `tests/test_poller.py` | `LitterboxPoller` internal logic (visit creation, timeout, cleaning cycles, snapshots, settings) |
 
+## Cleaning git history with BFG
+
+[BFG Repo Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) is a faster alternative to `git filter-branch` for removing large files or sensitive data from git history.
+
+### Setup
+
+Download the BFG jar (do **not** commit it to the repository):
+
+```bash
+curl -L -o bfg.jar https://repo1.maven.org/maven2/com/madgag/bfg/1.14.0/bfg-1.14.0.jar
+```
+
+Requires Java 8+. Check with `java -version`.
+
+### Common usage
+
+**Remove a committed file from all history:**
+
+```bash
+# First, delete the file from the latest commit if it's still there
+git rm --cached path/to/file && git commit -m "Remove file"
+
+# Then rewrite history
+java -jar bfg.jar --delete-files filename.ext
+
+# Clean up and force-push
+git reflog expire --expire=now --all && git gc --prune=now --aggressive
+git push --force
+```
+
+**Remove files larger than a given size:**
+
+```bash
+java -jar bfg.jar --strip-blobs-bigger-than 10M
+```
+
+> **Note:** Always take a full backup (`git clone --mirror`) before rewriting history.
+> Coordinate with all collaborators — everyone must re-clone after a force-push.
+
 ### Areas that need your input for tests
 
 The following cannot be fully covered without real-world data or your specific setup:
