@@ -140,7 +140,7 @@ class LitterboxPoller:
             weight_raw = dps.get(DP_CAT_WEIGHT, 0)
             weight_kg = round(weight_raw / 1000, 3) if weight_raw else None
             self.current_visit = Visit(
-                started_at=now - __import__('datetime').timedelta(seconds=duration or 0),
+                started_at=now - timedelta(seconds=duration or 0),
                 weight_kg=weight_kg,
             )
             self.db.add(self.current_visit)
