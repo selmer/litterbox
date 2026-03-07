@@ -6,24 +6,24 @@ import Cats from './pages/Cats'
 import './index.css'
 import './App.css'
 
-function Sidebar({ darkMode, onToggleDarkMode, isOpen, onClose }) {
+function Sidebar({ darkMode, onToggleDarkMode }) {
   return (
-    <aside className={`sidebar${isOpen ? ' is-open' : ''}`}>
+    <aside className="sidebar">
       <div className="sidebar-logo">
         <h1>litterbox</h1>
         <p>cat health monitor</p>
       </div>
 
       <nav className="sidebar-nav">
-        <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onClose}>
+        <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">📊</span>
           Dashboard
         </NavLink>
-        <NavLink to="/visits" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onClose}>
+        <NavLink to="/visits" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">📋</span>
           Visits
         </NavLink>
-        <NavLink to="/cats" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onClose}>
+        <NavLink to="/cats" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">🐱</span>
           Cats
         </NavLink>
@@ -46,7 +46,6 @@ function AppShell() {
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark'
   })
-  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
@@ -56,9 +55,6 @@ function AppShell() {
   return (
     <div className="app-shell">
       <header className="mobile-header">
-        <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-          ☰
-        </button>
         <span className="mobile-logo">litterbox</span>
         <button
           className="btn btn-secondary btn-sm"
@@ -69,15 +65,9 @@ function AppShell() {
         </button>
       </header>
 
-      {sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-      )}
-
       <Sidebar
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode(d => !d)}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
       />
       <main className="main-content">
         <Routes>
