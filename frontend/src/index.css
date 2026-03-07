@@ -400,3 +400,75 @@ body {
   color: var(--text-muted);
   font-size: 13px;
 }
+
+/* ===================== MOBILE HEADER ===================== */
+.mobile-header {
+  display: none;
+}
+
+/* ===================== SIDEBAR OVERLAY ===================== */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 768px) {
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .mobile-logo {
+    font-family: var(--font-display);
+    font-size: 18px;
+    color: var(--text-primary);
+  }
+
+  .hamburger-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--text-primary);
+    padding: var(--space-1) var(--space-2);
+    line-height: 1;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+    z-index: 100;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: var(--space-4);
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header h2 {
+    font-size: 22px;
+  }
+}
