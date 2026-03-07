@@ -1,77 +1,111 @@
-"""Tests for the /cats API endpoints."""
-import pytest
+"""
+Tests for the /cats API endpoints.
+
+Functions/scenarios needing owner input:
+  - What should happen when a cat's reference_weight_kg is updated to a value
+    outside any reasonable range? (Currently no server-side validation.)
+  - Should deactivating a cat also affect its historical visits? (Currently it
+    does not — visits remain linked.)
+"""
 
 
 def test_create_cat(client):
-    resp = client.post("/cats", json={"name": "Luna", "reference_weight_kg": 4.0})
-    assert resp.status_code == 200
-    data = resp.json()
+    response = client.post("/cats", json={"name": "Luna"})
+    assert response.status_code == 200
+    data = response.json()
     assert data["name"] == "Luna"
-    assert data["reference_weight_kg"] == 4.0
     assert data["active"] is True
+    assert data["reference_weight_kg"] is None
     assert "id" in data
+    assert "created_at" in data
 
 
-def test_create_cat_without_reference_weight(client):
-    resp = client.post("/cats", json={"name": "Ghost"})
-    assert resp.status_code == 200
-    assert resp.json()["reference_weight_kg"] is None
+def test_create_cat_with_reference_weight(client):
+    response = client.post("/cats", json={"name": "Mochi", "reference_weight_kg": 5.5})
+    assert response.status_code == 200
+    assert response.json()["reference_weight_kg"] == 5.5
 
 
-def test_list_cats_returns_active_only_by_default(client):
-    client.post("/cats", json={"name": "Luna"})
-    luna_id = client.post("/cats", json={"name": "Mochi"}).json()["id"]
-    client.patch(f"/cats/{luna_id}", json={"active": False})
+def test_list_cats_returns_only_active_by_default(client):
+    client.post("/cats", json={"name": "Active"})
+    # Create and deactivate a second cat
+    r = client.post("/cats", json={"name": "Inactive"})
+    cat_id = r.json()["id"]
+    client.patch(f"/cats/{cat_id}", json={"active": False})
 
-    resp = client.get("/cats")
-    assert resp.status_code == 200
-    names = [c["name"] for c in resp.json()]
-    assert "Luna" in names
-    assert "Mochi" not in names
+    response = client.get("/cats")
+    assert response.status_code == 200
+    names = [c["name"] for c in response.json()]
+    assert "Active" in names
+    assert "Inactive" not in names
 
 
 def test_list_cats_include_inactive(client):
-    luna_id = client.post("/cats", json={"name": "Luna"}).json()["id"]
-    client.patch(f"/cats/{luna_id}", json={"active": False})
+    client.post("/cats", json={"name": "Active"})
+    r = client.post("/cats", json={"name": "Inactive"})
+    cat_id = r.json()["id"]
+    client.patch(f"/cats/{cat_id}", json={"active": False})
 
-    resp = client.get("/cats", params={"include_inactive": True})
-    assert resp.status_code == 200
-    assert any(c["name"] == "Luna" for c in resp.json())
+    response = client.get("/cats", params={"include_inactive": True})
+    assert response.status_code == 200
+    names = [c["name"] for c in response.json()]
+    assert "Active" in names
+    assert "Inactive" in names
 
 
 def test_get_cat(client):
-    cat_id = client.post("/cats", json={"name": "Luna"}).json()["id"]
-    resp = client.get(f"/cats/{cat_id}")
-    assert resp.status_code == 200
-    assert resp.json()["name"] == "Luna"
+    r = client.post("/cats", json={"name": "Luna"})
+    cat_id = r.json()["id"]
+
+    response = client.get(f"/cats/{cat_id}")
+    assert response.status_code == 200
+    assert response.json()["name"] == "Luna"
 
 
 def test_get_cat_not_found(client):
-    resp = client.get("/cats/999")
-    assert resp.status_code == 404
+    response = client.get("/cats/9999")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
 
 def test_update_cat_name(client):
-    cat_id = client.post("/cats", json={"name": "Luna"}).json()["id"]
-    resp = client.patch(f"/cats/{cat_id}", json={"name": "Luna Updated"})
-    assert resp.status_code == 200
-    assert resp.json()["name"] == "Luna Updated"
+    r = client.post("/cats", json={"name": "Luna"})
+    cat_id = r.json()["id"]
+
+    response = client.patch(f"/cats/{cat_id}", json={"name": "Luna Updated"})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Luna Updated"
 
 
 def test_update_cat_reference_weight(client):
-    cat_id = client.post("/cats", json={"name": "Luna", "reference_weight_kg": 4.0}).json()["id"]
-    resp = client.patch(f"/cats/{cat_id}", json={"reference_weight_kg": 4.2})
-    assert resp.status_code == 200
-    assert resp.json()["reference_weight_kg"] == pytest.approx(4.2)
+    r = client.post("/cats", json={"name": "Luna"})
+    cat_id = r.json()["id"]
+
+    response = client.patch(f"/cats/{cat_id}", json={"reference_weight_kg": 4.2})
+    assert response.status_code == 200
+    assert response.json()["reference_weight_kg"] == 4.2
 
 
-def test_deactivate_cat(client):
-    cat_id = client.post("/cats", json={"name": "Luna"}).json()["id"]
-    resp = client.patch(f"/cats/{cat_id}", json={"active": False})
-    assert resp.status_code == 200
-    assert resp.json()["active"] is False
+def test_update_cat_deactivate(client):
+    r = client.post("/cats", json={"name": "Luna"})
+    cat_id = r.json()["id"]
+
+    response = client.patch(f"/cats/{cat_id}", json={"active": False})
+    assert response.status_code == 200
+    assert response.json()["active"] is False
 
 
 def test_update_cat_not_found(client):
-    resp = client.patch("/cats/999", json={"name": "Nobody"})
-    assert resp.status_code == 404
+    response = client.patch("/cats/9999", json={"name": "Ghost"})
+    assert response.status_code == 404
+
+
+def test_create_multiple_cats_appear_in_list(client):
+    client.post("/cats", json={"name": "Luna"})
+    client.post("/cats", json={"name": "Mochi"})
+
+    response = client.get("/cats")
+    assert response.status_code == 200
+    names = [c["name"] for c in response.json()]
+    assert "Luna" in names
+    assert "Mochi" in names
