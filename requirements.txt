@@ -1,4 +1,7 @@
 alembic==1.18.4
+httpx>=0.27
+pytest>=9.0
+pytest-asyncio>=0.24
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.1
