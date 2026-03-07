@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -23,42 +24,69 @@ def get_dashboard(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    active_cats = db.query(Cat).filter(Cat.active == True).all()
-
-    cat_dashboards = []
-    for cat in active_cats:
-        visits_today = (
-            db.query(Visit)
-            .filter(
-                Visit.cat_id == cat.id,
-                Visit.started_at >= today_start,
-            )
-            .all()
+    # Aggregate today's visits per cat (count + total duration)
+    today_subq = (
+        db.query(
+            Visit.cat_id,
+            func.count(Visit.id).label("visits_today"),
+            func.sum(func.coalesce(Visit.duration_seconds, 0)).label("time_in_box_today_seconds"),
         )
+        .filter(Visit.cat_id.isnot(None), Visit.started_at >= today_start)
+        .group_by(Visit.cat_id)
+        .subquery()
+    )
 
-        total_time = sum(v.duration_seconds or 0 for v in visits_today)
-
-        last_visit = (
-            db.query(Visit)
-            .filter(
-                Visit.cat_id == cat.id,
-            )
-            .order_by(Visit.started_at.desc())
-            .first()
+    # Latest visit per cat: first find the max started_at per cat_id
+    max_started_subq = (
+        db.query(
+            Visit.cat_id,
+            func.max(Visit.started_at).label("max_started_at"),
         )
+        .filter(Visit.cat_id.isnot(None))
+        .group_by(Visit.cat_id)
+        .subquery()
+    )
 
-        cat_dashboards.append(
-            CatDashboard(
-                cat_id=cat.id,
-                cat_name=cat.name,
-                reference_weight_kg=cat.reference_weight_kg,
-                visits_today=len(visits_today),
-                time_in_box_today_seconds=total_time,
-                last_visit_at=last_visit.started_at if last_visit else None,
-                last_visit_weight_kg=last_visit.weight_kg if last_visit else None,
-                last_visit_duration_seconds=last_visit.duration_seconds if last_visit else None,
-            )
+    # Then join back to visits to get the full row for the last visit
+    last_visit_subq = (
+        db.query(Visit)
+        .join(
+            max_started_subq,
+            (Visit.cat_id == max_started_subq.c.cat_id)
+            & (Visit.started_at == max_started_subq.c.max_started_at),
         )
+        .subquery()
+    )
+
+    # Single query: active cats LEFT JOINed with today aggregates and last visit
+    rows = (
+        db.query(
+            Cat,
+            func.coalesce(today_subq.c.visits_today, 0).label("visits_today"),
+            func.coalesce(today_subq.c.time_in_box_today_seconds, 0).label("time_in_box_today_seconds"),
+            last_visit_subq.c.started_at.label("last_visit_at"),
+            last_visit_subq.c.weight_kg.label("last_visit_weight_kg"),
+            last_visit_subq.c.duration_seconds.label("last_visit_duration_seconds"),
+        )
+        .filter(Cat.active == True)
+        .outerjoin(today_subq, Cat.id == today_subq.c.cat_id)
+        .outerjoin(last_visit_subq, Cat.id == last_visit_subq.c.cat_id)
+        .all()
+    )
+
+    cat_dashboards = [
+        CatDashboard(
+            cat_id=cat.id,
+            cat_name=cat.name,
+            reference_weight_kg=cat.reference_weight_kg,
+            visits_today=visits_today,
+            time_in_box_today_seconds=time_in_box_today_seconds,
+            last_visit_at=last_visit_at,
+            last_visit_weight_kg=last_visit_weight_kg,
+            last_visit_duration_seconds=last_visit_duration_seconds,
+        )
+        for cat, visits_today, time_in_box_today_seconds, last_visit_at, last_visit_weight_kg, last_visit_duration_seconds in rows
+    ]
 
     unidentified_today = (
         db.query(Visit)
