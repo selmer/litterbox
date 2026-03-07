@@ -32,6 +32,7 @@ class Cat(Base):
     name = Column(String, nullable=False)
     active = Column(Boolean, default=True, nullable=False)
     reference_weight_kg = Column(Float, nullable=True)
+    photo_path = Column(String, nullable=True)
     created_at = Column(TZDateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     visits = relationship("Visit", back_populates="cat")
