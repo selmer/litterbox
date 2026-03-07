@@ -7,8 +7,15 @@ NAS_PATH="/volume2/docker/litterbox"
 
 echo "🐱 Litterbox deploy starting..."
 # pulling git data
-echo "pulling git data" 
+echo "pulling git data"
 git pull
+
+# Run tests before doing anything else
+echo "🧪 Running tests..."
+pip install -q -r requirements.txt -r requirements-test.txt
+pytest
+echo "✅ All tests passed"
+
 # Build frontend
 echo "📦 Building frontend..."
 cd frontend
