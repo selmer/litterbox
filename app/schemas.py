@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 
@@ -33,7 +33,7 @@ class CatOut(BaseModel):
 class VisitOut(BaseModel):
     id: int
     cat_id: Optional[int]
-    identified_by: Optional[str]
+    identified_by: Optional[Literal["auto", "manual"]]
     started_at: datetime
     ended_at: Optional[datetime]
     duration_seconds: Optional[int]
@@ -53,7 +53,7 @@ class VisitCreate(BaseModel):
 
 class VisitUpdate(BaseModel):
     cat_id: Optional[int] = None
-    identified_by: Optional[str] = None
+    identified_by: Optional[Literal["auto", "manual"]] = None
 
 
 class WeightDataPoint(BaseModel):
