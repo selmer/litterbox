@@ -158,7 +158,11 @@ def test_weight_history_respects_date_range(client):
     _make_visit(client, cat_id, started_at=recent_date)
 
     from_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    response = client.get(f"/visits/weight-history?from_date={from_date}")
+    response = client.get(
+        "/visits/weight-history",
+        params={"from_date": from_date},  # ✅ properly encoded
+    )
+
     assert response.status_code == 200
     result = response.json()
     # Only the recent visit should be included
