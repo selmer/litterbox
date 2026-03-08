@@ -212,6 +212,10 @@ class LitterboxPoller:
             self.db.commit()
 
     def _identify_visit_cat(self, visit: Visit, weight_kg: float):
+        if weight_kg is None:
+            logger.info("Visit has no weight reading — skipping cat identification")
+            return
+
         active_cats = self.db.query(Cat).filter(Cat.active == True).all()
         cat_dicts = [
             {"id": c.id, "name": c.name, "reference_weight_kg": c.reference_weight_kg}
