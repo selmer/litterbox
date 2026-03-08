@@ -52,14 +52,21 @@ class LitterboxPoller:
     Stateful poller that tracks the litterbox's DP changes via Tuya cloud API.
     Visit detection is based on weight readings — a visit starts when a weight
     is received.
+
+    A fresh DB session is created and closed on every call to poll() to avoid
+    stale identity-map state and dropped-connection issues with a long-lived
+    session.
     """
 
-    def __init__(self, db_session):
-        self.db = db_session
+    def __init__(self, session_factory):
+        self.session_factory = session_factory
+        self.db = None
         self.cloud: Optional[tinytuya.Cloud] = None
         self.previous_dps: dict = {}
         self.current_visit: Optional[Visit] = None
+        self.current_visit_id: Optional[int] = None
         self.current_cleaning_cycle: Optional[CleaningCycle] = None
+        self.current_cleaning_cycle_id: Optional[int] = None
         self.last_snapshot_at: Optional[datetime] = None
         self.last_weight_at = None
         self._init_cloud()
@@ -81,7 +88,11 @@ class LitterboxPoller:
             self.cloud = None
 
     def poll(self):
-        """Single poll cycle — call this in a loop."""
+        """Single poll cycle — call this in a loop.
+
+        Opens a fresh DB session for the duration of this poll and closes it
+        before returning, ensuring no session state leaks between cycles.
+        """
         if self.cloud is None:
             logger.warning("Cloud not initialized, retrying...")
             self._init_cloud()
@@ -105,12 +116,26 @@ class LitterboxPoller:
             logger.warning("Empty DPs in cloud response")
             return
 
-        now = datetime.now(timezone.utc)
-        self._check_visit_timeout(now)        
-        self._handle_changes(dps, now)
-        self._maybe_snapshot(dps, now)
+        db = self.session_factory()
+        try:
+            self.db = db
+            # Rehydrate any in-progress objects into the new session via their IDs
+            self.current_visit = db.get(Visit, self.current_visit_id) if self.current_visit_id else None
+            self.current_cleaning_cycle = db.get(CleaningCycle, self.current_cleaning_cycle_id) if self.current_cleaning_cycle_id else None
 
-        self.previous_dps = dps
+            now = datetime.now(timezone.utc)
+            self._check_visit_timeout(now)
+            self._handle_changes(dps, now)
+            self._maybe_snapshot(dps, now)
+
+            self.previous_dps = dps
+
+            # Persist IDs so the next poll can reload these objects
+            self.current_visit_id = self.current_visit.id if self.current_visit else None
+            self.current_cleaning_cycle_id = self.current_cleaning_cycle.id if self.current_cleaning_cycle else None
+        finally:
+            self.db = None
+            db.close()
 
     def _handle_changes(self, dps: dict, now: datetime):
         for dp, value in dps.items():

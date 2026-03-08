@@ -63,10 +63,13 @@ def poller(db_session):
 
     Uses the same in-memory SQLite db_session so database interactions
     (visits, cleaning cycles, etc.) can be verified after each call.
+    The session factory always returns the shared test session; db is also
+    set directly so internal methods can be called without going through poll().
     """
     mock_cloud = MagicMock()
     mock_cloud.getstatus.return_value = {"success": True, "result": []}
     with patch("app.poller.make_cloud", return_value=mock_cloud):
         from app.poller import LitterboxPoller
-        p = LitterboxPoller(db_session)
+        p = LitterboxPoller(lambda: db_session)
+    p.db = db_session
     yield p
