@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Literal, Optional
 
 
 # Maximum deviation from a cat's reference weight to still consider it a match.
@@ -14,7 +14,7 @@ class CatMatch:
     cat_name: str
     reference_weight_kg: float
     deviation_kg: float
-    identified_by: str = "auto"
+    identified_by: Literal["auto", "manual"] = "auto"
 
 
 def identify_cat(
