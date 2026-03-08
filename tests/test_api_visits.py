@@ -73,6 +73,61 @@ def test_list_visits_limit(client):
     assert len(response.json()) == 3
 
 
+def test_list_visits_offset(client):
+    cat_id = _make_cat(client)
+    # Create 5 visits with distinct timestamps so ordering is deterministic
+    base = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    for i in range(5):
+        _make_visit(client, cat_id, started_at=(base + timedelta(minutes=i)).isoformat())
+
+    # First page
+    page1 = client.get("/visits?limit=3&offset=0").json()
+    assert len(page1) == 3
+
+    # Second page
+    page2 = client.get("/visits?limit=3&offset=3").json()
+    assert len(page2) == 2
+
+    # No overlap
+    ids1 = {v["id"] for v in page1}
+    ids2 = {v["id"] for v in page2}
+    assert ids1.isdisjoint(ids2)
+
+
+def test_list_visits_offset_beyond_end(client):
+    cat_id = _make_cat(client)
+    _make_visit(client, cat_id)
+
+    response = client.get("/visits?limit=10&offset=100")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_visits_unidentified(client):
+    cat_id = _make_cat(client)
+    _make_visit(client, cat_id)
+    # Create a second visit and clear its cat_id to simulate unidentified
+    temp_cat = _make_cat(client, name="Temp")
+    visit = _make_visit(client, temp_cat)
+    client.patch(f"/visits/{visit['id']}", json={"cat_id": None})
+
+    response = client.get("/visits?unidentified=true")
+    assert response.status_code == 200
+    visits = response.json()
+    assert len(visits) == 1
+    assert visits[0]["cat_id"] is None
+
+
+def test_list_visits_unidentified_false_returns_all(client):
+    cat_id = _make_cat(client)
+    _make_visit(client, cat_id)
+    _make_visit(client, cat_id)
+
+    response = client.get("/visits?unidentified=false")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+
 def test_get_visit(client):
     cat_id = _make_cat(client)
     visit = _make_visit(client, cat_id)
