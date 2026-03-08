@@ -228,6 +228,22 @@ def test_maybe_snapshot_saves_after_interval(poller, db_session):
 # _identify_visit_cat (weight update reference weight)
 # ---------------------------------------------------------------------------
 
+def test_identify_visit_cat_with_none_weight_does_not_raise(poller, db_session):
+    """_identify_visit_cat should skip identification gracefully when weight is None."""
+    cat = Cat(name="Luna", reference_weight_kg=4.0, active=True)
+    db_session.add(cat)
+    db_session.commit()
+
+    visit = Visit(started_at=NOW, weight_kg=None)
+    db_session.add(visit)
+    db_session.commit()
+
+    poller._identify_visit_cat(visit, None)
+
+    assert visit.cat_id is None
+    assert visit.identified_by is None
+
+
 def test_identify_visit_cat_updates_reference_weight(poller, db_session):
     cat = Cat(name="Luna", reference_weight_kg=4.0, active=True)
     db_session.add(cat)
