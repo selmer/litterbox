@@ -3,27 +3,46 @@ import { getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
 import { useToast } from '../components/Toast'
 
+const PAGE_SIZE = 50
+
 export default function Visits() {
   const [visits, setVisits] = useState([])
   const [cats, setCats] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedCat, setSelectedCat] = useState(null)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [reassigning, setReassigning] = useState(null) // visit being reassigned
   const toast = useToast()
 
   useEffect(() => {
-    async function fetch() {
+    getCats().then(setCats)
+  }, [])
+
+  useEffect(() => {
+    async function fetchVisits() {
       setLoading(true)
       try {
-        const [v, c] = await Promise.all([getVisits({ limit: 100 }), getCats()])
-        setVisits(v)
-        setCats(c)
+        const params = { limit: PAGE_SIZE + 1, offset: page * PAGE_SIZE }
+        if (selectedCat === 'unidentified') {
+          params.unidentified = true
+        } else if (selectedCat !== null) {
+          params.catId = selectedCat
+        }
+        const v = await getVisits(params)
+        setHasMore(v.length > PAGE_SIZE)
+        setVisits(v.slice(0, PAGE_SIZE))
       } finally {
         setLoading(false)
       }
     }
-    fetch()
-  }, [])
+    fetchVisits()
+  }, [selectedCat, page])
+
+  function selectFilter(cat) {
+    setSelectedCat(cat)
+    setPage(0)
+  }
 
   async function handleDelete(visit) {
     try {
@@ -52,10 +71,6 @@ export default function Visits() {
     }
   }
 
-  const filteredVisits = selectedCat
-    ? visits.filter(v => v.cat_id === selectedCat)
-    : visits
-
   if (loading) return <div className="loading">Loading…</div>
 
   return (
@@ -69,7 +84,7 @@ export default function Visits() {
       <div className="flex-center gap-2 mb-6">
         <button
           className={`btn btn-sm ${selectedCat === null ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setSelectedCat(null)}
+          onClick={() => selectFilter(null)}
         >
           All
         </button>
@@ -77,28 +92,46 @@ export default function Visits() {
           <button
             key={cat.id}
             className={`btn btn-sm ${selectedCat === cat.id ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setSelectedCat(cat.id)}
+            onClick={() => selectFilter(cat.id)}
           >
             {cat.name}
           </button>
         ))}
         <button
           className={`btn btn-sm ${selectedCat === 'unidentified' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setSelectedCat('unidentified')}
+          onClick={() => selectFilter('unidentified')}
         >
           Unidentified
         </button>
       </div>
 
       <VisitsList
-        visits={selectedCat === 'unidentified'
-          ? visits.filter(v => !v.cat_id)
-          : filteredVisits
-        }
+        visits={visits}
         cats={cats}
         onReassign={handleReassign}
         onDelete={handleDelete}
       />
+
+      {/* Pagination controls */}
+      {(page > 0 || hasMore) && (
+        <div className="flex-center gap-2 mt-4">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setPage(p => p - 1)}
+            disabled={page === 0}
+          >
+            ← Previous
+          </button>
+          <span className="text-muted" style={{ fontSize: 13 }}>Page {page + 1}</span>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setPage(p => p + 1)}
+            disabled={!hasMore}
+          >
+            Next →
+          </button>
+        </div>
+      )}
 
       {/* Reassign modal */}
       {reassigning && (
