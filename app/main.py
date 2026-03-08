@@ -29,10 +29,8 @@ def run_poller():
 
     logger.info("Poller thread started")
     while True:
-        db = None
         try:
-            db = SessionLocal()
-            poller = LitterboxPoller(db)
+            poller = LitterboxPoller(SessionLocal)
             while True:
                 poller.poll()
                 dashboard_state.last_successful_poll_at = datetime.now(timezone.utc)
@@ -40,9 +38,6 @@ def run_poller():
         except Exception as e:
             logger.exception("Poller crashed, restarting")
             time.sleep(10)
-        finally:
-            if db:
-                db.close()
 
 
 @asynccontextmanager
