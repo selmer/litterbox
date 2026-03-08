@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Visits from './pages/Visits'
 import Cats from './pages/Cats'
+import { ToastProvider } from './components/Toast'
 import './index.css'
 import './App.css'
 
@@ -83,7 +84,9 @@ function AppShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <ToastProvider>
+        <AppShell />
+      </ToastProvider>
     </BrowserRouter>
   )
 }

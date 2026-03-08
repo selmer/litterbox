@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
+import { useToast } from '../components/Toast'
 
 export default function Visits() {
   const [visits, setVisits] = useState([])
@@ -8,6 +9,7 @@ export default function Visits() {
   const [loading, setLoading] = useState(true)
   const [selectedCat, setSelectedCat] = useState(null)
   const [reassigning, setReassigning] = useState(null) // visit being reassigned
+  const toast = useToast()
 
   useEffect(() => {
     async function fetch() {
@@ -29,6 +31,7 @@ export default function Visits() {
       setVisits(prev => prev.filter(v => v.id !== visit.id))
     } catch (e) {
       console.error('Failed to delete visit', e)
+      toast('Failed to delete visit. Please try again.')
     }
   }
 
@@ -43,6 +46,7 @@ export default function Visits() {
       setVisits(prev => prev.map(v => v.id === updated.id ? updated : v))
     } catch (e) {
       console.error('Failed to reassign visit', e)
+      toast('Failed to reassign visit. Please try again.')
     } finally {
       setReassigning(null)
     }
