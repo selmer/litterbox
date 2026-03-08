@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCats, createCat, updateCat } from '../api/client'
+import { useToast } from '../components/Toast'
 
 function CatForm({ initial, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
@@ -67,6 +68,7 @@ export default function Cats() {
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null) // cat id being edited
+  const toast = useToast()
 
   useEffect(() => {
     async function fetch() {
@@ -82,20 +84,35 @@ export default function Cats() {
   }, [])
 
   async function handleCreate(data) {
-    const cat = await createCat(data)
-    setCats(prev => [...prev, cat])
-    setAdding(false)
+    try {
+      const cat = await createCat(data)
+      setCats(prev => [...prev, cat])
+      setAdding(false)
+    } catch (e) {
+      console.error('Failed to create cat', e)
+      toast('Failed to add cat. Please try again.')
+    }
   }
 
   async function handleUpdate(id, data) {
-    const cat = await updateCat(id, data)
-    setCats(prev => prev.map(c => c.id === id ? cat : c))
-    setEditing(null)
+    try {
+      const cat = await updateCat(id, data)
+      setCats(prev => prev.map(c => c.id === id ? cat : c))
+      setEditing(null)
+    } catch (e) {
+      console.error('Failed to update cat', e)
+      toast('Failed to save changes. Please try again.')
+    }
   }
 
   async function handleToggleActive(cat) {
-    const updated = await updateCat(cat.id, { active: !cat.active })
-    setCats(prev => prev.map(c => c.id === cat.id ? updated : c))
+    try {
+      const updated = await updateCat(cat.id, { active: !cat.active })
+      setCats(prev => prev.map(c => c.id === cat.id ? updated : c))
+    } catch (e) {
+      console.error('Failed to update cat', e)
+      toast(`Failed to ${cat.active ? 'deactivate' : 'reactivate'} cat. Please try again.`)
+    }
   }
 
   if (loading) return <div className="loading">Loading…</div>
