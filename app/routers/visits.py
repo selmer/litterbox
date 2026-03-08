@@ -30,13 +30,17 @@ def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
 @router.get("", response_model=list[VisitOut])
 def list_visits(
     limit: int = 50,
+    offset: int = 0,
     cat_id: Optional[int] = None,
+    unidentified: Optional[bool] = None,
     db: Session = Depends(get_db),
 ):
     query = db.query(Visit).order_by(Visit.started_at.desc())
     if cat_id:
         query = query.filter(Visit.cat_id == cat_id)
-    return query.limit(limit).all()
+    if unidentified:
+        query = query.filter(Visit.cat_id == None)  # noqa: E711
+    return query.offset(offset).limit(limit).all()
 
 
 @router.get("/weight-history", response_model=list[WeightHistory])

@@ -25,8 +25,8 @@ export const updateCat = (id, data) =>
 
 // --- Visits ---
 
-export const getVisits = ({ limit = 50, catId } = {}) =>
-  api.get('/visits', { params: { limit, cat_id: catId } }).then(r => r.data)
+export const getVisits = ({ limit = 50, offset = 0, catId, unidentified } = {}) =>
+  api.get('/visits', { params: { limit, offset, cat_id: catId, unidentified } }).then(r => r.data)
 
 export const createVisit = (data) =>
   api.post('/visits', data).then(r => r.data)
