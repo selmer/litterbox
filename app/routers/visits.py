@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -103,7 +103,6 @@ def weight_history(
 
 @router.get("/{visit_id}", response_model=VisitOut)
 def get_visit(visit_id: int, db: Session = Depends(get_db)):
-    from fastapi import HTTPException
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
@@ -113,7 +112,6 @@ def get_visit(visit_id: int, db: Session = Depends(get_db)):
 @router.patch("/{visit_id}", response_model=VisitOut)
 def update_visit(visit_id: int, update: VisitUpdate, db: Session = Depends(get_db)):
     """Allows manual correction of cat assignment."""
-    from fastapi import HTTPException
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
@@ -129,7 +127,6 @@ def update_visit(visit_id: int, update: VisitUpdate, db: Session = Depends(get_d
 @router.delete("/{visit_id}", status_code=204)
 def delete_visit(visit_id: int, db: Session = Depends(get_db)):
     """Deletes a visit record."""
-    from fastapi import HTTPException
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
