@@ -1,3 +1,4 @@
+import os
 import threading
 from datetime import datetime, timezone, timedelta
 
@@ -11,8 +12,10 @@ from app.schemas import CatDashboard, DashboardOut
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
+POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
+
 # How long since the last successful poll before we consider the poller unhealthy
-POLLER_HEALTHY_THRESHOLD_SECONDS = 30
+POLLER_HEALTHY_THRESHOLD_SECONDS = POLL_INTERVAL_SECONDS * 3
 
 # Shared state updated by the poller — protected by _poll_lock
 _poll_lock = threading.Lock()
