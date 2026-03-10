@@ -33,7 +33,8 @@ def run_poller():
             poller = LitterboxPoller(SessionLocal)
             while True:
                 poller.poll()
-                dashboard_state.last_successful_poll_at = datetime.now(timezone.utc)
+                with dashboard_state._poll_lock:
+                    dashboard_state.last_successful_poll_at = datetime.now(timezone.utc)
                 time.sleep(POLL_INTERVAL_SECONDS)
         except Exception as e:
             logger.exception("Poller crashed, restarting")

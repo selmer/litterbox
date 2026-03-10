@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
@@ -13,13 +14,15 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 # How long since the last successful poll before we consider the poller unhealthy
 POLLER_HEALTHY_THRESHOLD_SECONDS = 30
 
-# Shared state updated by the poller — imported in main.py
+# Shared state updated by the poller — protected by _poll_lock
+_poll_lock = threading.Lock()
 last_successful_poll_at: datetime = None
 
 
 @router.get("", response_model=DashboardOut)
 def get_dashboard(db: Session = Depends(get_db)):
-    from app.routers.dashboard import last_successful_poll_at
+    with _poll_lock:
+        last_poll = last_successful_poll_at
 
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -106,8 +109,8 @@ def get_dashboard(db: Session = Depends(get_db)):
     )
 
     poller_healthy = (
-        last_successful_poll_at is not None
-        and (now - last_successful_poll_at).total_seconds() < POLLER_HEALTHY_THRESHOLD_SECONDS
+        last_poll is not None
+        and (now - last_poll).total_seconds() < POLLER_HEALTHY_THRESHOLD_SECONDS
     )
 
     return DashboardOut(
