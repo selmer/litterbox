@@ -29,7 +29,7 @@ def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=list[VisitOut])
 def list_visits(
-    limit: int = 50,
+    limit: int = Query(default=50, le=500),
     offset: int = 0,
     cat_id: Optional[int] = None,
     unidentified: Optional[bool] = None,
