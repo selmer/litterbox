@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -12,17 +13,8 @@ logger = logging.getLogger(__name__)
 
 # --- Device configuration ---
 DEVICE_ID = os.getenv("TUYA_DEVICE_ID")
-if not DEVICE_ID:
-    raise ValueError("TUYA_DEVICE_ID environment variable not set")
-
 TUYA_API_KEY = os.getenv("TUYA_API_KEY")
-if not TUYA_API_KEY:
-    raise ValueError("TUYA_API_KEY environment variable not set")
-
 TUYA_API_SECRET = os.getenv("TUYA_API_SECRET")
-if not TUYA_API_SECRET:
-    raise ValueError("TUYA_API_SECRET environment variable not set")
-
 TUYA_API_REGION = os.getenv("TUYA_API_REGION", "eu")
 
 SNAPSHOT_INTERVAL_SECONDS = int(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "300"))
@@ -39,6 +31,8 @@ DP_EXCRETION_TIMES = "excretion_times_day"
 DP_EXCRETION_TIME = "excretion_time_day"
 
 def make_cloud() -> tinytuya.Cloud:
+    if not TUYA_API_KEY or not TUYA_API_SECRET:
+        raise RuntimeError("Tuya API credentials not configured (polling mode requires TUYA_API_KEY and TUYA_API_SECRET)")
     return tinytuya.Cloud(
         apiRegion=TUYA_API_REGION,
         apiKey=TUYA_API_KEY,
@@ -58,7 +52,9 @@ class LitterboxPoller:
     session.
     """
 
-    def __init__(self, session_factory):
+    def __init__(self, session_factory, mode: str = "polling"):
+        self.mode = mode
+        self._lock = threading.Lock()
         self.session_factory = session_factory
         self.db = None
         self.cloud: Optional[tinytuya.Cloud] = None
@@ -69,7 +65,8 @@ class LitterboxPoller:
         self.current_cleaning_cycle_id: Optional[int] = None
         self.last_snapshot_at: Optional[datetime] = None
         self.last_weight_at = None
-        self._init_cloud()
+        if mode == "polling":
+            self._init_cloud()
 
     def _init_cloud(self):
         try:
@@ -136,6 +133,33 @@ class LitterboxPoller:
         finally:
             self.db = None
             db.close()
+
+    def process_webhook_dps(self, changed_dps: dict):
+        """Process a partial DPS update received from a Tuya webhook.
+
+        Merges changed DPs into the accumulated previous_dps, reconstructs
+        the full current state, then delegates to _handle_changes — reusing
+        all visit/cleaning cycle logic unchanged.
+        """
+        with self._lock:
+            current_dps = {**self.previous_dps, **changed_dps}
+
+            db = self.session_factory()
+            try:
+                self.db = db
+                self.current_visit = db.get(Visit, self.current_visit_id) if self.current_visit_id else None
+                self.current_cleaning_cycle = db.get(CleaningCycle, self.current_cleaning_cycle_id) if self.current_cleaning_cycle_id else None
+
+                now = datetime.now(timezone.utc)
+                self._check_visit_timeout(now)
+                self._handle_changes(current_dps, now)
+
+                self.previous_dps = current_dps
+                self.current_visit_id = self.current_visit.id if self.current_visit else None
+                self.current_cleaning_cycle_id = self.current_cleaning_cycle.id if self.current_cleaning_cycle else None
+            finally:
+                self.db = None
+                db.close()
 
     def _handle_changes(self, dps: dict, now: datetime):
         for dp, value in dps.items():
