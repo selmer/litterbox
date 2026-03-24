@@ -29,7 +29,7 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
       try {
         setUploading(true)
         const updated = await deleteCatPhoto(catIdValue)
-        setPhoto(updated.photo_url || null)
+        setPhoto(updated.photo_url ? `${updated.photo_url}?v=${Date.now()}` : null)
         onPhotoChange?.(updated)
       } finally {
         setUploading(false)
@@ -38,7 +38,7 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
       try {
         setUploading(true)
         const updated = await uploadCatPhoto(catIdValue, dataUrl)
-        setPhoto(updated.photo_url || null)
+        setPhoto(updated.photo_url ? `${updated.photo_url}?v=${Date.now()}` : null)
         onPhotoChange?.(updated)
       } finally {
         setUploading(false)
