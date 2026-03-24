@@ -31,7 +31,7 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-export default function WeightChart({ weightHistory, onRangeChange }) {
+export default function WeightChart({ weightHistory, onRangeChange, weightLoading = false }) {
   const [activeRange, setActiveRange] = useState('1Y')
 
   function handleRange(range) {
@@ -70,6 +70,7 @@ export default function WeightChart({ weightHistory, onRangeChange }) {
               key={range.label}
               className={`chart-range-btn ${activeRange === range.label ? 'active' : ''}`}
               onClick={() => handleRange(range)}
+              disabled={weightLoading}
             >
               {range.label}
             </button>

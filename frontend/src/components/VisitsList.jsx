@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
 
 function formatDuration(seconds) {
@@ -15,6 +16,7 @@ function IdentificationBadge({ identifiedBy, catId }) {
 }
 
 export default function VisitsList({ visits, cats = [], onReassign, onDelete }) {
+  const [pendingDelete, setPendingDelete] = useState(null)
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
@@ -71,13 +73,31 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete }) 
               )}
               {onDelete && (
                 <td>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    style={{ color: 'var(--color-danger, #e53e3e)' }}
-                    onClick={() => onDelete(visit)}
-                  >
-                    delete
-                  </button>
+                  {pendingDelete === visit.id ? (
+                    <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ color: 'var(--color-danger, #e53e3e)', whiteSpace: 'nowrap' }}
+                        onClick={() => { onDelete(visit); setPendingDelete(null) }}
+                      >
+                        Yes, delete
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setPendingDelete(null)}
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ color: 'var(--color-danger, #e53e3e)' }}
+                      onClick={() => setPendingDelete(visit.id)}
+                    >
+                      delete
+                    </button>
+                  )}
                 </td>
               )}
             </tr>
