@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
-import Dashboard from './pages/Dashboard'
-import Visits from './pages/Visits'
-import Cats from './pages/Cats'
 import { ToastProvider } from './components/Toast'
 import './index.css'
 import './App.css'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Visits    = lazy(() => import('./pages/Visits'))
+const Cats      = lazy(() => import('./pages/Cats'))
 
 function Sidebar({ darkMode, onToggleDarkMode }) {
   return (
@@ -71,11 +72,13 @@ function AppShell() {
         onToggleDarkMode={() => setDarkMode(d => !d)}
       />
       <main className="main-content">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/visits" element={<Visits />} />
-          <Route path="/cats" element={<Cats />} />
-        </Routes>
+        <Suspense fallback={<div className="main-content" style={{ padding: '2rem' }}>Loading…</div>}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/visits" element={<Visits />} />
+            <Route path="/cats" element={<Cats />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   )
