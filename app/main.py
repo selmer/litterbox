@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
 
+UPDATE_MODE = os.getenv("UPDATE_MODE", "polling")
+if UPDATE_MODE not in ("polling", "webhook"):
+    raise ValueError(f"UPDATE_MODE must be 'polling' or 'webhook', got: {UPDATE_MODE!r}")
+
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
 
@@ -43,9 +47,17 @@ def run_poller():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    thread = threading.Thread(target=run_poller, daemon=True)
-    thread.start()
-    logger.info("Poller started")
+    if UPDATE_MODE == "polling":
+        thread = threading.Thread(target=run_poller, daemon=True)
+        thread.start()
+        logger.info("Poller thread started (polling mode)")
+    else:
+        from app.database import SessionLocal
+        from app.poller import LitterboxPoller
+        app.state.webhook_poller = LitterboxPoller(SessionLocal, mode="webhook")
+        import app.routers.dashboard as dashboard_state
+        dashboard_state.update_mode = "webhook"
+        logger.info("Webhook poller ready (webhook mode)")
     yield
     logger.info("Shutting down")
 
@@ -64,6 +76,10 @@ app.include_router(cats.router)
 app.include_router(visits.router)
 app.include_router(cleaning_cycles.router)
 app.include_router(dashboard.router)
+
+if UPDATE_MODE == "webhook":
+    from app.routers.webhook import router as webhook_router
+    app.include_router(webhook_router)
 
 
 @app.get("/health")

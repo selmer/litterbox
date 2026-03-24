@@ -20,6 +20,7 @@ POLLER_HEALTHY_THRESHOLD_SECONDS = POLL_INTERVAL_SECONDS * 3
 # Shared state updated by the poller — protected by _poll_lock
 _poll_lock = threading.Lock()
 last_successful_poll_at: datetime = None
+update_mode: str = "polling"   # set to "webhook" by main.py lifespan
 
 
 @router.get("", response_model=DashboardOut)
@@ -111,10 +112,13 @@ def get_dashboard(db: Session = Depends(get_db)):
         .count()
     )
 
-    poller_healthy = (
-        last_poll is not None
-        and (now - last_poll).total_seconds() < POLLER_HEALTHY_THRESHOLD_SECONDS
-    )
+    if update_mode == "webhook":
+        poller_healthy = True   # webhook mode: healthy as long as app is running
+    else:
+        poller_healthy = (
+            last_poll is not None
+            and (now - last_poll).total_seconds() < POLLER_HEALTHY_THRESHOLD_SECONDS
+        )
 
     return DashboardOut(
         cats=cat_dashboards,

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from pydantic import BaseModel
 
 
@@ -99,3 +99,17 @@ class DashboardOut(BaseModel):
     cleaning_cycles_today: int
     poller_healthy: bool
     generated_at: datetime
+
+
+# --- Tuya webhook payload schemas ---
+
+class TuyaDPStatus(BaseModel):
+    code: str
+    value: Any          # int, bool, or str depending on DP
+
+
+class TuyaWebhookPayload(BaseModel):
+    dataId: str
+    devId: str
+    productKey: Optional[str] = None
+    status: list[TuyaDPStatus]
