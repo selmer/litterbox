@@ -56,7 +56,8 @@ docker compose up --build -d           # full stack
 | `app/models.py` | SQLAlchemy models: `Cat`, `Visit`, `CleaningCycle`, `DeviceSnapshot`, `SettingsHistory` |
 | `app/schemas.py` | Pydantic request/response schemas |
 | `app/database.py` | Engine + `SessionLocal` factory |
-| `app/routers/dashboard.py` | Aggregated today's stats + poller health |
+| `app/routers/dashboard.py` | Aggregated today's stats + poller health; `update_mode` var controls health check logic |
+| `app/routers/webhook.py` | `POST /webhook/tuya` — receives Tuya push events in webhook mode |
 | `conftest.py` | pytest fixtures — in-memory SQLite DB, mocked Tuya connection, patched poller thread |
 
 ### Database
@@ -71,6 +72,17 @@ React 19 + Vite. Three pages (Dashboard, Visits, Cats) routed via React Router. 
 
 Tests use an in-memory SQLite database and mock the Tuya cloud client — no real credentials or device needed. The `conftest.py` at the repo root patches `run_poller()` so the background thread doesn't start during tests.
 
+## Update Modes
+
+The app supports two device update modes, selected via `UPDATE_MODE` env var:
+
+- **`polling`** (default) — background thread polls Tuya Cloud every `POLL_INTERVAL_SECONDS`
+- **`webhook`** — `POST /webhook/tuya` endpoint receives Tuya push events; use Tailscale Funnel to expose it
+
+See `docs/update-modes.md` for full setup instructions.
+
 ## Environment Variables
 
 See `.env.example`. Required at runtime: `DATABASE_URL`, `TUYA_DEVICE_ID`, `TUYA_DEVICE_IP`, `TUYA_API_KEY`, `TUYA_API_SECRET`, `TUYA_API_REGION`.
+
+In webhook mode, `TUYA_API_KEY` and `TUYA_API_SECRET` are not required. `WEBHOOK_SECRET` is optional but recommended.
