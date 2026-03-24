@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { subYears } from 'date-fns'
 import { getDashboard, getWeightHistory, getVisits, getCats, createVisit } from '../api/client'
 import CatCard from '../components/CatCard'
 import WeightChart from '../components/WeightChart'
 import VisitsList from '../components/VisitsList'
 import PollerStatus from '../components/PollerStatus'
+import { useToast } from '../components/Toast'
 
 const REFRESH_INTERVAL_MS = 15000
 
@@ -24,10 +26,12 @@ export default function Dashboard() {
     fromDate: subYears(new Date(), 1),
     toDate: new Date(),
   })
+  const [weightLoading, setWeightLoading] = useState(false)
   const [addingVisitForCat, setAddingVisitForCat] = useState(null)
-  const [visitForm, setVisitForm] = useState({ date: '', weight_g: '', duration_seconds: '' })
+  const [visitForm, setVisitForm] = useState({ date: '', weight_g: '', duration_min: '', duration_sec: '' })
   const [submitError, setSubmitError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const toast = useToast()
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -78,9 +82,14 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [fetchDashboard])
 
-  function handleRangeChange(newRange) {
+  async function handleRangeChange(newRange) {
     setDateRange(newRange)
-    fetchWeightHistory(newRange)
+    setWeightLoading(true)
+    try {
+      await fetchWeightHistory(newRange)
+    } finally {
+      setWeightLoading(false)
+    }
   }
 
   function openAddVisit(cat) {
@@ -88,7 +97,8 @@ export default function Dashboard() {
     setVisitForm({
       date: toLocalDateTimeString(new Date()),
       weight_g: '',
-      duration_seconds: '',
+      duration_min: '',
+      duration_sec: '',
     })
     setSubmitError(null)
   }
@@ -101,8 +111,10 @@ export default function Dashboard() {
   async function handleSubmitVisit(e) {
     e.preventDefault()
     const weight_g = parseFloat(visitForm.weight_g)
-    const duration = parseInt(visitForm.duration_seconds)
-    if (!visitForm.date || isNaN(weight_g) || isNaN(duration)) {
+    const durationMin = parseInt(visitForm.duration_min) || 0
+    const durationSec = parseInt(visitForm.duration_sec) || 0
+    const duration = durationMin * 60 + durationSec
+    if (!visitForm.date || isNaN(weight_g) || duration <= 0) {
       setSubmitError('Please fill in all fields with valid values.')
       return
     }
@@ -120,6 +132,7 @@ export default function Dashboard() {
       setDashboard(dash)
       setRecentVisits(visits)
       closeAddVisit()
+      toast('Visit saved', 'success')
     } catch (e) {
       setSubmitError('Failed to save visit. Please try again.')
     } finally {
@@ -171,7 +184,10 @@ export default function Dashboard() {
           <div className="card" style={{ gridColumn: '1 / -1' }}>
             <div className="empty-state">
               <div className="empty-icon">🐱</div>
-              <p>No cats added yet. Go to Cats to add one.</p>
+              <p>No cats added yet.</p>
+              <Link to="/cats" className="btn btn-primary" style={{ marginTop: 12 }}>
+                Add a cat →
+              </Link>
             </div>
           </div>
         )}
@@ -182,7 +198,7 @@ export default function Dashboard() {
         <div className="alert alert-yellow mb-6">
           ⚠️ {dashboard.unidentified_visits_today} unidentified visit
           {dashboard.unidentified_visits_today > 1 ? 's' : ''} today —{' '}
-          <a href="/visits">review in Visits</a>
+          <Link to="/visits">review in Visits</Link>
         </div>
       )}
 
@@ -191,6 +207,7 @@ export default function Dashboard() {
         <WeightChart
           weightHistory={weightHistory}
           onRangeChange={handleRangeChange}
+          weightLoading={weightLoading}
         />
       </div>
 
@@ -198,9 +215,9 @@ export default function Dashboard() {
       <div>
         <div className="flex-between mb-4">
           <div className="card-label" style={{ margin: 0 }}>Recent visits</div>
-          <a href="/visits" className="text-muted" style={{ fontSize: 12 }}>
+          <Link to="/visits" className="text-muted" style={{ fontSize: 12 }}>
             view all →
-          </a>
+          </Link>
         </div>
         <VisitsList visits={recentVisits} cats={cats} />
       </div>
@@ -246,17 +263,30 @@ export default function Dashboard() {
                 />
               </div>
               <div className="form-field">
-                <label className="form-label">Duration (seconds)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="e.g. 120"
-                  min="1"
-                  step="1"
-                  value={visitForm.duration_seconds}
-                  onChange={e => setVisitForm(f => ({ ...f, duration_seconds: e.target.value }))}
-                  required
-                />
+                <label className="form-label">Duration</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="min"
+                    min="0"
+                    step="1"
+                    style={{ flex: 1 }}
+                    value={visitForm.duration_min}
+                    onChange={e => setVisitForm(f => ({ ...f, duration_min: e.target.value }))}
+                  />
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="sec"
+                    min="0"
+                    max="59"
+                    step="1"
+                    style={{ flex: 1 }}
+                    value={visitForm.duration_sec}
+                    onChange={e => setVisitForm(f => ({ ...f, duration_sec: e.target.value }))}
+                  />
+                </div>
               </div>
               {submitError && (
                 <p style={{ fontSize: 12, color: 'var(--red)' }}>{submitError}</p>

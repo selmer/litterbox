@@ -8,7 +8,8 @@ const PAGE_SIZE = 50
 export default function Visits() {
   const [visits, setVisits] = useState([])
   const [cats, setCats] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [fetching, setFetching] = useState(false)
   const [selectedCat, setSelectedCat] = useState(null)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
@@ -21,7 +22,11 @@ export default function Visits() {
 
   useEffect(() => {
     async function fetchVisits() {
-      setLoading(true)
+      if (initialLoading) {
+        // first load — keep full-page blocker
+      } else {
+        setFetching(true)
+      }
       try {
         const params = { limit: PAGE_SIZE + 1, offset: page * PAGE_SIZE }
         if (selectedCat === 'unidentified') {
@@ -33,11 +38,12 @@ export default function Visits() {
         setHasMore(v.length > PAGE_SIZE)
         setVisits(v.slice(0, PAGE_SIZE))
       } finally {
-        setLoading(false)
+        setInitialLoading(false)
+        setFetching(false)
       }
     }
     fetchVisits()
-  }, [selectedCat, page])
+  }, [selectedCat, page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function selectFilter(cat) {
     setSelectedCat(cat)
@@ -71,7 +77,7 @@ export default function Visits() {
     }
   }
 
-  if (loading) return <div className="loading">Loading…</div>
+  if (initialLoading) return <div className="loading">Loading…</div>
 
   return (
     <div>
@@ -97,6 +103,7 @@ export default function Visits() {
             {cat.name}
           </button>
         ))}
+        <span style={{ color: 'var(--border)', margin: '0 2px', userSelect: 'none' }}>|</span>
         <button
           className={`btn btn-sm ${selectedCat === 'unidentified' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => selectFilter('unidentified')}
@@ -105,12 +112,14 @@ export default function Visits() {
         </button>
       </div>
 
-      <VisitsList
-        visits={visits}
-        cats={cats}
-        onReassign={handleReassign}
-        onDelete={handleDelete}
-      />
+      <div style={{ opacity: fetching ? 0.5 : 1, transition: 'opacity 0.15s', pointerEvents: fetching ? 'none' : 'auto' }}>
+        <VisitsList
+          visits={visits}
+          cats={cats}
+          onReassign={handleReassign}
+          onDelete={handleDelete}
+        />
+      </div>
 
       {/* Pagination controls */}
       {(page > 0 || hasMore) && (
@@ -122,7 +131,9 @@ export default function Visits() {
           >
             ← Previous
           </button>
-          <span className="text-muted" style={{ fontSize: 13 }}>Page {page + 1}</span>
+          <span className="text-muted" style={{ fontSize: 13 }}>
+            Visits {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + visits.length}
+          </span>
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setPage(p => p + 1)}
@@ -138,18 +149,25 @@ export default function Visits() {
         <div className="modal-overlay" onClick={() => setReassigning(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-title">Reassign visit</div>
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
+            <p className="text-muted" style={{ fontSize: 13, marginBottom: 4 }}>
               Who used the litterbox at{' '}
               {new Date(reassigning.started_at).toLocaleTimeString('en-GB', {
                 hour: '2-digit', minute: '2-digit'
               })}
               {reassigning.weight_kg && ` · ${reassigning.weight_kg.toFixed(3)} kg`}?
             </p>
+            <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
+              Currently:{' '}
+              {reassigning.cat_id
+                ? <strong>{cats.find(c => c.id === reassigning.cat_id)?.name ?? `Cat #${reassigning.cat_id}`}</strong>
+                : <em>unidentified</em>
+              }
+            </p>
             <div className="flex-col gap-2">
               {cats.map(cat => (
                 <button
                   key={cat.id}
-                  className="btn btn-secondary w-full"
+                  className={`btn w-full ${cat.id === reassigning.cat_id ? 'btn-primary' : 'btn-secondary'}`}
                   style={{ justifyContent: 'flex-start' }}
                   onClick={() => confirmReassign(cat.id)}
                 >

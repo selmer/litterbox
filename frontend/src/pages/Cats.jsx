@@ -88,6 +88,7 @@ export default function Cats() {
       const cat = await createCat(data)
       setCats(prev => [...prev, cat])
       setAdding(false)
+      toast(`${cat.name} added`, 'success')
     } catch (e) {
       console.error('Failed to create cat', e)
       toast('Failed to add cat. Please try again.')
@@ -99,6 +100,7 @@ export default function Cats() {
       const cat = await updateCat(id, data)
       setCats(prev => prev.map(c => c.id === id ? cat : c))
       setEditing(null)
+      toast('Changes saved', 'success')
     } catch (e) {
       console.error('Failed to update cat', e)
       toast('Failed to save changes. Please try again.')
