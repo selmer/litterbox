@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.routers import cats, visits, cleaning_cycles, dashboard
 
@@ -70,6 +71,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # API routes
 app.include_router(cats.router)
@@ -94,7 +96,12 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Serve React frontend — must come AFTER API routes
 if FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+    @app.get("/assets/{path:path}")
+    async def serve_assets(path: str):
+        file = FRONTEND_DIST / "assets" / path
+        response = FileResponse(file)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
     @app.get("/{full_path:path}")
     def serve_frontend(full_path: str):
