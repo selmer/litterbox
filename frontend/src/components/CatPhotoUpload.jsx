@@ -33,7 +33,10 @@ function cropAndCompress(img, srcX, srcY, srcW, srcH) {
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
-  canvas.getContext('2d').drawImage(img, srcX, srcY, srcW, srcH, 0, 0, width, height)
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, width, height)
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, width, height)
   return canvas.toDataURL('image/jpeg', 0.85)
 }
 
