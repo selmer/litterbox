@@ -1,52 +1,62 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-NAS_USER="selmer"
-NAS_HOST="192.168.68.115"
-NAS_PATH="/volume2/docker/litterbox"
+COMMAND="${1:-deploy}"
+NAS_USER="${NAS_USER:-selmer}"
+NAS_HOST="${NAS_HOST:-192.168.68.115}"
+NAS_PATH="${NAS_PATH:-/volume2/docker/litterbox}"
+ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-false}"
 
-echo "🐱 Litterbox deploy starting..."
-# pulling git data
-echo "pulling git data"
-git pull
+validate() {
+  echo "Installing backend dependencies..."
+  python3 -m pip install -r requirements.txt -q
 
-# Install/update dependencies
-echo "📦 Installing dependencies..."
-pip install -r requirements.txt -q
+  echo "Running backend tests..."
+  python3 -m pytest tests/ -v
 
-# Run tests before deploying — abort if any test fails
-echo "🧪 Running tests..."
-python3 -m pytest tests/ -v
-echo "✅ All tests passed"
+  echo "Installing frontend dependencies..."
+  (cd frontend && npm ci)
 
-# Build frontend
-echo "📦 Building frontend..."
-cd frontend
-npm install
-sudo chown -R $(whoami) node_modules
-npm run build
-cd ..
+  echo "Running frontend lint..."
+  (cd frontend && npm run lint)
 
-# Commit and push if there are changes
-if [[ -n $(git status --porcelain) ]]; then
-  echo "📝 Committing changes..."
-  # Use 'git add -u' instead of 'git add -A' to only stage already-tracked files,
-  # preventing accidental staging of untracked secrets, .env files, or binaries.
-  git add -u
-  git commit -m "${1:-deploy: update}"
-  git push
-else
-  echo "✓ No local changes to commit"
-  git push 2>/dev/null || true
-fi
+  echo "Running frontend tests..."
+  (cd frontend && npm test)
 
-# Deploy to NAS
-echo "🚀 Deploying to NAS..."
-ssh "$NAS_USER@$NAS_HOST" "
-  cd $NAS_PATH &&
-  git pull &&
-  sudo docker compose up --build -d
-"
+  echo "Building frontend..."
+  (cd frontend && npm run build)
+}
 
-echo "✅ Deploy complete! http://$NAS_HOST:8001"
+case "$COMMAND" in
+  validate)
+    validate
+    echo "Validation complete"
+    ;;
+  deploy)
+    echo "Litterbox deploy starting..."
+    git pull --ff-only
 
+    if [[ -n "$(git status --porcelain)" && "$ALLOW_DIRTY_DEPLOY" != "true" ]]; then
+      echo "Refusing to deploy with local changes. Commit them first, or set ALLOW_DIRTY_DEPLOY=true."
+      exit 1
+    fi
+
+    validate
+
+    echo "Pushing current branch..."
+    git push
+
+    echo "Deploying to NAS..."
+    ssh "$NAS_USER@$NAS_HOST" "
+      cd $NAS_PATH &&
+      git pull --ff-only &&
+      sudo docker compose up --build -d
+    "
+
+    echo "Deploy complete: http://$NAS_HOST:8001"
+    ;;
+  *)
+    echo "Usage: $0 [validate|deploy]"
+    exit 2
+    ;;
+esac

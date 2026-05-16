@@ -6,9 +6,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -17,7 +16,7 @@ from app.routers import cats, visits, cleaning_cycles, dashboard
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
+POLL_INTERVAL_SECONDS = 300
 
 UPDATE_MODE = os.getenv("UPDATE_MODE", "polling")
 if UPDATE_MODE not in ("polling", "webhook"):
@@ -37,9 +36,15 @@ def run_poller():
         try:
             poller = LitterboxPoller(SessionLocal)
             while True:
-                poller.poll()
+                outcome = poller.poll()
                 with dashboard_state._poll_lock:
-                    dashboard_state.last_successful_poll_at = datetime.now(timezone.utc)
+                    now = datetime.now(timezone.utc)
+                    dashboard_state.last_poll_attempted_at = now
+                    if outcome.success:
+                        dashboard_state.last_successful_poll_at = now
+                        dashboard_state.last_poll_error = None
+                    else:
+                        dashboard_state.last_poll_error = outcome.message or outcome.status
                 time.sleep(POLL_INTERVAL_SECONDS)
         except Exception as e:
             logger.exception("Poller crashed, restarting")
@@ -90,9 +95,20 @@ def health():
 
 
 # Serve uploaded cat photos
-UPLOADS_DIR = Path(__file__).parent.parent / "uploads"
+UPLOADS_DIR = Path(os.getenv("UPLOADS_DIR", Path(__file__).parent.parent / "uploads"))
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+
+@app.get("/uploads/{path:path}")
+def serve_upload(path: str):
+    file = (UPLOADS_DIR / path).resolve()
+    uploads_root = UPLOADS_DIR.resolve()
+    if not file.is_relative_to(uploads_root) or not file.is_file():
+        raise HTTPException(status_code=404, detail="Upload not found")
+    response = FileResponse(file)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Cache-Control"] = "private, max-age=3600"
+    return response
 
 # Serve React frontend — must come AFTER API routes
 if FRONTEND_DIST.exists():

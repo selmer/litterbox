@@ -1,13 +1,14 @@
 import { formatDistanceToNow } from 'date-fns'
 
-export default function PollerStatus({ healthy, generatedAt }) {
-  const ago = generatedAt
-    ? formatDistanceToNow(new Date(generatedAt), { addSuffix: true })
+export default function PollerStatus({ healthy, generatedAt, lastSuccessfulAt, lastError }) {
+  const statusTime = lastSuccessfulAt || generatedAt
+  const ago = statusTime
+    ? formatDistanceToNow(new Date(statusTime), { addSuffix: true })
     : null
 
   const tooltip = healthy
     ? `Device is connected and reporting. Last update: ${ago ?? 'unknown'}.`
-    : 'Device connection lost. Data may be outdated.'
+    : `Device connection lost. ${lastError || 'Data may be outdated.'}`
 
   return (
     <div className="poller-status" title={tooltip}>

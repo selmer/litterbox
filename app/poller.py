@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -29,6 +30,14 @@ DP_CAT_WEIGHT = "cat_weight"
 DP_CLEANING_CYCLE = "smart_clean"
 DP_EXCRETION_TIMES = "excretion_times_day"
 DP_EXCRETION_TIME = "excretion_time_day"
+
+
+@dataclass(frozen=True)
+class PollOutcome:
+    success: bool
+    status: str
+    message: Optional[str] = None
+
 
 def make_cloud() -> tinytuya.Cloud:
     if not TUYA_API_KEY or not TUYA_API_SECRET:
@@ -67,6 +76,7 @@ class LitterboxPoller:
         self.last_weight_at = None
         if mode == "polling":
             self._init_cloud()
+        self._recover_open_state()
 
     def _init_cloud(self):
         try:
@@ -84,7 +94,41 @@ class LitterboxPoller:
             logger.error(f"Failed to initialize cloud connection: {e}")
             self.cloud = None
 
-    def poll(self):
+    def _recover_open_state(self):
+        db = self.session_factory()
+        try:
+            open_visit = (
+                db.query(Visit)
+                .filter(Visit.ended_at.is_(None))
+                .order_by(Visit.started_at.desc(), Visit.id.desc())
+                .first()
+            )
+            if open_visit:
+                self.current_visit_id = open_visit.id
+                self.last_weight_at = open_visit.last_weight_at or open_visit.started_at
+                logger.info("Recovered open visit %s", open_visit.id)
+
+            open_cycle = (
+                db.query(CleaningCycle)
+                .filter(CleaningCycle.ended_at.is_(None))
+                .order_by(CleaningCycle.started_at.desc(), CleaningCycle.id.desc())
+                .first()
+            )
+            if open_cycle:
+                self.current_cleaning_cycle_id = open_cycle.id
+                logger.info("Recovered open cleaning cycle %s", open_cycle.id)
+
+            latest_snapshot = (
+                db.query(DeviceSnapshot)
+                .order_by(DeviceSnapshot.recorded_at.desc(), DeviceSnapshot.id.desc())
+                .first()
+            )
+            if latest_snapshot:
+                self.last_snapshot_at = latest_snapshot.recorded_at
+        finally:
+            db.close()
+
+    def poll(self) -> PollOutcome:
         """Single poll cycle — call this in a loop.
 
         Opens a fresh DB session for the duration of this poll and closes it
@@ -93,25 +137,25 @@ class LitterboxPoller:
         if self.cloud is None:
             logger.warning("Cloud not initialized, retrying...")
             self._init_cloud()
-            return
+            return PollOutcome(False, "cloud_unavailable", "Cloud connection is not initialized")
 
         try:
             result = self.cloud.getstatus(DEVICE_ID)
         except Exception as e:
             logger.exception("Failed to read device status from cloud")
             self._init_cloud()
-            return
+            return PollOutcome(False, "cloud_error", str(e))
 
         if not result or not result.get("success"):
             logger.warning(f"Unexpected cloud response: {result}")
-            return
+            return PollOutcome(False, "cloud_response_error", "Unexpected cloud response")
 
         # Convert list of {code, value} to a dict keyed by code
         dps = {item["code"]: item["value"] for item in result.get("result", [])}
 
         if not dps:
             logger.warning("Empty DPs in cloud response")
-            return
+            return PollOutcome(False, "empty_dps", "Cloud response did not include device state")
 
         db = self.session_factory()
         try:
@@ -130,6 +174,7 @@ class LitterboxPoller:
             # Persist IDs so the next poll can reload these objects
             self.current_visit_id = self.current_visit.id if self.current_visit else None
             self.current_cleaning_cycle_id = self.current_cleaning_cycle.id if self.current_cleaning_cycle else None
+            return PollOutcome(True, "success")
         finally:
             self.db = None
             db.close()
@@ -199,6 +244,7 @@ class LitterboxPoller:
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
         self.db.commit()
         self.current_visit = None
+        self.last_weight_at = None
     
     def _check_visit_timeout(self, now: datetime):
         """Fallback: close visit if no completion event received within 5 minutes."""
@@ -227,12 +273,14 @@ class LitterboxPoller:
             self.current_visit = Visit(
                 started_at=now,
                 weight_kg=weight_kg,
+                last_weight_at=now,
             )
             self.db.add(self.current_visit)
             self.db.commit()
         else:
             # Update weight on existing visit (take the latest reading)
             self.current_visit.weight_kg = weight_kg
+            self.current_visit.last_weight_at = now
             self.db.commit()
 
     def _identify_visit_cat(self, visit: Visit, weight_kg: float):

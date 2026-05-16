@@ -4,15 +4,19 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
 })
 
+export function getApiErrorMessage(error) {
+  return error?.response?.data?.detail || error?.message || 'The API request failed'
+}
+
 // --- Dashboard ---
 
-export const getDashboard = () =>
-  api.get('/dashboard').then(r => r.data)
+export const getDashboard = ({ signal } = {}) =>
+  api.get('/dashboard', { signal }).then(r => r.data)
 
 // --- Cats ---
 
-export const getCats = (includeInactive = false) =>
-  api.get('/cats', { params: { include_inactive: includeInactive } }).then(r => r.data)
+export const getCats = (includeInactive = false, { signal } = {}) =>
+  api.get('/cats', { params: { include_inactive: includeInactive }, signal }).then(r => r.data)
 
 export const getCat = (id) =>
   api.get(`/cats/${id}`).then(r => r.data)
@@ -25,8 +29,8 @@ export const updateCat = (id, data) =>
 
 // --- Visits ---
 
-export const getVisits = ({ limit = 50, offset = 0, catId, unidentified } = {}) =>
-  api.get('/visits', { params: { limit, offset, cat_id: catId, unidentified } }).then(r => r.data)
+export const getVisits = ({ limit = 50, offset = 0, catId, unidentified, signal } = {}) =>
+  api.get('/visits', { params: { limit, offset, cat_id: catId, unidentified }, signal }).then(r => r.data)
 
 export const createVisit = (data) =>
   api.post('/visits', data).then(r => r.data)
@@ -37,13 +41,14 @@ export const updateVisit = (id, data) =>
 export const deleteVisit = (id) =>
   api.delete(`/visits/${id}`)
 
-export const getWeightHistory = ({ fromDate, toDate, catId } = {}) =>
+export const getWeightHistory = ({ fromDate, toDate, catId, signal } = {}) =>
   api.get('/visits/weight-history', {
     params: {
       from_date: fromDate?.toISOString(),
       to_date: toDate?.toISOString(),
       cat_id: catId,
     },
+    signal,
   }).then(r => r.data)
 
 // --- Cat photos ---

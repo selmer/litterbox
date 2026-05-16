@@ -32,6 +32,35 @@ def test_create_visit(client):
     assert visit["weight_kg"] == 4.1
     assert visit["duration_seconds"] == 60
     assert visit["identified_by"] == "manual"
+    assert visit["ended_at"] is not None
+
+
+def test_create_visit_rejects_unknown_cat(client):
+    response = client.post(
+        "/visits",
+        json={
+            "cat_id": 9999,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "duration_seconds": 60,
+            "weight_kg": 4.1,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cat not found"
+
+
+def test_create_visit_rejects_invalid_values(client):
+    cat_id = _make_cat(client)
+    response = client.post(
+        "/visits",
+        json={
+            "cat_id": cat_id,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "duration_seconds": -1,
+            "weight_kg": -4.1,
+        },
+    )
+    assert response.status_code == 422
 
 
 def test_list_visits(client):
@@ -103,6 +132,11 @@ def test_list_visits_offset_beyond_end(client):
     assert response.json() == []
 
 
+def test_list_visits_rejects_negative_offset(client):
+    response = client.get("/visits?offset=-1")
+    assert response.status_code == 422
+
+
 def test_list_visits_unidentified(client):
     cat_id = _make_cat(client)
     _make_visit(client, cat_id)
@@ -155,6 +189,26 @@ def test_update_visit_reassigns_cat(client):
     data = response.json()
     assert data["cat_id"] == cat2
     assert data["identified_by"] == "manual"
+
+
+def test_update_visit_rejects_unknown_cat(client):
+    cat1 = _make_cat(client, name="Luna")
+    visit = _make_visit(client, cat1)
+
+    response = client.patch(f"/visits/{visit['id']}", json={"cat_id": 9999})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cat not found"
+
+
+def test_update_visit_can_mark_unidentified(client):
+    cat1 = _make_cat(client, name="Luna")
+    visit = _make_visit(client, cat1)
+
+    response = client.patch(f"/visits/{visit['id']}", json={"cat_id": None})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["cat_id"] is None
+    assert data["identified_by"] is None
 
 
 def test_update_visit_not_found(client):
@@ -222,3 +276,14 @@ def test_weight_history_respects_date_range(client):
     result = response.json()
     # Only the recent visit should be included
     assert len(result[0]["data"]) == 1
+
+
+def test_weight_history_rejects_inverted_date_range(client):
+    response = client.get(
+        "/visits/weight-history",
+        params={
+            "from_date": datetime(2024, 2, 1, tzinfo=timezone.utc).isoformat(),
+            "to_date": datetime(2024, 1, 1, tzinfo=timezone.utc).isoformat(),
+        },
+    )
+    assert response.status_code == 400

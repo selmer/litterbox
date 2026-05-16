@@ -12,8 +12,8 @@ UPDATE_MODE=polling
 ```
 
 The app starts a background thread that calls the Tuya Cloud API every
-`POLL_INTERVAL_SECONDS` (default: 300 s as startup default, typically set to 5 s in
-`.env`). No inbound network access is required.
+300 seconds. This 5-minute polling interval is hardcoded to stay comfortably within
+Tuya API quotas. No inbound network access is required.
 
 All Tuya credentials must be present:
 
@@ -25,7 +25,7 @@ TUYA_API_REGION=eu   # or us, cn, in
 ```
 
 The dashboard's `poller_healthy` field turns `false` if no successful poll has been
-recorded within `POLL_INTERVAL_SECONDS × 3` seconds.
+recorded within 900 seconds.
 
 ---
 
@@ -113,7 +113,6 @@ Polling does **not** start in webhook mode.
 | Variable | Default | Description |
 |---|---|---|
 | `UPDATE_MODE` | `polling` | `polling` or `webhook` |
-| `POLL_INTERVAL_SECONDS` | `300` | Seconds between Tuya API polls (polling mode only) |
 | `WEBHOOK_SECRET` | *(unset)* | If set, required in `X-Webhook-Secret` request header |
 | `TUYA_DEVICE_ID` | — | Device ID; used to filter webhook payloads in both modes |
 | `TUYA_API_KEY` | — | Required in polling mode |

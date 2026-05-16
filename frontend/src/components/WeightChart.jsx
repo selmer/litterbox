@@ -40,22 +40,25 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
     onRangeChange?.({ fromDate: from, toDate: to })
   }
 
-  // Merge all cats' data points into a single array keyed by date string
+  // Keep a stable machine timestamp for ordering; labels are presentation only.
   const chartData = useMemo(() => {
     if (!weightHistory?.length) return []
 
-    const byDate = {}
+    const byPoint = {}
     weightHistory.forEach(catData => {
       catData.data.forEach(point => {
-        const dateKey = format(new Date(point.timestamp), 'dd MMM')
-        if (!byDate[dateKey]) byDate[dateKey] = { date: dateKey }
-        byDate[dateKey][catData.cat_name] = point.weight_kg
+        const date = new Date(point.timestamp)
+        const pointKey = `${date.toISOString()}-${point.visit_id}`
+        byPoint[pointKey] = {
+          ...(byPoint[pointKey] || {}),
+          date: format(date, 'dd MMM yyyy, HH:mm'),
+          timestamp: date.getTime(),
+          [catData.cat_name]: point.weight_kg,
+        }
       })
     })
 
-    return Object.values(byDate).sort((a, b) =>
-      new Date(a.date) - new Date(b.date)
-    )
+    return Object.values(byPoint).sort((a, b) => a.timestamp - b.timestamp)
   }, [weightHistory])
 
   const catNames = weightHistory?.map(c => c.cat_name) || []

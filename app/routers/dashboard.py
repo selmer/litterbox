@@ -1,9 +1,8 @@
-import os
 import threading
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -12,7 +11,7 @@ from app.schemas import CatDashboard, DashboardOut
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
-POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
+POLL_INTERVAL_SECONDS = 300
 
 # How long since the last successful poll before we consider the poller unhealthy
 POLLER_HEALTHY_THRESHOLD_SECONDS = POLL_INTERVAL_SECONDS * 3
@@ -20,6 +19,8 @@ POLLER_HEALTHY_THRESHOLD_SECONDS = POLL_INTERVAL_SECONDS * 3
 # Shared state updated by the poller — protected by _poll_lock
 _poll_lock = threading.Lock()
 last_successful_poll_at: datetime = None
+last_poll_attempted_at: datetime = None
+last_poll_error: str = None
 update_mode: str = "polling"   # set to "webhook" by main.py lifespan
 
 
@@ -27,6 +28,8 @@ update_mode: str = "polling"   # set to "webhook" by main.py lifespan
 def get_dashboard(db: Session = Depends(get_db)):
     with _poll_lock:
         last_poll = last_successful_poll_at
+        last_attempt = last_poll_attempted_at
+        poll_error = last_poll_error
 
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -43,25 +46,21 @@ def get_dashboard(db: Session = Depends(get_db)):
         .subquery()
     )
 
-    # Latest visit per cat: first find the max started_at per cat_id
-    max_started_subq = (
+    # Latest visit per cat, with visit ID as the tie-breaker for deterministic rows.
+    last_visit_subq = (
         db.query(
-            Visit.cat_id,
-            func.max(Visit.started_at).label("max_started_at"),
+            Visit.cat_id.label("cat_id"),
+            Visit.started_at.label("started_at"),
+            Visit.weight_kg.label("weight_kg"),
+            Visit.duration_seconds.label("duration_seconds"),
+            func.row_number()
+            .over(
+                partition_by=Visit.cat_id,
+                order_by=(Visit.started_at.desc(), Visit.id.desc()),
+            )
+            .label("row_num"),
         )
         .filter(Visit.cat_id.isnot(None))
-        .group_by(Visit.cat_id)
-        .subquery()
-    )
-
-    # Then join back to visits to get the full row for the last visit
-    last_visit_subq = (
-        db.query(Visit)
-        .join(
-            max_started_subq,
-            (Visit.cat_id == max_started_subq.c.cat_id)
-            & (Visit.started_at == max_started_subq.c.max_started_at),
-        )
         .subquery()
     )
 
@@ -77,7 +76,10 @@ def get_dashboard(db: Session = Depends(get_db)):
         )
         .filter(Cat.active == True)
         .outerjoin(today_subq, Cat.id == today_subq.c.cat_id)
-        .outerjoin(last_visit_subq, Cat.id == last_visit_subq.c.cat_id)
+        .outerjoin(
+            last_visit_subq,
+            and_(Cat.id == last_visit_subq.c.cat_id, last_visit_subq.c.row_num == 1),
+        )
         .all()
     )
 
@@ -125,5 +127,8 @@ def get_dashboard(db: Session = Depends(get_db)):
         unidentified_visits_today=unidentified_today,
         cleaning_cycles_today=cleaning_cycles_today,
         poller_healthy=poller_healthy,
+        poller_last_successful_at=last_poll,
+        poller_last_attempted_at=last_attempt,
+        poller_last_error=poll_error,
         generated_at=now,
     )

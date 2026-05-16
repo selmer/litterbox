@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
     Boolean, Column, DateTime, Float,
-    ForeignKey, Integer, String, JSON, TypeDecorator
+    ForeignKey, Index, Integer, String, JSON, TypeDecorator
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -40,6 +40,9 @@ class Cat(Base):
 
 class Visit(Base):
     __tablename__ = "visits"
+    __table_args__ = (
+        Index("ix_visits_cat_id_started_at", "cat_id", "started_at"),
+    )
 
     id = Column(Integer, primary_key=True)
     cat_id = Column(Integer, ForeignKey("cats.id"), nullable=True, index=True)
@@ -48,6 +51,7 @@ class Visit(Base):
     ended_at = Column(TZDateTime(timezone=True), nullable=True)
     duration_seconds = Column(Integer, nullable=True)
     weight_kg = Column(Float, nullable=True)
+    last_weight_at = Column(TZDateTime(timezone=True), nullable=True)
     created_at = Column(TZDateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     cat = relationship("Cat", back_populates="visits")
@@ -57,7 +61,7 @@ class CleaningCycle(Base):
     __tablename__ = "cleaning_cycles"
 
     id = Column(Integer, primary_key=True)
-    started_at = Column(TZDateTime(timezone=True), nullable=False)
+    started_at = Column(TZDateTime(timezone=True), nullable=False, index=True)
     ended_at = Column(TZDateTime(timezone=True), nullable=True)
 
 

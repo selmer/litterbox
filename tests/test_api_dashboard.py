@@ -12,6 +12,9 @@ def test_dashboard_empty(client):
     assert data["unidentified_visits_today"] == 0
     assert data["cleaning_cycles_today"] == 0
     assert data["poller_healthy"] is False
+    assert data["poller_last_successful_at"] is None
+    assert data["poller_last_attempted_at"] is None
+    assert data["poller_last_error"] is None
     assert "generated_at" in data
 
 
@@ -119,3 +122,22 @@ def test_dashboard_time_in_box_today(client, db_session):
     assert response.status_code == 200
     cat_data = response.json()["cats"][0]
     assert cat_data["time_in_box_today_seconds"] == 180
+
+
+def test_dashboard_latest_visit_is_deterministic_on_timestamp_tie(client, db_session):
+    cat = Cat(name="Luna", reference_weight_kg=4.0)
+    db_session.add(cat)
+    db_session.commit()
+
+    started_at = datetime.now(timezone.utc)
+    first = Visit(cat_id=cat.id, started_at=started_at, weight_kg=4.0, duration_seconds=30)
+    second = Visit(cat_id=cat.id, started_at=started_at, weight_kg=4.2, duration_seconds=40)
+    db_session.add_all([first, second])
+    db_session.commit()
+
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    cats = response.json()["cats"]
+    assert len(cats) == 1
+    assert cats[0]["last_visit_weight_kg"] == 4.2
+    assert cats[0]["last_visit_duration_seconds"] == 40

@@ -40,7 +40,7 @@ docker compose up --build -d           # full stack
 
 ### Data Flow
 
-1. **LitterboxPoller** (`app/poller.py`) runs in a background thread, polling Tuya Cloud every `POLL_INTERVAL_SECONDS` (default 5s).
+1. **LitterboxPoller** (`app/poller.py`) runs in a background thread, polling Tuya Cloud every 300 seconds to stay within Tuya API quotas.
 2. Weight changes trigger **visit start**; the `excretion_times_day` counter incrementing triggers **visit end**.
 3. At visit end, `identify_cat()` (`app/cat_identifier.py`) matches weight against active cats using ±0.5kg threshold. Reference weights are updated via exponential moving average (α=0.1).
 4. Results are written to PostgreSQL via SQLAlchemy. The poller opens a **fresh DB session per poll cycle** to avoid stale identity-map state.
@@ -76,7 +76,7 @@ Tests use an in-memory SQLite database and mock the Tuya cloud client — no rea
 
 The app supports two device update modes, selected via `UPDATE_MODE` env var:
 
-- **`polling`** (default) — background thread polls Tuya Cloud every `POLL_INTERVAL_SECONDS`
+- **`polling`** (default) — background thread polls Tuya Cloud every 300 seconds
 - **`webhook`** — `POST /webhook/tuya` endpoint receives Tuya push events; use Tailscale Funnel to expose it
 
 See `docs/update-modes.md` for full setup instructions.

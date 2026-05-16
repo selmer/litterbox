@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { subYears } from 'date-fns'
-import { getDashboard, getWeightHistory, getVisits, getCats, createVisit } from '../api/client'
+import {
+  createVisit,
+  getApiErrorMessage,
+  getCats,
+  getDashboard,
+  getVisits,
+  getWeightHistory,
+} from '../api/client'
 import CatCard from '../components/CatCard'
 import WeightChart from '../components/WeightChart'
 import VisitsList from '../components/VisitsList'
@@ -9,6 +16,10 @@ import PollerStatus from '../components/PollerStatus'
 import { useToast } from '../components/Toast'
 
 const REFRESH_INTERVAL_MS = 15000
+
+function isCanceled(error) {
+  return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
+}
 
 function toLocalDateTimeString(date) {
   const pad = n => String(n).padStart(2, '0')
@@ -33,15 +44,28 @@ export default function Dashboard() {
   const [submitting, setSubmitting] = useState(false)
   const toast = useToast()
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboardData = useCallback(async ({ signal, initial = false } = {}) => {
+    if (initial) setLoading(true)
     try {
-      const data = await getDashboard()
-      setDashboard(data)
+      const [dash, history, visits, catsData] = await Promise.all([
+        getDashboard({ signal }),
+        getWeightHistory({ ...dateRange, signal }),
+        getVisits({ limit: 10, signal }),
+        getCats(false, { signal }),
+      ])
+      setDashboard(dash)
+      setWeightHistory(history)
+      setRecentVisits(visits)
+      setCats(catsData)
       setError(null)
     } catch (e) {
-      setError('Could not reach the API')
+      if (!isCanceled(e)) {
+        setError(getApiErrorMessage(e))
+      }
+    } finally {
+      if (initial) setLoading(false)
     }
-  }, [])
+  }, [dateRange])
 
   const fetchWeightHistory = useCallback(async (range) => {
     try {
@@ -52,35 +76,16 @@ export default function Dashboard() {
     }
   }, [dateRange])
 
-  const fetchInitial = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [dash, history, visits, catsData] = await Promise.all([
-        getDashboard(),
-        getWeightHistory(dateRange),
-        getVisits({ limit: 10 }),
-        getCats(),
-      ])
-      setDashboard(dash)
-      setWeightHistory(history)
-      setRecentVisits(visits)
-      setCats(catsData)
-    } catch (e) {
-      setError('Could not reach the API')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchDashboardData({ signal: controller.signal, initial: true })
+    return () => controller.abort()
+  }, [fetchDashboardData])
 
   useEffect(() => {
-    fetchInitial()
-  }, [fetchInitial])
-
-  // Auto-refresh dashboard every 15 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchDashboard, REFRESH_INTERVAL_MS)
+    const interval = setInterval(() => fetchDashboardData(), REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [fetchDashboard])
+  }, [fetchDashboardData])
 
   async function handleRangeChange(newRange) {
     setDateRange(newRange)
@@ -128,12 +133,10 @@ export default function Dashboard() {
         duration_seconds: duration,
         weight_kg: weight_g / 1000,
       })
-      const [dash, visits] = await Promise.all([getDashboard(), getVisits({ limit: 10 })])
-      setDashboard(dash)
-      setRecentVisits(visits)
+      await fetchDashboardData()
       closeAddVisit()
       toast('Visit saved', 'success')
-    } catch (e) {
+    } catch {
       setSubmitError('Failed to save visit. Please try again.')
     } finally {
       setSubmitting(false)
@@ -167,6 +170,8 @@ export default function Dashboard() {
           <PollerStatus
             healthy={dashboard.poller_healthy}
             generatedAt={dashboard.generated_at}
+            lastSuccessfulAt={dashboard.poller_last_successful_at}
+            lastError={dashboard.poller_last_error}
           />
         </div>
       </div>

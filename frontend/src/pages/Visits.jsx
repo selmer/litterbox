@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
-import { getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
+import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
 import { useToast } from '../components/Toast'
 
 const PAGE_SIZE = 50
+
+function isCanceled(error) {
+  return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
+}
 
 export default function Visits() {
   const [visits, setVisits] = useState([])
@@ -13,37 +17,53 @@ export default function Visits() {
   const [selectedCat, setSelectedCat] = useState(null)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
+  const [loadError, setLoadError] = useState(null)
+  const [reloadNonce, setReloadNonce] = useState(0)
   const [reassigning, setReassigning] = useState(null) // visit being reassigned
   const toast = useToast()
 
   useEffect(() => {
-    getCats().then(setCats)
-  }, [])
+    getCats().then(setCats).catch(e => {
+      console.error('Failed to load cats', e)
+      toast('Failed to load cats. Please try again.')
+    })
+  }, [toast])
 
   useEffect(() => {
+    let canceled = false
+    const controller = new AbortController()
+
     async function fetchVisits() {
-      if (initialLoading) {
-        // first load — keep full-page blocker
-      } else {
-        setFetching(true)
-      }
+      setFetching(true)
+      setLoadError(null)
       try {
-        const params = { limit: PAGE_SIZE + 1, offset: page * PAGE_SIZE }
+        const params = { limit: PAGE_SIZE + 1, offset: page * PAGE_SIZE, signal: controller.signal }
         if (selectedCat === 'unidentified') {
           params.unidentified = true
         } else if (selectedCat !== null) {
           params.catId = selectedCat
         }
         const v = await getVisits(params)
+        if (canceled) return
         setHasMore(v.length > PAGE_SIZE)
         setVisits(v.slice(0, PAGE_SIZE))
+      } catch (e) {
+        if (!canceled && !isCanceled(e)) {
+          setLoadError(getApiErrorMessage(e))
+        }
       } finally {
-        setInitialLoading(false)
-        setFetching(false)
+        if (!canceled) {
+          setInitialLoading(false)
+          setFetching(false)
+        }
       }
     }
     fetchVisits()
-  }, [selectedCat, page]) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      canceled = true
+      controller.abort()
+    }
+  }, [selectedCat, page, reloadNonce])
 
   function selectFilter(cat) {
     setSelectedCat(cat)
@@ -113,6 +133,14 @@ export default function Visits() {
       </div>
 
       <div style={{ opacity: fetching ? 0.5 : 1, transition: 'opacity 0.15s', pointerEvents: fetching ? 'none' : 'auto' }}>
+        {loadError && (
+          <div className="alert alert-yellow mb-4">
+            {loadError}{' '}
+            <button className="btn btn-secondary btn-sm" onClick={() => setReloadNonce(n => n + 1)}>
+              Retry
+            </button>
+          </div>
+        )}
         <VisitsList
           visits={visits}
           cats={cats}
@@ -132,7 +160,7 @@ export default function Visits() {
             ← Previous
           </button>
           <span className="text-muted" style={{ fontSize: 13 }}>
-            Visits {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + visits.length}
+            Page {page + 1} · Visits {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + visits.length}
           </span>
           <button
             className="btn btn-secondary btn-sm"

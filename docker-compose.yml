@@ -10,11 +10,12 @@ services:
       - TUYA_API_KEY=${TUYA_API_KEY}
       - TUYA_API_SECRET=${TUYA_API_SECRET}
       - TUYA_API_REGION=${TUYA_API_REGION}
-      - POLL_INTERVAL_SECONDS=5
       - SNAPSHOT_INTERVAL_SECONDS=300
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
     logging:
       driver: "json-file"
       options:
@@ -38,3 +39,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

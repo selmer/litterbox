@@ -2,6 +2,15 @@
 
 Attempting to connect to a viervoeter Litterbox
 
+## Documentation
+
+Project documentation has been consolidated into `docs/`:
+
+- `docs/SPECIFICATION.md` — current codebase specification
+- `docs/update-modes.md` — polling and webhook setup
+- `docs/AGENTS.md` and `docs/CLAUDE.md` — supporting notes and reference material
+- `frontend/docs/README.md` — frontend-specific documentation
+
 ## Running the test suite
 
 Install dependencies (pytest and httpx are included in `requirements.txt`):
@@ -25,7 +34,7 @@ python3 -m pytest tests/test_poller.py -v
 
 Tests use an in-memory SQLite database and mock out the Tuya cloud connection, so no real device or credentials are needed.
 
-The test suite is also run automatically by `deploy.sh` before every deploy. If any test fails, the deploy aborts.
+The backend and frontend verification suites are run automatically by `deploy.sh` before every deploy. If any check fails, the deploy aborts. To run the same checks without deploying, use `./deploy.sh validate`.
 
 ### Test files
 
@@ -38,6 +47,8 @@ The test suite is also run automatically by `deploy.sh` before every deploy. If 
 | `tests/test_api_cleaning_cycles.py` | `GET /cleaning-cycles` listing |
 | `tests/test_api_dashboard.py` | Dashboard aggregation (visits today, cleaning cycles, poller health) |
 | `tests/test_poller.py` | `LitterboxPoller` internal logic (visit creation, timeout, cleaning cycles, snapshots, settings) |
+
+Frontend tests live next to the relevant page or component under `frontend/src/**/*.test.jsx`.
 
 ## Cleaning git history with BFG
 
@@ -90,4 +101,4 @@ The following cannot be fully covered without real-world data or your specific s
 
 4. **Visit timeout** — `VISIT_TIMEOUT_SECONDS` (300 s) is a fallback for when the device doesn't send a completion event. If your device behaves differently, this constant and the related poller tests may need adjustment.
 
-5. **Frontend components** — The React components in `frontend/src/` have no automated tests. If you want component or end-to-end browser tests (e.g. with Playwright or Vitest), let me know what behaviour you want covered.
+5. **Frontend browser coverage** — Vitest covers selected pages and components under `frontend/src/`. Full end-to-end browser coverage is not yet implemented; use Playwright or a similar tool for real browser workflows.

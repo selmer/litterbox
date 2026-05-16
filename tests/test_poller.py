@@ -50,6 +50,7 @@ def test_weight_update_updates_existing_visit(poller, db_session):
 def test_weight_update_records_last_weight_at(poller):
     poller._handle_weight_update(4100, NOW)
     assert poller.last_weight_at == NOW
+    assert poller.current_visit.last_weight_at == NOW
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@ def test_visit_complete_closes_current_visit(poller, db_session):
     assert visit.ended_at is not None
     assert visit.duration_seconds == 45
     assert poller.current_visit is None
+    assert poller.last_weight_at is None
 
 
 def test_visit_complete_without_prior_visit_creates_one(poller, db_session):
@@ -135,6 +137,46 @@ def test_visit_timeout_does_nothing_without_visit(poller):
     # Should not raise
     poller._check_visit_timeout(NOW)
     assert poller.current_visit is None
+
+
+def test_poller_recovers_open_visit_and_cleaning_cycle(db_session):
+    open_visit = Visit(started_at=NOW, weight_kg=4.1, last_weight_at=NOW + timedelta(seconds=5))
+    open_cycle = CleaningCycle(started_at=NOW)
+    db_session.add_all([open_visit, open_cycle])
+    db_session.commit()
+    open_visit_id = open_visit.id
+    open_cycle_id = open_cycle.id
+    open_visit_last_weight_at = open_visit.last_weight_at
+
+    mock_cloud = MagicMock()
+    mock_cloud.getstatus.return_value = {"success": True, "result": []}
+    with patch("app.poller.make_cloud", return_value=mock_cloud):
+        from app.poller import LitterboxPoller
+        recovered = LitterboxPoller(lambda: db_session)
+
+    assert recovered.current_visit_id == open_visit_id
+    assert recovered.current_cleaning_cycle_id == open_cycle_id
+    assert recovered.last_weight_at == open_visit_last_weight_at
+
+
+def test_poll_returns_failed_outcome_for_empty_dps(poller):
+    poller.cloud.getstatus.return_value = {"success": True, "result": []}
+
+    outcome = poller.poll()
+
+    assert outcome.success is False
+    assert outcome.status == "empty_dps"
+
+
+def test_poll_returns_success_outcome_for_valid_dps(poller):
+    poller.cloud.getstatus.return_value = {
+        "success": True,
+        "result": [{"code": "cat_weight", "value": 0}],
+    }
+
+    outcome = poller.poll()
+
+    assert outcome.success is True
 
 
 # ---------------------------------------------------------------------------
