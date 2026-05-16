@@ -48,3 +48,4 @@ No application code change should be made unless a written specification exists 
 | 015 | [Light Professional Dashboard Theme](specs/015-2026-05-16-light-professional-dashboard-theme.md) | P1 |
 | 016 | [Dark Elegant Dashboard Theme](specs/016-2026-05-16-dark-elegant-dashboard-theme.md) | P1 |
 | 017 | [Future Dashboard Design Enhancements](specs/017-2026-05-16-future-dashboard-design-enhancements.md) | P2 |
+| 018 | [ESP32 E-Paper Display View](specs/018-2026-05-16-esp32-epaper-display-view.md) | P1 |
