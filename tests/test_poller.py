@@ -121,15 +121,17 @@ def test_visit_complete_leaves_cat_unassigned_for_unknown_weight(poller, db_sess
 # _check_visit_timeout
 # ---------------------------------------------------------------------------
 
-def test_visit_timeout_closes_overdue_visit(poller, db_session):
+def test_visit_timeout_keeps_overdue_visit_open_when_reconciliation_is_pending(poller, db_session):
     poller._handle_weight_update(4100, NOW)
+    poller.cloud.cloudrequest.return_value = {"success": True, "result": {"logs": []}}
     far_future = NOW + timedelta(seconds=400)  # > VISIT_TIMEOUT_SECONDS (300)
 
     poller._check_visit_timeout(far_future)
 
     visit = db_session.query(Visit).first()
-    assert visit.ended_at is not None
-    assert poller.current_visit is None
+    assert visit.ended_at is None
+    assert visit.duration_seconds is None
+    assert poller.current_visit is not None
 
 
 def test_visit_timeout_uses_report_log_completion_when_status_poll_missed_it(poller, db_session):
@@ -157,7 +159,29 @@ def test_visit_timeout_uses_report_log_completion_when_status_poll_missed_it(pol
     poller.cloud.cloudrequest.assert_called_once()
 
 
-def test_visit_timeout_falls_back_when_report_log_lookup_fails(poller, db_session):
+def test_visit_timeout_uses_duration_only_report_log_completion(poller, db_session):
+    poller._handle_weight_update(4100, NOW)
+    completed_at = NOW + timedelta(seconds=75)
+    poller.cloud.cloudrequest.return_value = {
+        "success": True,
+        "result": {
+            "logs": [
+                _report_log("cat_weight", 4100, NOW + timedelta(seconds=5)),
+                _report_log("excretion_time_day", 75, completed_at),
+            ],
+        },
+    }
+
+    poller._check_visit_timeout(NOW + timedelta(seconds=400))
+
+    visit = db_session.query(Visit).first()
+    assert visit.ended_at == completed_at
+    assert visit.duration_seconds == 75
+    assert visit.weight_kg == pytest.approx(4.1)
+    assert poller.current_visit is None
+
+
+def test_visit_timeout_retries_when_report_log_lookup_fails_before_hard_timeout(poller, db_session):
     poller._handle_weight_update(4100, NOW)
     poller.cloud.cloudrequest.return_value = {"success": False, "msg": "permission denied"}
     far_future = NOW + timedelta(seconds=400)
@@ -165,20 +189,34 @@ def test_visit_timeout_falls_back_when_report_log_lookup_fails(poller, db_sessio
     poller._check_visit_timeout(far_future)
 
     visit = db_session.query(Visit).first()
+    assert visit.ended_at is None
+    assert visit.duration_seconds is None
+    assert poller.current_visit is not None
+
+
+def test_visit_hard_timeout_falls_back_when_report_logs_never_reconcile(poller, db_session):
+    poller._handle_weight_update(4100, NOW)
+    poller.cloud.cloudrequest.return_value = {"success": False, "msg": "permission denied"}
+    far_future = NOW + timedelta(seconds=1800)
+
+    poller._check_visit_timeout(far_future)
+
+    visit = db_session.query(Visit).first()
     assert visit.ended_at == far_future
-    assert visit.duration_seconds == 400
+    assert visit.duration_seconds == 1800
     assert poller.current_visit is None
 
 
-def test_visit_timeout_does_not_close_from_report_logs_without_counter_increase(poller, db_session):
+def test_visit_timeout_uses_duration_log_when_counter_does_not_increase(poller, db_session):
     poller.previous_dps = {"excretion_times_day": 7}
     poller._handle_weight_update(4100, NOW)
+    completed_at = NOW + timedelta(seconds=80)
     poller.cloud.cloudrequest.return_value = {
         "success": True,
         "result": {
             "logs": [
-                _report_log("excretion_time_day", 80, NOW + timedelta(seconds=80)),
-                _report_log("excretion_times_day", 7, NOW + timedelta(seconds=80)),
+                _report_log("excretion_time_day", 80, completed_at),
+                _report_log("excretion_times_day", 7, completed_at),
             ],
         },
     }
@@ -187,9 +225,31 @@ def test_visit_timeout_does_not_close_from_report_logs_without_counter_increase(
     poller._check_visit_timeout(far_future)
 
     visit = db_session.query(Visit).first()
-    assert visit.ended_at == far_future
-    assert visit.duration_seconds == 400
+    assert visit.ended_at == completed_at
+    assert visit.duration_seconds == 80
     assert poller.current_visit is None
+
+
+def test_visit_timeout_ignores_invalid_duration_logs_and_keeps_visit_open(poller, db_session):
+    poller._handle_weight_update(4100, NOW)
+    poller.cloud.cloudrequest.return_value = {
+        "success": True,
+        "result": {
+            "logs": [
+                _report_log("excretion_time_day", 0, NOW + timedelta(seconds=80)),
+                _report_log("excretion_time_day", -1, NOW + timedelta(seconds=90)),
+                _report_log("excretion_time_day", 70, NOW - timedelta(seconds=10)),
+            ],
+        },
+    }
+    far_future = NOW + timedelta(seconds=400)
+
+    poller._check_visit_timeout(far_future)
+
+    visit = db_session.query(Visit).first()
+    assert visit.ended_at is None
+    assert visit.duration_seconds is None
+    assert poller.current_visit is not None
 
 
 def test_visit_timeout_does_not_close_recent_visit(poller, db_session):
@@ -225,6 +285,37 @@ def test_poller_recovers_open_visit_and_cleaning_cycle(db_session):
     assert recovered.current_visit_id == open_visit_id
     assert recovered.current_cleaning_cycle_id == open_cycle_id
     assert recovered.last_weight_at == open_visit_last_weight_at
+
+
+def test_recovered_open_visit_retries_report_log_reconciliation(db_session):
+    open_visit = Visit(started_at=NOW, weight_kg=4.1, last_weight_at=NOW)
+    db_session.add(open_visit)
+    db_session.commit()
+    open_visit_id = open_visit.id
+    completed_at = NOW + timedelta(seconds=70)
+
+    mock_cloud = MagicMock()
+    mock_cloud.getstatus.return_value = {"success": True, "result": []}
+    mock_cloud.cloudrequest.return_value = {
+        "success": True,
+        "result": {
+            "logs": [
+                _report_log("excretion_time_day", 70, completed_at),
+            ],
+        },
+    }
+    with patch("app.poller.make_cloud", return_value=mock_cloud):
+        from app.poller import LitterboxPoller
+        recovered = LitterboxPoller(lambda: db_session)
+
+    recovered.db = db_session
+    recovered.current_visit = db_session.get(Visit, open_visit_id)
+    recovered._check_visit_timeout(NOW + timedelta(seconds=400))
+
+    visit = db_session.get(Visit, open_visit_id)
+    assert visit.ended_at == completed_at
+    assert visit.duration_seconds == 70
+    assert recovered.current_visit is None
 
 
 def test_poll_returns_failed_outcome_for_empty_dps(poller):

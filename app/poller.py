@@ -25,7 +25,8 @@ SNAPSHOT_INTERVAL_SECONDS = int(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "300"))
 SETTINGS_DPS = {"deodorization", "Clean_notice", "child_lock", "induction_delay",
                 "induction_interval", "odourless", "capacity_calibration", "sand_surface_calibration"}
 
-VISIT_TIMEOUT_SECONDS = 300  # 5 minutes fallback
+VISIT_TIMEOUT_SECONDS = 300  # Start report-log reconciliation after 5 minutes
+VISIT_HARD_TIMEOUT_SECONDS = int(os.getenv("VISIT_HARD_TIMEOUT_SECONDS", "1800"))
 DP_CAT_WEIGHT = "cat_weight"
 DP_CLEANING_CYCLE = "smart_clean"
 DP_EXCRETION_TIMES = "excretion_times_day"
@@ -47,6 +48,7 @@ class ReportLogCompletion:
     duration_seconds: int
     completed_at: datetime
     weight_kg: Optional[float] = None
+    strategy: str = "counter"
 
 
 def make_cloud() -> tinytuya.Cloud:
@@ -260,23 +262,34 @@ class LitterboxPoller:
         self.last_weight_at = None
     
     def _check_visit_timeout(self, now: datetime):
-        """Fallback: close visit if no completion event received within 5 minutes."""
+        """Reconcile overdue visits from Tuya logs before using a hard fallback."""
         if self.current_visit is None:
             return
         if self.last_weight_at is None:
             return
+
         elapsed = (now - self.last_weight_at).total_seconds()
-        if elapsed >= VISIT_TIMEOUT_SECONDS:
-            if self._try_reconcile_visit_completion_from_report_logs(now):
-                return
-            logger.info(f"Visit timed out after {elapsed:.0f}s — closing as fallback")
-            self.current_visit.ended_at = now
-            self.current_visit.duration_seconds = int(elapsed)
-            self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
-            self.db.commit()
-            self.current_visit = None
-            self.current_visit_excretion_times_at_start = None
-            self.last_weight_at = None
+        if elapsed < VISIT_TIMEOUT_SECONDS:
+            return
+
+        if self._try_reconcile_visit_completion_from_report_logs(now):
+            return
+
+        if elapsed < VISIT_HARD_TIMEOUT_SECONDS:
+            logger.info(
+                "Visit reconciliation pending after %.0fs — keeping visit open for retry",
+                elapsed,
+            )
+            return
+
+        logger.info("Visit hard-timed out after %.0fs — closing as fallback", elapsed)
+        self.current_visit.ended_at = now
+        self.current_visit.duration_seconds = int(elapsed)
+        self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
+        self.db.commit()
+        self.current_visit = None
+        self.current_visit_excretion_times_at_start = None
+        self.last_weight_at = None
 
     def _try_reconcile_visit_completion_from_report_logs(self, now: datetime) -> bool:
         if self.current_visit is None:
@@ -292,13 +305,15 @@ class LitterboxPoller:
             logger.warning("Failed to fetch Tuya report logs for visit reconciliation: %s", exc)
             return False
 
+        logger.info("Fetched %s Tuya report logs for visit reconciliation", len(logs))
         completion = self._find_report_log_completion(logs, started_at, now)
         if completion is None:
-            logger.info("No Tuya report-log completion found before timeout fallback")
+            logger.info("No Tuya report-log completion found; pending_retry")
             return False
 
         logger.info(
-            "Visit completed from Tuya report logs — duration: %ss",
+            "Visit completed from Tuya report logs via %s — duration: %ss",
+            completion.strategy,
             completion.duration_seconds,
         )
         self.current_visit.ended_at = completion.completed_at
@@ -349,15 +364,52 @@ class LitterboxPoller:
         now_ms = self._datetime_to_epoch_ms(now + timedelta(seconds=REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS))
         sorted_logs = sorted(logs, key=lambda log: int(log.get("event_time") or 0))
 
+        counter_completion = self._find_counter_completion(sorted_logs, started_ms, now_ms)
+        if counter_completion is not None:
+            completion_ms, _ = counter_completion
+            duration = self._latest_int_log_value(
+                sorted_logs,
+                DP_EXCRETION_TIME,
+                started_ms,
+                completion_ms + REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS * 1000,
+            )
+            if duration is not None and duration > 0:
+                return self._build_report_log_completion(
+                    sorted_logs,
+                    started_ms,
+                    completion_ms,
+                    duration,
+                    "counter",
+                )
+
+        duration_completion = self._find_duration_completion(sorted_logs, started_ms, now_ms)
+        if duration_completion is None:
+            return None
+
+        completion_ms, duration = duration_completion
+        return self._build_report_log_completion(
+            sorted_logs,
+            started_ms,
+            completion_ms,
+            duration,
+            "duration_log",
+        )
+
+    def _find_counter_completion(
+        self,
+        logs: list[dict],
+        started_ms: int,
+        end_ms: int,
+    ) -> Optional[tuple[int, int]]:
         completion_logs = []
-        for log in sorted_logs:
+        for log in logs:
             if log.get("code") != DP_EXCRETION_TIMES:
                 continue
             event_time = self._coerce_int(log.get("event_time"))
             value = self._coerce_int(log.get("value"))
             if event_time is None or value is None:
                 continue
-            if event_time < started_ms or event_time > now_ms:
+            if event_time < started_ms or event_time > end_ms:
                 continue
             if (
                 self.current_visit_excretion_times_at_start is not None
@@ -365,22 +417,39 @@ class LitterboxPoller:
             ):
                 continue
             completion_logs.append((event_time, value))
+        return completion_logs[-1] if completion_logs else None
 
-        if not completion_logs:
-            return None
+    def _find_duration_completion(
+        self,
+        logs: list[dict],
+        started_ms: int,
+        end_ms: int,
+    ) -> Optional[tuple[int, int]]:
+        duration_logs = []
+        for log in logs:
+            if log.get("code") != DP_EXCRETION_TIME:
+                continue
+            event_time = self._coerce_int(log.get("event_time"))
+            duration = self._coerce_int(log.get("value"))
+            if event_time is None or duration is None:
+                continue
+            if duration <= 0:
+                continue
+            if event_time < started_ms or event_time > end_ms:
+                continue
+            duration_logs.append((event_time, duration))
+        return duration_logs[-1] if duration_logs else None
 
-        completion_ms, _ = completion_logs[-1]
-        duration = self._latest_int_log_value(
-            sorted_logs,
-            DP_EXCRETION_TIME,
-            started_ms,
-            completion_ms + REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS * 1000,
-        )
-        if duration is None or duration <= 0:
-            return None
-
+    def _build_report_log_completion(
+        self,
+        logs: list[dict],
+        started_ms: int,
+        completion_ms: int,
+        duration: int,
+        strategy: str,
+    ) -> ReportLogCompletion:
         weight_raw = self._latest_int_log_value(
-            sorted_logs,
+            logs,
             DP_CAT_WEIGHT,
             started_ms,
             completion_ms + REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS * 1000,
@@ -390,6 +459,7 @@ class LitterboxPoller:
             duration_seconds=duration,
             completed_at=datetime.fromtimestamp(completion_ms / 1000, timezone.utc),
             weight_kg=weight_kg,
+            strategy=strategy,
         )
 
     def _latest_int_log_value(

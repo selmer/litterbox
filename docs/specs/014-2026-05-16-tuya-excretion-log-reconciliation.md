@@ -17,15 +17,18 @@ Proposed behavior:
 - Before closing an overdue active visit by timeout, query Tuya status report logs for `excretion_times_day`, `excretion_time_day`, and `cat_weight`.
 - Look back from the visit start time with a small buffer through the current timeout check time.
 - If report logs show `excretion_times_day` advanced after the visit started, close the visit using the matching or latest `excretion_time_day` value.
-- Keep the existing timeout as the fallback when report logs are unavailable, empty, or do not show completion.
-- Log whether a visit closed by latest-status completion, report-log reconciliation, or fallback timeout.
+- Keep visits open after the 5-minute soft timeout when report logs are unavailable, empty, or do not show completion, so later polls can retry reconciliation.
+- Use a hard timeout after 30 minutes as the fallback for truly stuck visits.
+- Prefer `excretion_times_day` counter completion, but allow a positive `excretion_time_day` duration log around the active visit when the counter signal is missing or unusable.
+- Log whether a visit closed by latest-status completion, report-log counter reconciliation, report-log duration reconciliation, pending retry, or hard timeout.
 
 Acceptance criteria:
 
 - Existing status-poll completion behavior remains unchanged.
 - Overdue visits can close with Tuya's reported excretion duration instead of timeout duration.
-- Report-log lookup failures do not prevent fallback timeout.
-- Report logs without a completion counter increase do not falsely close a visit.
+- Report-log lookup failures keep the visit open until a later retry or the hard timeout.
+- Report logs without a completion counter can still close a visit when a valid positive duration log is present in the active visit window.
+- Invalid, zero, negative, or out-of-window duration logs do not close a visit.
 
 Verification:
 
