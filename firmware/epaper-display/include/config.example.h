@@ -16,3 +16,15 @@
 // HTTP timeout in milliseconds. Keep this short enough that the display recovers
 // from network issues without feeling stuck.
 #define HTTP_TIMEOUT_MS 8000
+
+// Default ESP32 DevKit v1 / VSPI wiring for Waveshare 4.2inch e-Paper Module (B).
+// Adjust these if your wiring differs.
+#define EPD_BUSY_PIN 4
+#define EPD_RST_PIN 16
+#define EPD_DC_PIN 17
+#define EPD_CS_PIN 5
+#define EPD_SCK_PIN 18
+#define EPD_MOSI_PIN 23
+
+// Waveshare boards often behave better with a short reset pulse.
+#define EPD_RESET_DURATION_MS 2

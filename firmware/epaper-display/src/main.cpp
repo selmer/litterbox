@@ -1,13 +1,48 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <SPI.h>
 #include <WiFi.h>
 
+#include <GxEPD2_3C.h>
+#include <Fonts/FreeMono9pt7b.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
+#include <Fonts/FreeMonoBold12pt7b.h>
+#include <Fonts/FreeMonoBold18pt7b.h>
+
 #include "config.h"
+
+#ifndef EPD_BUSY_PIN
+#define EPD_BUSY_PIN 4
+#endif
+#ifndef EPD_RST_PIN
+#define EPD_RST_PIN 16
+#endif
+#ifndef EPD_DC_PIN
+#define EPD_DC_PIN 17
+#endif
+#ifndef EPD_CS_PIN
+#define EPD_CS_PIN 5
+#endif
+#ifndef EPD_SCK_PIN
+#define EPD_SCK_PIN 18
+#endif
+#ifndef EPD_MOSI_PIN
+#define EPD_MOSI_PIN 23
+#endif
+#ifndef EPD_RESET_DURATION_MS
+#define EPD_RESET_DURATION_MS 2
+#endif
 
 namespace {
 constexpr uint32_t SerialBaud = 115200;
 constexpr uint32_t WifiConnectTimeoutMs = 20000;
+constexpr int16_t DisplayWidth = 400;
+constexpr int16_t DisplayHeight = 300;
+
+GxEPD2_3C<GxEPD2_420c_Z21, GxEPD2_420c_Z21::HEIGHT> display(
+  GxEPD2_420c_Z21(EPD_CS_PIN, EPD_DC_PIN, EPD_RST_PIN, EPD_BUSY_PIN)
+);
 
 uint32_t refreshDelayMs(uint32_t refreshSeconds) {
   if (refreshSeconds == 0) {
@@ -48,6 +83,10 @@ void printNullableString(JsonVariantConst value) {
   }
 }
 
+const char* nullableText(JsonVariantConst value, const char* fallback = "-") {
+  return value.isNull() ? fallback : value.as<const char*>();
+}
+
 void printPayloadPreview(const String& payload) {
   constexpr size_t MaxPreviewChars = 240;
   Serial.print("Payload preview: ");
@@ -59,6 +98,182 @@ void printPayloadPreview(const String& payload) {
     Serial.print("...");
   }
   Serial.println();
+}
+
+String formatDuration(JsonVariantConst value) {
+  if (value.isNull()) {
+    return "-";
+  }
+  const int seconds = value.as<int>();
+  const int minutes = seconds / 60;
+  const int remainingSeconds = seconds % 60;
+  if (minutes == 0) {
+    return String(remainingSeconds) + "s";
+  }
+  return String(minutes) + "m " + String(remainingSeconds) + "s";
+}
+
+String formatWeight(JsonVariantConst value) {
+  if (value.isNull()) {
+    return "-";
+  }
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%.3f kg", value.as<float>());
+  return String(buffer);
+}
+
+void drawText(int16_t x, int16_t y, const String& text, const GFXfont* font, uint16_t color) {
+  display.setFont(font);
+  display.setTextColor(color);
+  display.setCursor(x, y);
+  display.print(text);
+}
+
+void drawText(int16_t x, int16_t y, const char* text, const GFXfont* font, uint16_t color) {
+  drawText(x, y, String(text), font, color);
+}
+
+void drawRightText(int16_t rightX, int16_t y, const String& text, const GFXfont* font, uint16_t color) {
+  int16_t x1 = 0;
+  int16_t y1 = 0;
+  uint16_t w = 0;
+  uint16_t h = 0;
+  display.setFont(font);
+  display.getTextBounds(text, 0, y, &x1, &y1, &w, &h);
+  drawText(rightX - static_cast<int16_t>(w), y, text, font, color);
+}
+
+String truncateText(const String& value, size_t maxChars) {
+  if (value.length() <= maxChars) {
+    return value;
+  }
+  if (maxChars <= 1) {
+    return value.substring(0, maxChars);
+  }
+  return value.substring(0, maxChars - 1) + "~";
+}
+
+void drawLabelValue(int16_t x, int16_t y, const char* label, const String& value) {
+  drawText(x, y, label, &FreeMono9pt7b, GxEPD_BLACK);
+  drawText(x, y + 22, value, &FreeMonoBold9pt7b, GxEPD_BLACK);
+}
+
+void drawNoDataChart(int16_t x, int16_t y, int16_t w, int16_t h, const char* message) {
+  display.drawRect(x, y, w, h, GxEPD_BLACK);
+  drawText(x + 12, y + (h / 2) + 5, message, &FreeMono9pt7b, GxEPD_BLACK);
+}
+
+void drawWeightChart(JsonVariantConst chart, int16_t x, int16_t y, int16_t w, int16_t h) {
+  display.drawRect(x, y, w, h, GxEPD_BLACK);
+  drawText(x + 8, y + 18, "30d weight", &FreeMono9pt7b, GxEPD_BLACK);
+
+  if (chart.isNull()) {
+    drawText(x + 8, y + 52, "Not enough data", &FreeMono9pt7b, GxEPD_BLACK);
+    return;
+  }
+
+  JsonArrayConst points = chart["points"].as<JsonArrayConst>();
+  if (points.size() < 2) {
+    drawText(x + 8, y + 52, "Not enough data", &FreeMono9pt7b, GxEPD_BLACK);
+    return;
+  }
+
+  const float minKg = chart["min_kg"].as<float>();
+  const float maxKg = chart["max_kg"].as<float>();
+  const float range = max(0.001f, maxKg - minKg);
+  const int16_t chartX = x + 8;
+  const int16_t chartY = y + 30;
+  const int16_t chartW = w - 16;
+  const int16_t chartH = h - 48;
+
+  char maxLabel[16];
+  char minLabel[16];
+  snprintf(maxLabel, sizeof(maxLabel), "%.2f", maxKg);
+  snprintf(minLabel, sizeof(minLabel), "%.2f", minKg);
+  drawText(x + 8, y + h - 22, minLabel, &FreeMono9pt7b, GxEPD_BLACK);
+  drawRightText(x + w - 8, y + h - 22, maxLabel, &FreeMono9pt7b, GxEPD_BLACK);
+
+  int16_t previousX = chartX;
+  int16_t previousY = chartY + chartH;
+  bool hasPrevious = false;
+  const size_t lastIndex = points.size() - 1;
+  size_t index = 0;
+  for (JsonObjectConst point : points) {
+    const float weight = point["weight_kg"].as<float>();
+    const int16_t px = chartX + static_cast<int16_t>((chartW * index) / lastIndex);
+    const int16_t py = chartY + chartH - static_cast<int16_t>(((weight - minKg) / range) * chartH);
+    display.fillCircle(px, py, 2, GxEPD_BLACK);
+    if (hasPrevious) {
+      display.drawLine(previousX, previousY, px, py, GxEPD_BLACK);
+    }
+    previousX = px;
+    previousY = py;
+    hasPrevious = true;
+    ++index;
+  }
+}
+
+void drawSummary(JsonDocument& doc) {
+  const bool healthy = doc["status"]["healthy"].as<bool>();
+  const bool unidentified = !doc["latest_visit"].isNull() && !doc["latest_visit"]["identified"].as<bool>();
+  const bool alert = !doc["alert"].isNull();
+  const uint16_t accent = (!healthy || unidentified || alert) ? GxEPD_RED : GxEPD_BLACK;
+
+  display.setRotation(0);
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+
+    display.fillRect(0, 0, DisplayWidth, 34, accent);
+    drawText(10, 23, "Litterbox", &FreeMonoBold12pt7b, GxEPD_WHITE);
+    drawRightText(DisplayWidth - 10, 22, nullableText(doc["status"]["label"]), &FreeMonoBold9pt7b, GxEPD_WHITE);
+
+    JsonVariantConst latestVisit = doc["latest_visit"];
+    if (latestVisit.isNull()) {
+      drawText(12, 78, "No visits yet", &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(14, 112, "Waiting for first litterbox event", &FreeMono9pt7b, GxEPD_BLACK);
+    } else {
+      const String catName = truncateText(nullableText(latestVisit["cat_name"], "Unknown cat"), 14);
+      drawText(12, 76, catName, &FreeMonoBold18pt7b, accent);
+      drawText(14, 104, nullableText(latestVisit["time_ago_label"]), &FreeMono9pt7b, GxEPD_BLACK);
+      drawLabelValue(14, 145, "Weight", formatWeight(latestVisit["weight_kg"]));
+      drawLabelValue(150, 145, "Duration", formatDuration(latestVisit["duration_seconds"]));
+    }
+
+    drawWeightChart(doc["chart"], 245, 48, 142, 112);
+
+    JsonObjectConst today = doc["today"];
+    display.drawRect(10, 178, 380, 52, GxEPD_BLACK);
+    drawLabelValue(20, 198, "Visits", String(today["visits"].as<int>()));
+    drawLabelValue(112, 198, "Box", formatDuration(today["time_in_box_seconds"]));
+    drawLabelValue(220, 198, "Clean", String(today["cleaning_cycles"].as<int>()));
+    drawLabelValue(310, 198, "Unknown", String(today["unidentified_visits"].as<int>()));
+
+    if (!doc["alert"].isNull()) {
+      display.fillRect(10, 238, 380, 24, GxEPD_RED);
+      drawText(16, 256, truncateText(nullableText(doc["alert"]), 38), &FreeMonoBold9pt7b, GxEPD_WHITE);
+    } else {
+      JsonArrayConst cats = doc["cats"].as<JsonArrayConst>();
+      int16_t rowY = 254;
+      uint8_t rows = 0;
+      for (JsonObjectConst cat : cats) {
+        if (rows >= 2) {
+          break;
+        }
+        String row = truncateText(nullableText(cat["name"]), 12);
+        row += "  visits ";
+        row += cat["visits_today"].as<int>();
+        row += "  ";
+        row += formatWeight(cat["last_weight_kg"]);
+        drawText(14, rowY, row, &FreeMono9pt7b, GxEPD_BLACK);
+        rowY += 22;
+        ++rows;
+      }
+    }
+
+    drawRightText(DisplayWidth - 10, 292, nullableText(doc["generated_at"]), &FreeMono9pt7b, GxEPD_BLACK);
+  } while (display.nextPage());
 }
 
 void printSummary(JsonDocument& doc) {
@@ -141,7 +356,7 @@ void printSummary(JsonDocument& doc) {
   Serial.println("-----------------------");
 }
 
-uint32_t fetchAndPrintSummary() {
+uint32_t fetchPrintAndRenderSummary() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Skipping fetch: WiFi is not connected");
     return DEFAULT_REFRESH_SECONDS;
@@ -187,6 +402,7 @@ uint32_t fetchAndPrintSummary() {
   }
 
   printSummary(doc);
+  drawSummary(doc);
   return doc["refresh_after_seconds"] | DEFAULT_REFRESH_SECONDS;
 }
 }  // namespace
@@ -196,12 +412,20 @@ void setup() {
   delay(1000);
   Serial.println();
   Serial.println("Litterbox e-paper display booting");
+
+  SPI.begin(EPD_SCK_PIN, -1, EPD_MOSI_PIN, EPD_CS_PIN);
+  display.init(SerialBaud, true, EPD_RESET_DURATION_MS, false);
+  display.setRotation(0);
+  display.fillScreen(GxEPD_WHITE);
+  display.hibernate();
+
   connectWifi();
 }
 
 void loop() {
   connectWifi();
-  const uint32_t refreshSeconds = fetchAndPrintSummary();
+  const uint32_t refreshSeconds = fetchPrintAndRenderSummary();
+  display.hibernate();
   Serial.printf("Waiting %u seconds before next refresh\n", refreshSeconds);
   delay(refreshDelayMs(refreshSeconds));
 }
