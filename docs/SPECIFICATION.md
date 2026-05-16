@@ -54,7 +54,8 @@ This document describes the current architecture, API contract, persistence mode
   - `smart_clean`
 - Visit start is triggered when `cat_weight` changes to a nonzero value.
 - Visit completion is triggered when `excretion_times_day` changes.
-- Fallback timeout closes an active visit if no completion event arrives within `VISIT_TIMEOUT_SECONDS` (300 seconds).
+- If status polling misses a short completion event, timeout handling first reconciles Tuya status report logs from `/v2.0/cloud/thing/{device_id}/report-logs` for `excretion_times_day`, `excretion_time_day`, and `cat_weight`.
+- Fallback timeout closes an active visit if no status or report-log completion event is found within `VISIT_TIMEOUT_SECONDS` (300 seconds).
 - Weight is stored in kilograms after converting from grams.
 
 ### Cat identification logic

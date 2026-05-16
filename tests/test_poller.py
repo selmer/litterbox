@@ -17,6 +17,14 @@ from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visi
 NOW = datetime(2024, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 
+def _report_log(code, value, timestamp):
+    return {
+        "code": code,
+        "value": value,
+        "event_time": int(timestamp.timestamp() * 1000),
+    }
+
+
 # ---------------------------------------------------------------------------
 # _handle_weight_update
 # ---------------------------------------------------------------------------
@@ -121,6 +129,66 @@ def test_visit_timeout_closes_overdue_visit(poller, db_session):
 
     visit = db_session.query(Visit).first()
     assert visit.ended_at is not None
+    assert poller.current_visit is None
+
+
+def test_visit_timeout_uses_report_log_completion_when_status_poll_missed_it(poller, db_session):
+    poller.previous_dps = {"excretion_times_day": 3}
+    poller._handle_weight_update(4100, NOW)
+    completed_at = NOW + timedelta(seconds=75)
+    poller.cloud.cloudrequest.return_value = {
+        "success": True,
+        "result": {
+            "logs": [
+                _report_log("cat_weight", 4100, NOW + timedelta(seconds=5)),
+                _report_log("excretion_time_day", 75, completed_at),
+                _report_log("excretion_times_day", 4, completed_at),
+            ],
+        },
+    }
+
+    poller._check_visit_timeout(NOW + timedelta(seconds=400))
+
+    visit = db_session.query(Visit).first()
+    assert visit.ended_at == completed_at
+    assert visit.duration_seconds == 75
+    assert visit.weight_kg == pytest.approx(4.1)
+    assert poller.current_visit is None
+    poller.cloud.cloudrequest.assert_called_once()
+
+
+def test_visit_timeout_falls_back_when_report_log_lookup_fails(poller, db_session):
+    poller._handle_weight_update(4100, NOW)
+    poller.cloud.cloudrequest.return_value = {"success": False, "msg": "permission denied"}
+    far_future = NOW + timedelta(seconds=400)
+
+    poller._check_visit_timeout(far_future)
+
+    visit = db_session.query(Visit).first()
+    assert visit.ended_at == far_future
+    assert visit.duration_seconds == 400
+    assert poller.current_visit is None
+
+
+def test_visit_timeout_does_not_close_from_report_logs_without_counter_increase(poller, db_session):
+    poller.previous_dps = {"excretion_times_day": 7}
+    poller._handle_weight_update(4100, NOW)
+    poller.cloud.cloudrequest.return_value = {
+        "success": True,
+        "result": {
+            "logs": [
+                _report_log("excretion_time_day", 80, NOW + timedelta(seconds=80)),
+                _report_log("excretion_times_day", 7, NOW + timedelta(seconds=80)),
+            ],
+        },
+    }
+    far_future = NOW + timedelta(seconds=400)
+
+    poller._check_visit_timeout(far_future)
+
+    visit = db_session.query(Visit).first()
+    assert visit.ended_at == far_future
+    assert visit.duration_seconds == 400
     assert poller.current_visit is None
 
 

@@ -99,6 +99,6 @@ The following cannot be fully covered without real-world data or your specific s
 
 3. **Reference weight smoothing** — The exponential moving-average smoothing factor (`0.1`) controls how quickly a cat's reference weight adapts. Tests verify the math, but the right value depends on your cats' weight patterns.
 
-4. **Visit timeout** — `VISIT_TIMEOUT_SECONDS` (300 s) is a fallback for when the device doesn't send a completion event. If your device behaves differently, this constant and the related poller tests may need adjustment.
+4. **Visit timeout** — `VISIT_TIMEOUT_SECONDS` (300 s) is a fallback for when neither latest status polling nor Tuya report-log reconciliation finds a completion event. If your device behaves differently, this constant and the related poller tests may need adjustment.
 
 5. **Frontend browser coverage** — Vitest covers selected pages and components under `frontend/src/`. Full end-to-end browser coverage is not yet implemented; use Playwright or a similar tool for real browser workflows.

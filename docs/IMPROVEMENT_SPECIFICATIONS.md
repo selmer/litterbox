@@ -44,3 +44,4 @@ No application code change should be made unless a written specification exists 
 | 011 | [Frontend Data Fetching, Error States, and Freshness](specs/011-2026-05-16-frontend-data-fetching-error-states-and-freshness.md) | P1 |
 | 012 | [Deployment and Release Pipeline Hardening](specs/012-2026-05-16-deployment-and-release-pipeline-hardening.md) | P1 |
 | 013 | [Documentation and Test Coverage Trustworthiness](specs/013-2026-05-16-documentation-and-test-coverage-trustworthiness.md) | P2 |
+| 014 | [Tuya Excretion Log Reconciliation](specs/014-2026-05-16-tuya-excretion-log-reconciliation.md) | P0 |

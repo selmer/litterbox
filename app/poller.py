@@ -30,6 +30,9 @@ DP_CAT_WEIGHT = "cat_weight"
 DP_CLEANING_CYCLE = "smart_clean"
 DP_EXCRETION_TIMES = "excretion_times_day"
 DP_EXCRETION_TIME = "excretion_time_day"
+REPORT_LOG_LOOKBACK_BUFFER_SECONDS = 30
+REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS = 60
+REPORT_LOG_CODES = ",".join([DP_EXCRETION_TIMES, DP_EXCRETION_TIME, DP_CAT_WEIGHT])
 
 
 @dataclass(frozen=True)
@@ -37,6 +40,13 @@ class PollOutcome:
     success: bool
     status: str
     message: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class ReportLogCompletion:
+    duration_seconds: int
+    completed_at: datetime
+    weight_kg: Optional[float] = None
 
 
 def make_cloud() -> tinytuya.Cloud:
@@ -72,6 +82,7 @@ class LitterboxPoller:
         self.current_visit_id: Optional[int] = None
         self.current_cleaning_cycle: Optional[CleaningCycle] = None
         self.current_cleaning_cycle_id: Optional[int] = None
+        self.current_visit_excretion_times_at_start: Optional[int] = None
         self.last_snapshot_at: Optional[datetime] = None
         self.last_weight_at = None
         if mode == "polling":
@@ -106,6 +117,7 @@ class LitterboxPoller:
             if open_visit:
                 self.current_visit_id = open_visit.id
                 self.last_weight_at = open_visit.last_weight_at or open_visit.started_at
+                self.current_visit_excretion_times_at_start = None
                 logger.info("Recovered open visit %s", open_visit.id)
 
             open_cycle = (
@@ -165,8 +177,8 @@ class LitterboxPoller:
             self.current_cleaning_cycle = db.get(CleaningCycle, self.current_cleaning_cycle_id) if self.current_cleaning_cycle_id else None
 
             now = datetime.now(timezone.utc)
-            self._check_visit_timeout(now)
             self._handle_changes(dps, now)
+            self._check_visit_timeout(now)
             self._maybe_snapshot(dps, now)
 
             self.previous_dps = dps
@@ -196,8 +208,8 @@ class LitterboxPoller:
                 self.current_cleaning_cycle = db.get(CleaningCycle, self.current_cleaning_cycle_id) if self.current_cleaning_cycle_id else None
 
                 now = datetime.now(timezone.utc)
-                self._check_visit_timeout(now)
                 self._handle_changes(current_dps, now)
+                self._check_visit_timeout(now)
 
                 self.previous_dps = current_dps
                 self.current_visit_id = self.current_visit.id if self.current_visit else None
@@ -227,7 +239,7 @@ class LitterboxPoller:
 
     def _handle_visit_complete(self, dps: dict, now: datetime):
         duration = dps.get(DP_EXCRETION_TIME)
-        logger.info(f"Visit completed — duration: {duration}s")
+        logger.info(f"Visit completed from status DPs — duration: {duration}s")
 
         if self.current_visit is None:
             # Visit completed but we missed the weight — create one now
@@ -244,6 +256,7 @@ class LitterboxPoller:
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
         self.db.commit()
         self.current_visit = None
+        self.current_visit_excretion_times_at_start = None
         self.last_weight_at = None
     
     def _check_visit_timeout(self, now: datetime):
@@ -254,13 +267,166 @@ class LitterboxPoller:
             return
         elapsed = (now - self.last_weight_at).total_seconds()
         if elapsed >= VISIT_TIMEOUT_SECONDS:
+            if self._try_reconcile_visit_completion_from_report_logs(now):
+                return
             logger.info(f"Visit timed out after {elapsed:.0f}s — closing as fallback")
             self.current_visit.ended_at = now
             self.current_visit.duration_seconds = int(elapsed)
             self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
             self.db.commit()
             self.current_visit = None
+            self.current_visit_excretion_times_at_start = None
             self.last_weight_at = None
+
+    def _try_reconcile_visit_completion_from_report_logs(self, now: datetime) -> bool:
+        if self.current_visit is None:
+            return False
+        if self.cloud is None:
+            logger.info("Skipping report-log reconciliation because cloud is unavailable")
+            return False
+
+        started_at = self.current_visit.started_at
+        try:
+            logs = self._fetch_excretion_report_logs(started_at, now)
+        except Exception as exc:
+            logger.warning("Failed to fetch Tuya report logs for visit reconciliation: %s", exc)
+            return False
+
+        completion = self._find_report_log_completion(logs, started_at, now)
+        if completion is None:
+            logger.info("No Tuya report-log completion found before timeout fallback")
+            return False
+
+        logger.info(
+            "Visit completed from Tuya report logs — duration: %ss",
+            completion.duration_seconds,
+        )
+        self.current_visit.ended_at = completion.completed_at
+        self.current_visit.duration_seconds = completion.duration_seconds
+        if completion.weight_kg is not None:
+            self.current_visit.weight_kg = completion.weight_kg
+        self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
+        self.db.commit()
+        self.current_visit = None
+        self.current_visit_excretion_times_at_start = None
+        self.last_weight_at = None
+        return True
+
+    def _fetch_excretion_report_logs(self, started_at: datetime, now: datetime) -> list[dict]:
+        start_time = self._datetime_to_epoch_ms(
+            started_at - timedelta(seconds=REPORT_LOG_LOOKBACK_BUFFER_SECONDS)
+        )
+        end_time = self._datetime_to_epoch_ms(
+            now + timedelta(seconds=REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS)
+        )
+        response = self.cloud.cloudrequest(
+            f"/v2.0/cloud/thing/{DEVICE_ID}/report-logs",
+            query={
+                "codes": REPORT_LOG_CODES,
+                "start_time": start_time,
+                "end_time": end_time,
+                "size": 100,
+            },
+        )
+        if not response or not response.get("success"):
+            raise RuntimeError(f"Unexpected Tuya report-log response: {response}")
+        result = response.get("result") or {}
+        logs = result.get("logs") or []
+        if not isinstance(logs, list):
+            raise RuntimeError(f"Unexpected Tuya report-log payload: {response}")
+        return logs
+
+    def _find_report_log_completion(
+        self,
+        logs: list[dict],
+        started_at: datetime,
+        now: datetime,
+    ) -> Optional[ReportLogCompletion]:
+        if not logs:
+            return None
+
+        started_ms = self._datetime_to_epoch_ms(started_at)
+        now_ms = self._datetime_to_epoch_ms(now + timedelta(seconds=REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS))
+        sorted_logs = sorted(logs, key=lambda log: int(log.get("event_time") or 0))
+
+        completion_logs = []
+        for log in sorted_logs:
+            if log.get("code") != DP_EXCRETION_TIMES:
+                continue
+            event_time = self._coerce_int(log.get("event_time"))
+            value = self._coerce_int(log.get("value"))
+            if event_time is None or value is None:
+                continue
+            if event_time < started_ms or event_time > now_ms:
+                continue
+            if (
+                self.current_visit_excretion_times_at_start is not None
+                and value <= self.current_visit_excretion_times_at_start
+            ):
+                continue
+            completion_logs.append((event_time, value))
+
+        if not completion_logs:
+            return None
+
+        completion_ms, _ = completion_logs[-1]
+        duration = self._latest_int_log_value(
+            sorted_logs,
+            DP_EXCRETION_TIME,
+            started_ms,
+            completion_ms + REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS * 1000,
+        )
+        if duration is None or duration <= 0:
+            return None
+
+        weight_raw = self._latest_int_log_value(
+            sorted_logs,
+            DP_CAT_WEIGHT,
+            started_ms,
+            completion_ms + REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS * 1000,
+        )
+        weight_kg = round(weight_raw / 1000, 3) if weight_raw else None
+        return ReportLogCompletion(
+            duration_seconds=duration,
+            completed_at=datetime.fromtimestamp(completion_ms / 1000, timezone.utc),
+            weight_kg=weight_kg,
+        )
+
+    def _latest_int_log_value(
+        self,
+        logs: list[dict],
+        code: str,
+        start_ms: int,
+        end_ms: int,
+    ) -> Optional[int]:
+        latest_value = None
+        latest_time = None
+        for log in logs:
+            if log.get("code") != code:
+                continue
+            event_time = self._coerce_int(log.get("event_time"))
+            value = self._coerce_int(log.get("value"))
+            if event_time is None or value is None:
+                continue
+            if event_time < start_ms or event_time > end_ms:
+                continue
+            if latest_time is None or event_time >= latest_time:
+                latest_time = event_time
+                latest_value = value
+        return latest_value
+
+    @staticmethod
+    def _datetime_to_epoch_ms(value: datetime) -> int:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return int(value.timestamp() * 1000)
+
+    @staticmethod
+    def _coerce_int(value) -> Optional[int]:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
     def _handle_weight_update(self, raw_weight: int, now: datetime):
         weight_kg = round(raw_weight / 1000, 3)
@@ -274,6 +440,9 @@ class LitterboxPoller:
                 started_at=now,
                 weight_kg=weight_kg,
                 last_weight_at=now,
+            )
+            self.current_visit_excretion_times_at_start = self._coerce_int(
+                self.previous_dps.get(DP_EXCRETION_TIMES)
             )
             self.db.add(self.current_visit)
             self.db.commit()
