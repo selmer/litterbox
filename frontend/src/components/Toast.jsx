@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
-
-const ToastContext = createContext(null)
+import { useState, useCallback, useEffect } from 'react'
+import { ToastContext } from './ToastContext'
 
 let nextId = 1
 
@@ -23,12 +22,6 @@ export function ToastProvider({ children }) {
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </ToastContext.Provider>
   )
-}
-
-export function useToast() {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used within a ToastProvider')
-  return ctx
 }
 
 function ToastItem({ toast, onDismiss }) {

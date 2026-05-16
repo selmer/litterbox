@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Visits from './Visits'
 import { ToastProvider } from '../components/Toast'
@@ -48,7 +48,7 @@ function renderVisits() {
 describe('Visits page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     client.getVisits.mockResolvedValue(mockVisits)
     client.getCats.mockResolvedValue(mockCats)
   })
@@ -200,7 +200,11 @@ describe('Visits page', () => {
 
       await waitFor(() => screen.getByText('Next →'))
       fireEvent.click(screen.getByText('Next →'))
-      await waitFor(() => screen.getByText('Page 2'))
+      await waitFor(() =>
+        screen.getByText((_, element) =>
+          element?.textContent?.startsWith('Page 2 ·')
+        )
+      )
 
       fireEvent.click(screen.getByText('Mochi'))
       await waitFor(() => expect(client.getVisits).toHaveBeenCalledWith(

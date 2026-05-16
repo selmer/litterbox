@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Cats from './Cats'
@@ -49,7 +49,12 @@ describe('Cats page', () => {
       await userEvent.type(screen.getByPlaceholderText('e.g. Griezeltje'), 'Whisker')
       fireEvent.click(screen.getByText('Add cat'))
 
-      await waitFor(() => expect(screen.getByText(/Whisker/)).toBeInTheDocument())
+      await waitFor(() =>
+        expect(screen.getByText((_, element) =>
+          element?.tagName.toLowerCase() === 'span' &&
+          element.textContent === '🐱 Whisker'
+        )).toBeInTheDocument()
+      )
       expect(client.createCat).toHaveBeenCalledWith({ name: 'Whisker', reference_weight_kg: null })
     })
 

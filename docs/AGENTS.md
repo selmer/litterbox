@@ -24,6 +24,10 @@ Use Python 3 style with 4-space indentation, snake_case functions and variables,
 
 Add or update pytest tests in `tests/` for backend behavior, using names like `test_api_cats.py` and `test_poller.py`. Device and Tuya calls should stay mocked unless an integration test is explicit. Frontend tests live beside UI code as `*.test.jsx` and use Vitest with Testing Library. Run backend and frontend tests before submitting behavior changes.
 
+## Agent Collaboration Guidelines
+
+If an agent needs missing tools, credentials, dependency installs, command approval, audit output, deployment context, or any other user-provided input to proceed reliably, it should ask for that explicitly instead of silently skipping the step or guessing.
+
 ## Commit & Pull Request Guidelines
 
 Git history uses short subjects such as `Fixed photo uploads`, `deploy: update`, and `Add support for webhooks`. Keep commits focused and avoid staging generated files, secrets, `.env`, snapshots, or local uploads. Pull requests should summarize the change, mention migrations or configuration updates, link issues when available, include screenshots for frontend changes, and list tests run.

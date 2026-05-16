@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/ToastContext'
 
 const PAGE_SIZE = 50
 

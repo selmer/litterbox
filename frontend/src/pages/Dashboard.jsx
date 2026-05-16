@@ -13,7 +13,7 @@ import CatCard from '../components/CatCard'
 import WeightChart from '../components/WeightChart'
 import VisitsList from '../components/VisitsList'
 import PollerStatus from '../components/PollerStatus'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/ToastContext'
 
 const REFRESH_INTERVAL_MS = 15000
 

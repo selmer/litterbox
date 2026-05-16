@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCats, createCat, updateCat } from '../api/client'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/ToastContext'
 
 function CatForm({ initial, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
