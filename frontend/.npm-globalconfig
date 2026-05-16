@@ -1,0 +1,2 @@
+; Repo-local clean npm global config.
+; Used by deploy.sh to avoid inherited read-only global config keys removed by newer npm.

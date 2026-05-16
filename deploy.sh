@@ -2,10 +2,12 @@
 set -euo pipefail
 
 COMMAND="${1:-deploy}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAS_USER="${NAS_USER:-selmer}"
 NAS_HOST="${NAS_HOST:-192.168.68.115}"
 NAS_PATH="${NAS_PATH:-/volume2/docker/litterbox}"
 ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-false}"
+NPM_GLOBALCONFIG="$SCRIPT_DIR/frontend/.npm-globalconfig"
 
 validate() {
   echo "Installing backend dependencies..."
@@ -15,16 +17,16 @@ validate() {
   python3 -m pytest tests/ -v
 
   echo "Installing frontend dependencies..."
-  (cd frontend && npm ci)
+  (cd frontend && NPM_CONFIG_GLOBALCONFIG="$NPM_GLOBALCONFIG" npm ci)
 
   echo "Running frontend lint..."
-  (cd frontend && npm run lint)
+  (cd frontend && NPM_CONFIG_GLOBALCONFIG="$NPM_GLOBALCONFIG" npm run lint)
 
   echo "Running frontend tests..."
-  (cd frontend && npm test)
+  (cd frontend && NPM_CONFIG_GLOBALCONFIG="$NPM_GLOBALCONFIG" npm test)
 
   echo "Building frontend..."
-  (cd frontend && npm run build)
+  (cd frontend && NPM_CONFIG_GLOBALCONFIG="$NPM_GLOBALCONFIG" npm run build)
 }
 
 case "$COMMAND" in
