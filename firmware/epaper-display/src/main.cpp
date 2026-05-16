@@ -48,6 +48,19 @@ void printNullableString(JsonVariantConst value) {
   }
 }
 
+void printPayloadPreview(const String& payload) {
+  constexpr size_t MaxPreviewChars = 240;
+  Serial.print("Payload preview: ");
+  for (size_t i = 0; i < payload.length() && i < MaxPreviewChars; ++i) {
+    const char c = payload[i];
+    Serial.print((c == '\n' || c == '\r') ? ' ' : c);
+  }
+  if (payload.length() > MaxPreviewChars) {
+    Serial.print("...");
+  }
+  Serial.println();
+}
+
 void printSummary(JsonDocument& doc) {
   Serial.println("--- display summary ---");
   Serial.print("generated_at: ");
@@ -137,6 +150,8 @@ uint32_t fetchAndPrintSummary() {
   HTTPClient http;
   http.setTimeout(HTTP_TIMEOUT_MS);
   http.begin(DISPLAY_SUMMARY_URL);
+  http.addHeader("Accept", "application/json");
+  http.addHeader("Accept-Encoding", "identity");
 
   Serial.print("GET ");
   Serial.println(DISPLAY_SUMMARY_URL);
@@ -147,8 +162,18 @@ uint32_t fetchAndPrintSummary() {
     return DEFAULT_REFRESH_SECONDS;
   }
 
+  const String contentType = http.header("Content-Type");
   const String payload = http.getString();
   http.end();
+
+  if (contentType.length() > 0 && contentType.indexOf("application/json") < 0) {
+    Serial.print("Unexpected Content-Type: ");
+    Serial.println(contentType);
+    Serial.print("Payload length: ");
+    Serial.println(payload.length());
+    printPayloadPreview(payload);
+    return DEFAULT_REFRESH_SECONDS;
+  }
 
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, payload);
@@ -157,6 +182,7 @@ uint32_t fetchAndPrintSummary() {
     Serial.println(error.c_str());
     Serial.print("Payload length: ");
     Serial.println(payload.length());
+    printPayloadPreview(payload);
     return DEFAULT_REFRESH_SECONDS;
   }
 
