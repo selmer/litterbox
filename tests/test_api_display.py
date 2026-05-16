@@ -1,0 +1,192 @@
+"""Tests for the /display/summary API endpoint."""
+from datetime import datetime, timezone, timedelta
+
+import pytest
+
+from app.models import Cat, CleaningCycle, Visit
+import app.routers.dashboard as dashboard_state
+
+
+@pytest.fixture(autouse=True)
+def reset_dashboard_state():
+    with dashboard_state._poll_lock:
+        dashboard_state.last_successful_poll_at = None
+        dashboard_state.last_poll_attempted_at = None
+        dashboard_state.last_poll_error = None
+        dashboard_state.update_mode = "polling"
+    yield
+    with dashboard_state._poll_lock:
+        dashboard_state.last_successful_poll_at = None
+        dashboard_state.last_poll_attempted_at = None
+        dashboard_state.last_poll_error = None
+        dashboard_state.update_mode = "polling"
+
+
+def _mark_poller_healthy():
+    with dashboard_state._poll_lock:
+        dashboard_state.last_successful_poll_at = datetime.now(timezone.utc)
+        dashboard_state.last_poll_error = None
+
+
+def test_display_summary_empty(client):
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["refresh_after_seconds"] == 300
+    assert data["status"]["label"] == "Polling"
+    assert data["status"]["healthy"] is False
+    assert data["latest_visit"] is None
+    assert data["today"] == {
+        "visits": 0,
+        "time_in_box_seconds": 0,
+        "cleaning_cycles": 0,
+        "unidentified_visits": 0,
+    }
+    assert data["chart"] is None
+    assert data["cats"] == []
+    assert data["alert"] == "Poller has not reported successfully yet."
+
+
+def test_display_summary_returns_latest_visit_today_counts_and_chart(client, db_session):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    db_session.add_all([
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=20), duration_seconds=280, weight_kg=3.72),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=10), duration_seconds=290, weight_kg=3.78),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(minutes=30), duration_seconds=300, weight_kg=3.76),
+        CleaningCycle(started_at=now - timedelta(minutes=5)),
+    ])
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"]["healthy"] is True
+    assert data["status"]["message"] is None
+    assert data["latest_visit"]["cat_name"] == "Plurk"
+    assert data["latest_visit"]["identified"] is True
+    assert data["latest_visit"]["identified_by"] == "auto"
+    assert data["latest_visit"]["duration_seconds"] == 300
+    assert data["latest_visit"]["weight_kg"] == 3.76
+    assert data["today"]["visits"] == 1
+    assert data["today"]["time_in_box_seconds"] == 300
+    assert data["today"]["cleaning_cycles"] == 1
+    assert data["today"]["unidentified_visits"] == 0
+    assert data["cats"] == [{"name": "Plurk", "visits_today": 1, "last_weight_kg": 3.76}]
+    assert data["alert"] is None
+
+    chart = data["chart"]
+    assert chart["label"] == "30d weight"
+    assert chart["unit"] == "kg"
+    assert chart["min_kg"] == 3.72
+    assert chart["max_kg"] == 3.78
+    assert [point["weight_kg"] for point in chart["points"]] == [3.72, 3.78, 3.76]
+    assert [point["date"] for point in chart["points"]] == sorted(point["date"] for point in chart["points"])
+
+
+def test_display_summary_unidentified_latest_visit_uses_unknown_cat_and_alert(client, db_session):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    db_session.add_all([
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=8), duration_seconds=280, weight_kg=3.72),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=3), duration_seconds=290, weight_kg=3.78),
+        Visit(
+            cat_id=None,
+            identified_by=None,
+            started_at=now - timedelta(minutes=15),
+            ended_at=now - timedelta(minutes=10),
+            duration_seconds=120,
+            weight_kg=3.5,
+        ),
+    ])
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["latest_visit"]["cat_name"] == "Unknown cat"
+    assert data["latest_visit"]["identified"] is False
+    assert data["latest_visit"]["identified_by"] is None
+    assert data["today"]["unidentified_visits"] == 1
+    assert data["alert"] == "Latest visit is unidentified."
+    assert [point["weight_kg"] for point in data["chart"]["points"]] == [3.72, 3.78]
+
+
+def test_display_summary_unhealthy_poller_uses_error_alert(client, db_session):
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+    db_session.add(
+        Visit(
+            cat_id=cat.id,
+            identified_by="manual",
+            started_at=datetime.now(timezone.utc),
+            duration_seconds=60,
+            weight_kg=3.8,
+        )
+    )
+    db_session.commit()
+    with dashboard_state._poll_lock:
+        dashboard_state.last_poll_error = "permission denied"
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"]["healthy"] is False
+    assert data["status"]["message"] == "permission denied"
+    assert data["alert"] == "permission denied"
+
+
+def test_display_summary_returns_null_chart_when_latest_cat_has_too_little_data(client, db_session):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+    db_session.add(
+        Visit(
+            cat_id=cat.id,
+            identified_by="auto",
+            started_at=datetime.now(timezone.utc),
+            duration_seconds=60,
+            weight_kg=3.8,
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    assert response.json()["chart"] is None
+
+
+def test_display_summary_excludes_chart_points_older_than_30_days(client, db_session):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    db_session.add_all([
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=45), duration_seconds=60, weight_kg=3.6),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=2), duration_seconds=60, weight_kg=3.7),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=1), duration_seconds=60, weight_kg=3.8),
+    ])
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    weights = [point["weight_kg"] for point in response.json()["chart"]["points"]]
+    assert weights == [3.7, 3.8]

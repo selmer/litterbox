@@ -122,6 +122,62 @@ class DashboardOut(BaseModel):
     generated_at: datetime
 
 
+# --- ESP32 e-paper display schemas ---
+
+class DisplayStatus(BaseModel):
+    label: str
+    healthy: bool
+    last_successful_at: Optional[datetime] = None
+    message: Optional[str] = None
+
+
+class DisplayLatestVisit(BaseModel):
+    cat_name: str
+    identified: bool
+    started_at: datetime
+    time_ago_label: str
+    duration_seconds: Optional[int]
+    weight_kg: Optional[float]
+    identified_by: Optional[Literal["auto", "manual"]] = None
+
+
+class DisplayToday(BaseModel):
+    visits: int
+    time_in_box_seconds: int
+    cleaning_cycles: int
+    unidentified_visits: int
+
+
+class DisplayChartPoint(BaseModel):
+    date: str
+    weight_kg: float
+
+
+class DisplayChart(BaseModel):
+    label: str
+    unit: str
+    min_kg: float
+    max_kg: float
+    points: list[DisplayChartPoint]
+
+
+class DisplayCatSummary(BaseModel):
+    name: str
+    visits_today: int
+    last_weight_kg: Optional[float]
+
+
+class DisplaySummaryOut(BaseModel):
+    generated_at: datetime
+    refresh_after_seconds: int
+    status: DisplayStatus
+    latest_visit: Optional[DisplayLatestVisit]
+    today: DisplayToday
+    chart: Optional[DisplayChart]
+    cats: list[DisplayCatSummary]
+    alert: Optional[str] = None
+
+
 # --- Tuya webhook payload schemas ---
 
 class TuyaDPStatus(BaseModel):

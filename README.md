@@ -11,6 +11,10 @@ Project documentation has been consolidated into `docs/`:
 - `docs/AGENTS.md` and `docs/CLAUDE.md` — supporting notes and reference material
 - `frontend/docs/README.md` — frontend-specific documentation
 
+## ESP32 e-paper display
+
+A first PlatformIO firmware scaffold lives in `firmware/epaper-display/`. It connects an ESP32 to WiFi, fetches `GET /display/summary`, parses the compact display JSON, and prints it to Serial. E-paper rendering is the next milestone after the data path is verified on hardware.
+
 ## Running the test suite
 
 Install dependencies (pytest and httpx are included in `requirements.txt`):

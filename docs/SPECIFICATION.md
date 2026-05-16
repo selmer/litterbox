@@ -87,6 +87,13 @@ This document describes the current architecture, API contract, persistence mode
   - Includes `poller_last_successful_at`, `poller_last_attempted_at`, and `poller_last_error` diagnostics.
   - In `webhook` mode, `poller_healthy` is always `true`.
 
+### Display
+
+- `GET /display/summary`
+  - Returns compact JSON for an ESP32 4.2 inch black/white/red e-paper status display.
+  - Includes poller status, latest visit, today's totals, compact per-cat summaries, optional alert text, and an optional 30-day weight chart.
+  - Uses `refresh_after_seconds` so firmware can avoid refreshing faster than the backend recommends.
+
 ### Cats
 
 - `POST /cats`
@@ -273,6 +280,7 @@ This document describes the current architecture, API contract, persistence mode
   - `tests/test_api_visits.py`
   - `tests/test_api_cleaning_cycles.py`
   - `tests/test_api_dashboard.py`
+  - `tests/test_api_display.py`
   - `tests/test_poller.py`
 
 ### Frontend tests
