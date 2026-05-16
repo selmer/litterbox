@@ -45,3 +45,6 @@ No application code change should be made unless a written specification exists 
 | 012 | [Deployment and Release Pipeline Hardening](specs/012-2026-05-16-deployment-and-release-pipeline-hardening.md) | P1 |
 | 013 | [Documentation and Test Coverage Trustworthiness](specs/013-2026-05-16-documentation-and-test-coverage-trustworthiness.md) | P2 |
 | 014 | [Tuya Excretion Log Reconciliation](specs/014-2026-05-16-tuya-excretion-log-reconciliation.md) | P0 |
+| 015 | [Light Professional Dashboard Theme](specs/015-2026-05-16-light-professional-dashboard-theme.md) | P1 |
+| 016 | [Dark Elegant Dashboard Theme](specs/016-2026-05-16-dark-elegant-dashboard-theme.md) | P1 |
+| 017 | [Future Dashboard Design Enhancements](specs/017-2026-05-16-future-dashboard-design-enhancements.md) | P2 |

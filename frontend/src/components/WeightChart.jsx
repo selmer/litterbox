@@ -14,7 +14,7 @@ const RANGES = [
 ]
 
 // One colour per cat — accent for first, then a softer second
-const CAT_COLORS = ['#e07b54', '#7c6af7', '#22c55e', '#f59e0b']
+const CAT_COLORS = ['var(--chart-line)', 'var(--success)', '#38BDF8', '#F59E0B']
 
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
@@ -64,7 +64,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
   const catNames = weightHistory?.map(c => c.cat_name) || []
 
   return (
-    <div className="card">
+    <div className="card weight-chart-card">
       <div className="flex-between mb-4">
         <div className="card-label">Weight over time</div>
         <div className="chart-range-controls">
@@ -89,7 +89,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}
@@ -117,7 +117,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
                 stroke={CAT_COLORS[i % CAT_COLORS.length]}
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 4, strokeWidth: 0, fill: CAT_COLORS[i % CAT_COLORS.length] }}
                 connectNulls
               />
             ))}

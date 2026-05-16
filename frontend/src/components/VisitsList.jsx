@@ -44,18 +44,18 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete }) 
         </thead>
         <tbody>
           {visits.map(visit => (
-            <tr key={visit.id}>
-              <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+            <tr key={visit.id} className="visit-row">
+              <td data-label="Cat" className="visit-cat" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
                 {visit.cat_id ? (catMap[visit.cat_id]?.name || `Cat #${visit.cat_id}`) : '—'}
               </td>
-              <td className="text-mono" style={{ fontSize: 12 }}>
+              <td data-label="Started" className="text-mono" style={{ fontSize: 12 }}>
                 {format(new Date(visit.started_at), 'dd MMM, HH:mm')}
               </td>
-              <td>{formatDuration(visit.duration_seconds)}</td>
-              <td style={{ color: 'var(--text-primary)' }}>
+              <td data-label="Duration">{formatDuration(visit.duration_seconds)}</td>
+              <td data-label="Weight" style={{ color: 'var(--text-primary)' }}>
                 {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '—'}
               </td>
-              <td>
+              <td data-label="ID">
                 <IdentificationBadge
                   identifiedBy={visit.identified_by}
                   catId={visit.cat_id}

@@ -17,6 +17,16 @@ function formatDuration(seconds) {
   return `${m}m ${s}s`
 }
 
+function SummaryMetric({ icon, label, value, accent = false }) {
+  return (
+    <div className="summary-metric">
+      <span className="summary-metric__icon" aria-hidden="true">{icon}</span>
+      <span className="summary-metric__label">{label}</span>
+      <span className={`summary-metric__value ${accent ? 'accent' : ''}`}>{value}</span>
+    </div>
+  )
+}
+
 export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhotoChange }) {
   const catId = getCatId(cat)
   const [photo, setPhoto] = useState(cat.photo_url || null)
@@ -64,11 +74,18 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
   const lastVisitAgo = cat.last_visit_at
     ? formatDistanceToNow(new Date(cat.last_visit_at), { addSuffix: true })
     : null
+  const weightKg = cat.last_visit_weight_kg || cat.reference_weight_kg
+  const weightDeltaKg = cat.last_visit_weight_kg && cat.reference_weight_kg
+    ? cat.last_visit_weight_kg - cat.reference_weight_kg
+    : null
+  const weightDeltaLabel = weightDeltaKg === null
+    ? (cat.last_visit_weight_kg ? 'latest' : 'reference')
+    : `${weightDeltaKg >= 0 ? '+' : ''}${weightDeltaKg.toFixed(2)} kg`
 
   return (
     <>
-    <div className="card cat-card" style={{ flexDirection: 'column' }}>
-      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-start', width: '100%' }}>
+    <div className="card cat-card cat-summary-card">
+      <div className="cat-card__topline">
         <div
           className="cat-card__photo cat-card__photo--clickable"
           onClick={() => !uploading && setShowUpload(true)}
@@ -80,60 +97,40 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
           {photo ? <img src={photo} alt={cat.cat_name || cat.name} /> : <span>{PLACEHOLDER_EMOJI}</span>}
         </div>
 
-        <div className="cat-card__body">
-          <div className="flex-between mb-2">
-            <div className="cat-card__name">{cat.cat_name || cat.name}</div>
-            {(cat.last_visit_weight_kg || cat.reference_weight_kg) && (
-              <div className="cat-card__weight">
-                {(cat.last_visit_weight_kg || cat.reference_weight_kg).toFixed(3)}
-                <span> kg</span>
-                {!cat.last_visit_weight_kg && (
-                  <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>ref</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="stat-row">
-            <span className="stat-label">Visits today</span>
-            <span className={`stat-value ${cat.visits_today > 0 ? 'accent' : ''}`}>
-              {cat.visits_today}
-            </span>
-          </div>
-
-          <div className="stat-row">
-            <span className="stat-label">Time in box</span>
-            <span className="stat-value">
-              {formatDuration(cat.time_in_box_today_seconds)}
-            </span>
-          </div>
-
-          <div className="stat-row">
-            <span className="stat-label">Last visit</span>
-            <span className="stat-value">
-              {lastVisitAgo || '—'}
-            </span>
-          </div>
-
-          {cat.last_visit_duration_seconds && (
-            <div className="stat-row">
-              <span className="stat-label">Duration</span>
-              <span className="stat-value">
-                {formatDuration(cat.last_visit_duration_seconds)}
-              </span>
-            </div>
-          )}
+        <div className="cat-card__identity">
+          <div className="cat-card__name">{cat.cat_name || cat.name}</div>
+          <div className="cat-card__breed">{cat.breed || 'Cat profile'}</div>
         </div>
+
+        {weightKg && (
+          <div className="cat-card__weight-block">
+            <div className="cat-card__weight">
+              {weightKg.toFixed(3)}
+              <span> kg</span>
+            </div>
+            <div className={`cat-card__delta ${weightDeltaKg !== null && weightDeltaKg < 0 ? 'negative' : ''}`}>
+              {weightDeltaLabel}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="summary-metrics">
+        <SummaryMetric icon="▱" label="Visits today" value={cat.visits_today} accent={cat.visits_today > 0} />
+        <SummaryMetric icon="□" label="Time in box" value={formatDuration(cat.time_in_box_today_seconds)} />
+        <SummaryMetric icon="◌" label="Last visit" value={lastVisitAgo || '—'} />
+        <SummaryMetric icon="◴" label="Duration" value={formatDuration(cat.last_visit_duration_seconds)} />
       </div>
 
       {onAddVisit && (
-        <button
-          className="btn btn-secondary btn-sm w-full"
-          style={{ marginTop: 'var(--space-3)' }}
-          onClick={() => onAddVisit(cat)}
-        >
-          + Add visit
-        </button>
+        <div className="cat-card__actions">
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => onAddVisit(cat)}
+          >
+            + Add visit
+          </button>
+        </div>
       )}
     </div>
 

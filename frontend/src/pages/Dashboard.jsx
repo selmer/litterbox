@@ -176,26 +176,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Cat cards */}
-      <div className="grid-2 mb-6">
-        {dashboard.cats.map(cat => {
-          return <CatCard key={cat.cat_id} cat={cat} onAddVisit={openAddVisit} />
-        })}
-        {inactiveCats.map(cat => (
-          <CatCard key={cat.id} cat={cat} isPlaceholder />
-        ))}
-        {/* If no cats at all yet */}
-        {dashboard.cats.length === 0 && inactiveCats.length === 0 && (
-          <div className="card" style={{ gridColumn: '1 / -1' }}>
-            <div className="empty-state">
-              <div className="empty-icon">🐱</div>
-              <p>No cats added yet.</p>
-              <Link to="/cats" className="btn btn-primary" style={{ marginTop: 12 }}>
-                Add a cat →
-              </Link>
+      <div className="dashboard-grid mb-6">
+        <div className="cat-summary-column">
+          {dashboard.cats.map(cat => {
+            return <CatCard key={cat.cat_id} cat={cat} onAddVisit={openAddVisit} />
+          })}
+          {inactiveCats.map(cat => (
+            <CatCard key={cat.id} cat={cat} isPlaceholder />
+          ))}
+          {dashboard.cats.length === 0 && inactiveCats.length === 0 && (
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-icon">🐱</div>
+                <p>No cats added yet.</p>
+                <Link to="/cats" className="btn btn-primary" style={{ marginTop: 12 }}>
+                  Add a cat →
+                </Link>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        <WeightChart
+          weightHistory={weightHistory}
+          onRangeChange={handleRangeChange}
+          weightLoading={weightLoading}
+        />
       </div>
 
       {/* Alerts */}
@@ -206,15 +212,6 @@ export default function Dashboard() {
           <Link to="/visits">review in Visits</Link>
         </div>
       )}
-
-      {/* Weight chart */}
-      <div className="mb-6">
-        <WeightChart
-          weightHistory={weightHistory}
-          onRangeChange={handleRangeChange}
-          weightLoading={weightLoading}
-        />
-      </div>
 
       {/* Recent visits */}
       <div>
