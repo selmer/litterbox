@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import Icon from './components/Icon'
 import { ToastProvider } from './components/Toast'
 import './index.css'
 import './App.css'
@@ -13,11 +14,14 @@ const DARK_THEME = 'dark-elegant'
 
 function Sidebar({ theme, onToggleTheme }) {
   const darkTheme = theme === DARK_THEME
+  const targetThemeLabel = darkTheme ? 'light professional' : 'dark elegant'
 
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-mark" aria-hidden="true">🐱</div>
+        <div className="sidebar-logo-mark" aria-hidden="true">
+          <Icon name="cat" size={20} />
+        </div>
         <div>
           <h1>Cat health monitor</h1>
           <p>litterbox insights</p>
@@ -26,15 +30,15 @@ function Sidebar({ theme, onToggleTheme }) {
 
       <nav className="sidebar-nav">
         <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">▦</span>
+          <Icon name="dashboard" className="nav-icon" />
           Dashboard
         </NavLink>
         <NavLink to="/visits" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">□</span>
+          <Icon name="visits" className="nav-icon" />
           Visits
         </NavLink>
         <NavLink to="/cats" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">◇</span>
+          <Icon name="cat" className="nav-icon" />
           Cats
         </NavLink>
       </nav>
@@ -43,9 +47,9 @@ function Sidebar({ theme, onToggleTheme }) {
         <button
           className="btn btn-secondary btn-sm w-full theme-toggle"
           onClick={onToggleTheme}
-          aria-label={`Switch to ${darkTheme ? 'light professional' : 'dark elegant'} theme`}
+          aria-label={`Switch to ${targetThemeLabel} theme`}
         >
-          <span aria-hidden="true">{darkTheme ? '☼' : '◐'}</span>
+          <Icon name={darkTheme ? 'sun' : 'moon'} size={15} />
           {darkTheme ? 'Light professional' : 'Dark elegant'}
         </button>
       </div>
@@ -65,6 +69,7 @@ function AppShell() {
   }, [theme])
 
   const darkTheme = theme === DARK_THEME
+  const targetThemeLabel = darkTheme ? 'light professional' : 'dark elegant'
   const toggleTheme = () => setTheme(current => current === DARK_THEME ? LIGHT_THEME : DARK_THEME)
 
   return (
@@ -72,18 +77,15 @@ function AppShell() {
       <header className="mobile-header">
         <span className="mobile-logo">Cat health monitor</span>
         <button
-          className="btn btn-secondary btn-sm"
+          className="btn btn-secondary btn-sm mobile-theme-toggle"
           onClick={toggleTheme}
-          aria-label={`Switch to ${darkTheme ? 'light professional' : 'dark elegant'} theme`}
+          aria-label={`Switch to ${targetThemeLabel} theme`}
         >
-          {darkTheme ? '☼' : '◐'}
+          <Icon name={darkTheme ? 'sun' : 'moon'} size={15} />
         </button>
       </header>
 
-      <Sidebar
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+      <Sidebar theme={theme} onToggleTheme={toggleTheme} />
       <main className="main-content">
         <Suspense fallback={<div className="loading">Loading…</div>}>
           <Routes>

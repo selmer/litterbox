@@ -45,6 +45,11 @@
   object-fit: cover;
 }
 
+.cat-card__photo .cat-avatar-icon {
+  width: 28px;
+  height: 28px;
+}
+
 .cat-card__photo--placeholder {
   border-style: dashed;
 }
@@ -144,8 +149,12 @@
 
 .summary-metric__icon {
   color: var(--accent);
-  font-size: 16px;
   line-height: 18px;
+}
+
+.summary-metric__icon .app-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .summary-metric__label {
@@ -644,6 +653,18 @@
   color: var(--accent);
   text-decoration: underline;
   cursor: pointer;
+}
+
+.alert-with-icon,
+.status-note--icon,
+.cat-list__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.alert-with-icon {
+  display: flex;
 }
 
 .alert-yellow {

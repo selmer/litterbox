@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
+import Icon from '../components/Icon'
 import { useToast } from '../components/ToastContext'
 import { ModalShell, PageHeader } from '../components/ui'
 
@@ -183,7 +184,8 @@ export default function Visits() {
                 className={`btn w-full btn-align-start ${cat.id === reassigning.cat_id ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => confirmReassign(cat.id)}
               >
-                🐱 {cat.name}
+                <Icon name="cat" size={15} />
+                {cat.name}
                 {cat.reference_weight_kg && (
                   <span className="button-meta">ref: {cat.reference_weight_kg.toFixed(2)} kg</span>
                 )}

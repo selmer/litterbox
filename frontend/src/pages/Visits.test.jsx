@@ -45,6 +45,11 @@ function renderVisits() {
   )
 }
 
+function getModalCatButton(name) {
+  const buttons = screen.getAllByRole('button', { name: new RegExp(name) })
+  return buttons[buttons.length - 1]
+}
+
 describe('Visits page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -97,8 +102,8 @@ describe('Visits page', () => {
 
       fireEvent.click(screen.getByText('Reassign 2'))
       // Reassign modal should appear with cat button
-      await waitFor(() => screen.getByText('🐱 Mochi'))
-      fireEvent.click(screen.getByText('🐱 Mochi'))
+      await waitFor(() => expect(getModalCatButton('Mochi')).toBeInTheDocument())
+      fireEvent.click(getModalCatButton('Mochi'))
 
       await waitFor(() =>
         expect(client.updateVisit).toHaveBeenCalledWith(2, { cat_id: 10 })
@@ -111,8 +116,8 @@ describe('Visits page', () => {
       await waitFor(() => screen.getByText('Reassign 2'))
 
       fireEvent.click(screen.getByText('Reassign 2'))
-      await waitFor(() => screen.getByText('🐱 Mochi'))
-      fireEvent.click(screen.getByText('🐱 Mochi'))
+      await waitFor(() => expect(getModalCatButton('Mochi')).toBeInTheDocument())
+      fireEvent.click(getModalCatButton('Mochi'))
 
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('Failed to reassign visit')
@@ -126,7 +131,7 @@ describe('Visits page', () => {
 
       fireEvent.click(screen.getByText('Reassign 2'))
       await waitFor(() => screen.getByText('Reassign visit'))
-      fireEvent.click(screen.getByText('🐱 Mochi'))
+      fireEvent.click(getModalCatButton('Mochi'))
 
       await waitFor(() =>
         expect(screen.queryByText('Reassign visit')).toBeNull()

@@ -52,7 +52,7 @@ describe('Cats page', () => {
       await waitFor(() =>
         expect(screen.getByText((_, element) =>
           element?.tagName.toLowerCase() === 'span' &&
-          element.textContent === '🐱 Whisker'
+          element.textContent?.trim() === 'Whisker'
         )).toBeInTheDocument()
       )
       expect(client.createCat).toHaveBeenCalledWith({ name: 'Whisker', reference_weight_kg: null })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
+import Icon from './Icon'
 import { EmptyState, StatusBadge } from './ui'
 
 function formatDuration(seconds) {
@@ -21,7 +22,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete }) 
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
-    return <EmptyState icon="🐱" message="No visits recorded yet" compact />
+    return <EmptyState icon={<Icon name="cat" />} message="No visits recorded yet" compact />
   }
 
   return (

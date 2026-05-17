@@ -14,6 +14,7 @@ import WeightChart from '../components/WeightChart'
 import VisitsList from '../components/VisitsList'
 import PollerStatus from '../components/PollerStatus'
 import { useToast } from '../components/ToastContext'
+import Icon from '../components/Icon'
 import { EmptyState, ModalShell, PageHeader } from '../components/ui'
 
 const REFRESH_INTERVAL_MS = 15000
@@ -145,7 +146,7 @@ export default function Dashboard() {
   }
 
   if (loading) return <div className="loading">Loading…</div>
-  if (error) return <EmptyState icon="⚠️" message={error} />
+  if (error) return <EmptyState icon={<Icon name="alert" />} message={error} />
 
   const activeCatIds = new Set(dashboard.cats.map(c => c.cat_id))
   const inactiveCats = cats.filter(c => !activeCatIds.has(c.id) && c.active)
@@ -178,7 +179,7 @@ export default function Dashboard() {
           ))}
           {dashboard.cats.length === 0 && inactiveCats.length === 0 && (
             <div className="card">
-              <EmptyState icon="🐱" message="No cats added yet.">
+              <EmptyState icon={<Icon name="cat" />} message="No cats added yet.">
                 <Link to="/cats" className="btn btn-primary">Add a cat →</Link>
               </EmptyState>
             </div>
@@ -193,10 +194,13 @@ export default function Dashboard() {
       </div>
 
       {dashboard.unidentified_visits_today > 0 && (
-        <div className="alert alert-yellow mb-6">
-          ⚠️ {dashboard.unidentified_visits_today} unidentified visit
-          {dashboard.unidentified_visits_today > 1 ? 's' : ''} today —{' '}
-          <Link to="/visits">review in Visits</Link>
+        <div className="alert alert-yellow alert-with-icon mb-6">
+          <Icon name="alert" size={16} />
+          <span>
+            {dashboard.unidentified_visits_today} unidentified visit
+            {dashboard.unidentified_visits_today > 1 ? 's' : ''} today —{' '}
+            <Link to="/visits">review in Visits</Link>
+          </span>
         </div>
       )}
 
@@ -209,9 +213,12 @@ export default function Dashboard() {
       </div>
 
       {dashboard.cleaning_cycles_today > 0 && (
-        <div className="status-note">
-          🧹 {dashboard.cleaning_cycles_today} cleaning cycle
-          {dashboard.cleaning_cycles_today > 1 ? 's' : ''} today
+        <div className="status-note status-note--icon">
+          <Icon name="clean" size={15} />
+          <span>
+            {dashboard.cleaning_cycles_today} cleaning cycle
+            {dashboard.cleaning_cycles_today > 1 ? 's' : ''} today
+          </span>
         </div>
       )}
 

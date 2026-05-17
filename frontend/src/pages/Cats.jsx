@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCats, createCat, updateCat } from '../api/client'
+import Icon from '../components/Icon'
 import { useToast } from '../components/ToastContext'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
@@ -155,7 +156,7 @@ export default function Cats() {
               <div className="flex-between">
                 <div>
                   <div className="flex-center gap-2">
-                    <span className="cat-list__name">🐱 {cat.name}</span>
+                    <span className="cat-list__name"><Icon name="cat" size={15} /> {cat.name}</span>
                     {!cat.active && <StatusBadge tone="muted">inactive</StatusBadge>}
                   </div>
                   <div className="text-muted mt-1 text-small">
@@ -181,7 +182,7 @@ export default function Cats() {
         ))}
 
         {cats.length === 0 && !adding && (
-          <EmptyState icon="🐱" message="No cats yet. Add one to get started." />
+          <EmptyState icon={<Icon name="cat" />} message="No cats yet. Add one to get started." />
         )}
       </div>
     </div>

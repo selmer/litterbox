@@ -179,7 +179,25 @@ textarea {
   justify-content: center;
   background: var(--accent-soft);
   border: 1px solid var(--accent-border);
-  font-size: 18px;
+  color: var(--accent);
+}
+
+.app-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.inline-icon {
+  display: inline-block;
+  vertical-align: -0.15em;
+}
+
+.cat-avatar-icon {
+  color: var(--accent);
+}
+
+[data-theme="dark-elegant"] .sidebar-logo-mark {
+  color: #FFFFFF;
 }
 
 .sidebar-logo h1 {
@@ -236,9 +254,8 @@ textarea {
 
 .nav-item .nav-icon {
   width: 18px;
-  text-align: center;
+  height: 18px;
   color: currentColor;
-  font-size: 16px;
 }
 
 .sidebar-footer {
@@ -250,8 +267,14 @@ textarea {
   border-top-color: rgba(255, 255, 255, 0.06);
 }
 
-.theme-toggle {
+.theme-toggle,
+.mobile-theme-toggle {
   justify-content: center;
+}
+
+.mobile-theme-toggle {
+  width: 34px;
+  padding: 0;
 }
 
 .main-content {
