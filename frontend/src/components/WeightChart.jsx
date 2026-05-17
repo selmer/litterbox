@@ -3,30 +3,47 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
-import { subDays, subMonths, subYears, format } from 'date-fns'
+import { format } from 'date-fns'
 import Icon from './Icon'
 import { EmptyState } from './ui'
+import { CHART_RANGE_STORAGE_KEY, getInitialRangeLabel, RANGES } from '../utils/chartRanges'
 
-const RANGES = [
-  { label: '1W', getDates: () => ({ from: subDays(new Date(), 7),   to: new Date() }) },
-  { label: '1M', getDates: () => ({ from: subMonths(new Date(), 1), to: new Date() }) },
-  { label: '3M', getDates: () => ({ from: subMonths(new Date(), 3), to: new Date() }) },
-  { label: '1Y', getDates: () => ({ from: subYears(new Date(), 1),  to: new Date() }) },
-  { label: 'All', getDates: () => ({ from: new Date(0),             to: new Date() }) },
-]
+function getTickCount(rangeLabel) {
+  return { '1W': 4, '1M': 5, '3M': 6, '1Y': 7, All: 6 }[rangeLabel] || 6
+}
+
+function getMinTickGap(rangeLabel) {
+  return rangeLabel === '1W' ? 28 : 42
+}
+
+function formatDateTick(timestamp, rangeLabel) {
+  const date = new Date(timestamp)
+  if (rangeLabel === '1W') return format(date, 'EEE')
+  if (rangeLabel === '1M') return format(date, 'dd MMM')
+  if (rangeLabel === '3M') return format(date, 'MMM d')
+  if (rangeLabel === '1Y') return format(date, 'MMM yy')
+  return format(date, 'yyyy')
+}
+
+function formatKg(value) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return ''
+  return `${number.toFixed(1)} kg`
+}
 
 // One colour per cat — accent for first, then a softer second
 const CAT_COLORS = ['var(--chart-line)', 'var(--success)', '#38BDF8', '#F59E0B']
 
 function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
+  const rows = payload?.filter(entry => Number.isFinite(Number(entry.value))) || []
+  if (!active || rows.length === 0) return null
   return (
     <div className="chart-tooltip">
-      <div className="chart-tooltip__date">{label}</div>
-      {payload.map((entry) => (
+      <div className="chart-tooltip__date">{format(new Date(label), 'dd MMM yyyy, HH:mm')}</div>
+      {rows.map((entry) => (
         <div key={entry.name} className="chart-tooltip__row">
           <span style={{ color: entry.color }}>{entry.name}</span>
-          <span>{entry.value.toFixed(3)} kg</span>
+          <span>{Number(entry.value).toFixed(3)} kg</span>
         </div>
       ))}
     </div>
@@ -34,10 +51,11 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function WeightChart({ weightHistory, onRangeChange, weightLoading = false }) {
-  const [activeRange, setActiveRange] = useState('1Y')
+  const [activeRange, setActiveRange] = useState(getInitialRangeLabel)
 
   function handleRange(range) {
     setActiveRange(range.label)
+    window.localStorage?.setItem(CHART_RANGE_STORAGE_KEY, range.label)
     const { from, to } = range.getDates()
     onRangeChange?.({ fromDate: from, toDate: to })
   }
@@ -87,20 +105,26 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
         <EmptyState icon={<Icon name="chart" />} message="No weight data yet for this period" compact />
       ) : (
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+          <LineChart data={chartData} margin={{ top: 4, right: 10, bottom: 0, left: -8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis
-              dataKey="date"
+              dataKey="timestamp"
+              type="number"
+              domain={['dataMin', 'dataMax']}
               tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}
               tickLine={false}
               axisLine={{ stroke: 'var(--border)' }}
+              tickCount={getTickCount(activeRange)}
+              minTickGap={getMinTickGap(activeRange)}
+              interval="preserveStartEnd"
+              tickFormatter={(value) => formatDateTick(value, activeRange)}
             />
             <YAxis
               domain={['auto', 'auto']}
               tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={v => `${v}kg`}
+              tickFormatter={formatKg}
             />
             <Tooltip content={<CustomTooltip />} />
             {catNames.length > 1 && (

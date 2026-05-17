@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { subYears } from 'date-fns'
 import {
   createVisit,
   getApiErrorMessage,
@@ -11,6 +10,7 @@ import {
 } from '../api/client'
 import CatCard from '../components/CatCard'
 import WeightChart from '../components/WeightChart'
+import { getInitialRangeLabel, getRangeDates } from '../utils/chartRanges'
 import VisitsList from '../components/VisitsList'
 import PollerStatus from '../components/PollerStatus'
 import { useToast } from '../components/ToastContext'
@@ -35,9 +35,9 @@ export default function Dashboard() {
   const [cats, setCats] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [dateRange, setDateRange] = useState({
-    fromDate: subYears(new Date(), 1),
-    toDate: new Date(),
+  const [dateRange, setDateRange] = useState(() => {
+    const { from, to } = getRangeDates(getInitialRangeLabel())
+    return { fromDate: from, toDate: to }
   })
   const [weightLoading, setWeightLoading] = useState(false)
   const [addingVisitForCat, setAddingVisitForCat] = useState(null)
@@ -149,7 +149,7 @@ export default function Dashboard() {
   if (error) return <EmptyState icon={<Icon name="alert" />} message={error} />
 
   const activeCatIds = new Set(dashboard.cats.map(c => c.cat_id))
-  const inactiveCats = cats.filter(c => !activeCatIds.has(c.id) && c.active)
+  const catsWithoutVisits = cats.filter(c => !activeCatIds.has(c.id) && c.active)
   const pageDate = new Date().toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
@@ -169,18 +169,25 @@ export default function Dashboard() {
         )}
       />
 
+      {!dashboard.poller_healthy && (
+        <div className="alert alert-red alert-with-icon mb-6">
+          <Icon name="alert" size={16} />
+          <span>{dashboard.poller_last_error || 'Poller is disconnected. Dashboard data may be stale.'}</span>
+        </div>
+      )}
+
       <div className="dashboard-grid mb-6">
         <div className="cat-summary-column">
           {dashboard.cats.map(cat => (
             <CatCard key={cat.cat_id} cat={cat} onAddVisit={openAddVisit} />
           ))}
-          {inactiveCats.map(cat => (
-            <CatCard key={cat.id} cat={cat} isPlaceholder />
+          {catsWithoutVisits.map(cat => (
+            <CatCard key={cat.id} cat={cat} isPlaceholder onAddVisit={openAddVisit} />
           ))}
-          {dashboard.cats.length === 0 && inactiveCats.length === 0 && (
+          {cats.length === 0 && (
             <div className="card">
-              <EmptyState icon={<Icon name="cat" />} message="No cats added yet.">
-                <Link to="/cats" className="btn btn-primary">Add a cat →</Link>
+              <EmptyState icon={<Icon name="cat" />} message="No cats yet">
+                <Link to="/cats" className="btn btn-primary">Add a cat</Link>
               </EmptyState>
             </div>
           )}

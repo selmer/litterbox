@@ -69,8 +69,15 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
         </div>
         <div className="cat-card__body">
           <div className="cat-card__name">{cat.name}</div>
-          <div className="cat-card__placeholder-text">arriving soon</div>
+          <div className="cat-card__placeholder-text">No visits yet</div>
         </div>
+        {onAddVisit && (
+          <div className="cat-card__placeholder-actions">
+            <button className="btn btn-secondary btn-sm" onClick={() => onAddVisit(cat)}>
+              + Add visit
+            </button>
+          </div>
+        )}
       </div>
     )
   }

@@ -184,14 +184,23 @@
 .cat-card__placeholder-text {
   font-size: 12px;
   color: var(--text-muted);
-  font-style: italic;
   margin-top: var(--space-1);
+}
+
+.cat-card__placeholder-actions {
+  margin-left: auto;
+  align-self: center;
 }
 
 
 /* ===================== CHART ===================== */
 .weight-chart-card {
   min-height: 100%;
+}
+
+[data-theme="dark-elegant"] .weight-chart-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
 }
 
 .chart-range-controls {
@@ -237,12 +246,17 @@
 }
 
 .chart-tooltip {
-  background: var(--bg-card);
+  min-width: 148px;
+  background: var(--bg-card-elevated);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   box-shadow: var(--shadow-md);
   font-size: 12px;
+}
+
+[data-theme="dark-elegant"] .chart-tooltip {
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
 .chart-tooltip__date {
@@ -257,6 +271,7 @@
   gap: var(--space-4);
   color: var(--text-primary);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ===================== MODAL ===================== */
@@ -1009,6 +1024,10 @@
 
 [data-theme="dark-elegant"] .alert-yellow {
   color: #fcd34d;
+}
+
+[data-theme="dark-elegant"] .alert-red {
+  color: #fca5a5;
 }
 
 @media (max-width: 700px) {
