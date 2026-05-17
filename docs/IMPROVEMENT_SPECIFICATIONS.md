@@ -57,3 +57,4 @@ No application code change should be made unless a written specification exists 
 | 024 | [Chart and Dashboard Refinement](specs/024-2026-05-17-chart-and-dashboard-refinement.md) | P2 |
 | 025 | [Visit Duration Evidence and Diagnostics](specs/025-2026-05-17-visit-duration-evidence-and-diagnostics.md) | P0 |
 | 026 | [Weight History Diagnostics and Mutation Consistency](specs/026-2026-05-17-weight-history-diagnostics-and-mutation-consistency.md) | P1 |
+| 027 | [Visit ID UI Consistency](specs/027-2026-05-17-visit-id-ui-consistency.md) | P2 |

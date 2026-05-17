@@ -31,10 +31,15 @@ describe('VisitsList', () => {
     expect(screen.getByRole('columnheader', { name: 'Duration' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Weight' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'ID' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument()
+    expect(screen.getAllByText('#1')).toHaveLength(2)
+    expect(screen.getAllByText('#2')).toHaveLength(2)
 
     const mobileList = screen.getByLabelText('Visit list')
     expect(within(mobileList).getByText('Mochi')).toBeInTheDocument()
     expect(within(mobileList).getByText('Unknown cat')).toBeInTheDocument()
+    expect(within(mobileList).getByText('#1')).toBeInTheDocument()
+    expect(within(mobileList).getByText('#2')).toBeInTheDocument()
     expect(within(mobileList).getByText('unidentified')).toBeInTheDocument()
   })
 

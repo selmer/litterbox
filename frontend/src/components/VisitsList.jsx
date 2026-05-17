@@ -50,7 +50,10 @@ function VisitMobileCard({ visit, catMap, onReassign, onDelete }) {
           <span className={`visit-card__marker ${visit.cat_id ? '' : 'is-unidentified'}`} />
           <span>{catName}</span>
         </div>
-        <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
+        <div className="visit-card__meta">
+          <span className="visit-id text-mono">#{visit.id}</span>
+          <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
+        </div>
       </div>
       <dl className="visit-card__details">
         <div>
@@ -88,6 +91,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
             <col className="visits-table__duration-col" />
             <col className="visits-table__weight-col" />
             <col className="visits-table__id-col" />
+            <col className="visits-table__source-col" />
             {(onReassign || onDelete) && <col className="visits-table__actions-col" />}
           </colgroup>
           <thead>
@@ -97,6 +101,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
               <th>Duration</th>
               <th>Weight</th>
               <th>ID</th>
+              <th>Source</th>
               {(onReassign || onDelete) && <th>Actions</th>}
             </tr>
           </thead>
@@ -113,6 +118,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
                 <td className="text-primary">
                   {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}
                 </td>
+                <td className="visit-id text-mono table-small">#{visit.id}</td>
                 <td>
                   <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
                 </td>

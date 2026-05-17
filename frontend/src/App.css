@@ -832,12 +832,19 @@
   table-layout: fixed;
 }
 
-.visits-table__cat-col { width: 25%; }
-.visits-table__started-col { width: 20%; }
-.visits-table__duration-col { width: 14%; }
-.visits-table__weight-col { width: 15%; }
-.visits-table__id-col { width: 13%; }
-.visits-table__actions-col { width: 13%; }
+.visits-table__cat-col { width: 23%; }
+.visits-table__started-col { width: 18%; }
+.visits-table__duration-col { width: 13%; }
+.visits-table__weight-col { width: 14%; }
+.visits-table__id-col { width: 9%; }
+.visits-table__source-col { width: 12%; }
+.visits-table__actions-col { width: 11%; }
+
+.visit-id {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 
 .visit-row--unidentified .visit-cat::before,
 .visit-card__marker.is-unidentified {
@@ -870,6 +877,14 @@
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-3);
+}
+
+.visit-card__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 
 .visit-card__cat {
