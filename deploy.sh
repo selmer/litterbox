@@ -8,13 +8,24 @@ NAS_HOST="${NAS_HOST:-192.168.68.115}"
 NAS_PATH="${NAS_PATH:-/volume2/docker/litterbox}"
 ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-false}"
 NPM_GLOBALCONFIG="$SCRIPT_DIR/frontend/.npm-globalconfig"
+VENV_DIR="$SCRIPT_DIR/.venv"
+PYTHON="$VENV_DIR/bin/python"
+
+ensure_backend_venv() {
+  if [[ ! -x "$PYTHON" ]]; then
+    echo "Creating backend virtual environment..."
+    python3 -m venv "$VENV_DIR"
+  fi
+}
 
 validate() {
+  ensure_backend_venv
+
   echo "Installing backend dependencies..."
-  python3 -m pip install -r requirements.txt -q
+  "$PYTHON" -m pip install -r requirements.txt -q
 
   echo "Running backend tests..."
-  python3 -m pytest tests/ -v
+  "$PYTHON" -m pytest tests/ -v
 
   echo "Installing frontend dependencies..."
   (cd frontend && NPM_CONFIG_GLOBALCONFIG="$NPM_GLOBALCONFIG" npm ci)
