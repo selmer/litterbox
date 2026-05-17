@@ -273,6 +273,53 @@ def test_delete_visit_not_found(client):
     assert response.status_code == 404
 
 
+def test_deleted_visit_is_removed_from_weight_history(client):
+    cat_id = _make_cat(client, name="Luna")
+    visit = _make_visit(client, cat_id, weight_kg=4.25)
+    visit_id = visit["id"]
+
+    response = client.get("/visits/weight-history")
+    assert response.status_code == 200
+    assert response.json()[0]["data"][0]["visit_id"] == visit_id
+
+    response = client.delete(f"/visits/{visit_id}")
+    assert response.status_code == 204
+
+    response = client.get("/visits/weight-history")
+    assert response.status_code == 200
+    assert response.json()[0]["data"] == []
+
+
+def test_unidentified_visit_is_removed_from_weight_history(client):
+    cat_id = _make_cat(client, name="Luna")
+    visit = _make_visit(client, cat_id, weight_kg=4.25)
+    visit_id = visit["id"]
+
+    response = client.patch(f"/visits/{visit_id}", json={"cat_id": None})
+    assert response.status_code == 200
+
+    response = client.get("/visits/weight-history")
+    assert response.status_code == 200
+    assert response.json()[0]["data"] == []
+
+
+def test_reassigned_visit_moves_between_weight_history_series(client):
+    cat1 = _make_cat(client, name="Luna")
+    cat2 = _make_cat(client, name="Mochi", weight=6.0)
+    visit = _make_visit(client, cat1, weight_kg=4.25)
+    visit_id = visit["id"]
+
+    response = client.patch(f"/visits/{visit_id}", json={"cat_id": cat2})
+    assert response.status_code == 200
+
+    response = client.get("/visits/weight-history")
+    assert response.status_code == 200
+    by_cat = {series["cat_id"]: series["data"] for series in response.json()}
+    assert by_cat[cat1] == []
+    assert by_cat[cat2][0]["visit_id"] == visit_id
+    assert by_cat[cat2][0]["weight_kg"] == 4.25
+
+
 def test_weight_history_returns_data_for_active_cats(client):
     cat_id = _make_cat(client, name="Luna")
     now = datetime.now(timezone.utc)

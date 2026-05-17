@@ -56,3 +56,4 @@ No application code change should be made unless a written specification exists 
 | 023 | [Cats Screen Redesign](specs/023-2026-05-17-cats-screen-redesign.md) | P1 |
 | 024 | [Chart and Dashboard Refinement](specs/024-2026-05-17-chart-and-dashboard-refinement.md) | P2 |
 | 025 | [Visit Duration Evidence and Diagnostics](specs/025-2026-05-17-visit-duration-evidence-and-diagnostics.md) | P0 |
+| 026 | [Weight History Diagnostics and Mutation Consistency](specs/026-2026-05-17-weight-history-diagnostics-and-mutation-consistency.md) | P1 |

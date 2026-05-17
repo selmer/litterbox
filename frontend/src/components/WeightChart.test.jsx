@@ -53,6 +53,7 @@ describe('WeightChart', () => {
     const data = JSON.parse(screen.getByTestId('chart-data').textContent)
     expect(data).toHaveLength(3)
     expect(data.map(point => point.Mochi)).toEqual([4.0, 4.2, 4.3])
+    expect(data.map(point => point.MochiVisitId)).toEqual([1, 2, 3])
     expect(data[0].date).toContain('2024')
     expect(data[1].date).toContain('2025')
     expect(data[2].date).toContain('2025')

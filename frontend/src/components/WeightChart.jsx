@@ -43,7 +43,10 @@ function CustomTooltip({ active, payload, label }) {
       {rows.map((entry) => (
         <div key={entry.name} className="chart-tooltip__row">
           <span style={{ color: entry.color }}>{entry.name}</span>
-          <span>{Number(entry.value).toFixed(3)} kg</span>
+          <span>
+            {Number(entry.value).toFixed(3)} kg
+            {entry.payload?.[`${entry.name}VisitId`] && ` · Visit #${entry.payload[`${entry.name}VisitId`]}`}
+          </span>
         </div>
       ))}
     </div>
@@ -74,6 +77,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
           date: format(date, 'dd MMM yyyy, HH:mm'),
           timestamp: date.getTime(),
           [catData.cat_name]: point.weight_kg,
+          [`${catData.cat_name}VisitId`]: point.visit_id,
         }
       })
     })
