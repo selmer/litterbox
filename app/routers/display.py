@@ -14,14 +14,20 @@ from app.schemas import (
     DisplayStatus,
     DisplaySummaryOut,
     DisplayToday,
+    DisplayWeightComparison,
 )
 from app.routers import dashboard as dashboard_state
 
 router = APIRouter(prefix="/display", tags=["display"])
 
-DISPLAY_REFRESH_SECONDS = dashboard_state.POLL_INTERVAL_SECONDS
+DISPLAY_REFRESH_SECONDS = 60 * 60
 DISPLAY_CHART_DAYS = 30
 MIN_CHART_POINTS = 2
+ONE_MONTH_LOOKBACK_DAYS = 30
+THREE_MONTH_LOOKBACK_DAYS = 90
+ONE_MONTH_TOLERANCE_DAYS = 14
+THREE_MONTH_TOLERANCE_DAYS = 21
+SPARKLINE_POINTS = 4
 
 
 def _utc_now() -> datetime:
@@ -147,56 +153,108 @@ def _latest_visit(db: Session, now: datetime) -> tuple[DisplayLatestVisit | None
     )
 
 
-def _cat_summaries(db: Session, today_start: datetime) -> list[DisplayCatSummary]:
-    today_subq = (
-        db.query(
-            Visit.cat_id,
-            func.count(Visit.id).label("visits_today"),
-        )
+def _comparison_for_visit(latest: Visit | None, historical: Visit | None) -> DisplayWeightComparison | None:
+    if latest is None or latest.weight_kg is None or historical is None or historical.weight_kg is None:
+        return None
+    return DisplayWeightComparison(
+        weight_kg=historical.weight_kg,
+        measured_at=historical.started_at,
+        delta_kg=round(latest.weight_kg - historical.weight_kg, 3),
+    )
+
+
+def _nearest_historical_weight(
+    visits: list[Visit],
+    target: datetime,
+    tolerance: timedelta,
+    latest_visit_id: int | None,
+) -> Visit | None:
+    best_visit = None
+    best_distance = None
+    for visit in visits:
+        if latest_visit_id is not None and visit.id == latest_visit_id:
+            continue
+        distance = abs(_as_utc(visit.started_at) - target)
+        if distance > tolerance:
+            continue
+        if best_distance is None or distance < best_distance:
+            best_visit = visit
+            best_distance = distance
+    return best_visit
+
+
+def _sparkline_values(visits: list[Visit]) -> list[float]:
+    if not visits:
+        return []
+    if len(visits) <= SPARKLINE_POINTS:
+        return [visit.weight_kg for visit in visits if visit.weight_kg is not None]
+
+    last_index = len(visits) - 1
+    selected_indexes = []
+    for index in range(SPARKLINE_POINTS):
+        selected = round((last_index * index) / (SPARKLINE_POINTS - 1))
+        if selected not in selected_indexes:
+            selected_indexes.append(selected)
+    return [visits[index].weight_kg for index in selected_indexes if visits[index].weight_kg is not None]
+
+
+def _cat_summaries(db: Session, today_start: datetime, now: datetime) -> list[DisplayCatSummary]:
+    today_counts = dict(
+        db.query(Visit.cat_id, func.count(Visit.id))
         .filter(Visit.cat_id.isnot(None), Visit.started_at >= today_start)
         .group_by(Visit.cat_id)
-        .subquery()
+        .all()
     )
 
-    latest_subq = (
-        db.query(
-            Visit.cat_id.label("cat_id"),
-            Visit.weight_kg.label("weight_kg"),
-            func.row_number()
-            .over(
-                partition_by=Visit.cat_id,
-                order_by=(Visit.started_at.desc(), Visit.id.desc()),
-            )
-            .label("row_num"),
-        )
-        .filter(Visit.cat_id.isnot(None), Visit.weight_kg.isnot(None))
-        .subquery()
-    )
-
-    rows = (
-        db.query(
-            Cat.name,
-            func.coalesce(today_subq.c.visits_today, 0),
-            latest_subq.c.weight_kg,
-        )
+    cats = (
+        db.query(Cat)
         .filter(Cat.active == True)
-        .outerjoin(today_subq, Cat.id == today_subq.c.cat_id)
-        .outerjoin(
-            latest_subq,
-            and_(Cat.id == latest_subq.c.cat_id, latest_subq.c.row_num == 1),
-        )
         .order_by(Cat.name.asc(), Cat.id.asc())
         .all()
     )
 
-    return [
-        DisplayCatSummary(
-            name=name,
-            visits_today=int(visits_today),
-            last_weight_kg=weight_kg,
+    since = now - timedelta(days=THREE_MONTH_LOOKBACK_DAYS + THREE_MONTH_TOLERANCE_DAYS)
+    result = []
+    for cat in cats:
+        visits = (
+            db.query(Visit)
+            .filter(
+                Visit.cat_id == cat.id,
+                Visit.weight_kg.isnot(None),
+                Visit.started_at >= since,
+                Visit.started_at <= now,
+            )
+            .order_by(Visit.started_at.asc(), Visit.id.asc())
+            .all()
         )
-        for name, visits_today, weight_kg in rows
-    ]
+        latest = visits[-1] if visits else None
+        one_month = _nearest_historical_weight(
+            visits,
+            now - timedelta(days=ONE_MONTH_LOOKBACK_DAYS),
+            timedelta(days=ONE_MONTH_TOLERANCE_DAYS),
+            latest.id if latest else None,
+        )
+        three_months = _nearest_historical_weight(
+            visits,
+            now - timedelta(days=THREE_MONTH_LOOKBACK_DAYS),
+            timedelta(days=THREE_MONTH_TOLERANCE_DAYS),
+            latest.id if latest else None,
+        )
+
+        result.append(
+            DisplayCatSummary(
+                name=cat.name,
+                visits_today=int(today_counts.get(cat.id, 0)),
+                last_weight_kg=latest.weight_kg if latest else None,
+                latest_weight_kg=latest.weight_kg if latest else None,
+                latest_weight_at=latest.started_at if latest else None,
+                one_month_ago=_comparison_for_visit(latest, one_month),
+                three_months_ago=_comparison_for_visit(latest, three_months),
+                sparkline=_sparkline_values(visits),
+            )
+        )
+
+    return result
 
 
 def _chart_cat_id(db: Session, latest_visit_cat_id: int | None, since: datetime) -> int | None:
@@ -289,6 +347,6 @@ def get_display_summary(db: Session = Depends(get_db)):
         latest_visit=latest_visit,
         today=today,
         chart=_weight_chart(db, latest_visit_cat_id, now),
-        cats=_cat_summaries(db, today_start),
+        cats=_cat_summaries(db, today_start, now),
         alert=_alert(status, latest_visit, today),
     )

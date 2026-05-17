@@ -58,3 +58,4 @@ No application code change should be made unless a written specification exists 
 | 025 | [Visit Duration Evidence and Diagnostics](specs/025-2026-05-17-visit-duration-evidence-and-diagnostics.md) | P0 |
 | 026 | [Weight History Diagnostics and Mutation Consistency](specs/026-2026-05-17-weight-history-diagnostics-and-mutation-consistency.md) | P1 |
 | 027 | [Visit ID UI Consistency](specs/027-2026-05-17-visit-id-ui-consistency.md) | P2 |
+| 028 | [E-Paper Weight Comparison Display](specs/028-2026-05-17-epaper-weight-comparison-display.md) | P1 |

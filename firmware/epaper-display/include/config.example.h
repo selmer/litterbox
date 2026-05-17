@@ -11,7 +11,7 @@
 #define DISPLAY_SUMMARY_URL "http://192.168.68.115:8001/display/summary"
 
 // Fallback refresh interval when the backend does not provide one.
-#define DEFAULT_REFRESH_SECONDS 300
+#define DEFAULT_REFRESH_SECONDS 3600
 
 // HTTP timeout in milliseconds. Keep this short enough that the display recovers
 // from network issues without feeling stuck.

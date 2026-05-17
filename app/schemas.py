@@ -174,10 +174,21 @@ class DisplayChart(BaseModel):
     points: list[DisplayChartPoint]
 
 
+class DisplayWeightComparison(BaseModel):
+    weight_kg: float
+    measured_at: datetime
+    delta_kg: float
+
+
 class DisplayCatSummary(BaseModel):
     name: str
     visits_today: int
     last_weight_kg: Optional[float]
+    latest_weight_kg: Optional[float] = None
+    latest_weight_at: Optional[datetime] = None
+    one_month_ago: Optional[DisplayWeightComparison] = None
+    three_months_ago: Optional[DisplayWeightComparison] = None
+    sparkline: list[float] = Field(default_factory=list)
 
 
 class DisplaySummaryOut(BaseModel):
