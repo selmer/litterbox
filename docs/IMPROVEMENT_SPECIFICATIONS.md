@@ -49,3 +49,9 @@ No application code change should be made unless a written specification exists 
 | 016 | [Dark Elegant Dashboard Theme](specs/016-2026-05-16-dark-elegant-dashboard-theme.md) | P1 |
 | 017 | [Future Dashboard Design Enhancements](specs/017-2026-05-16-future-dashboard-design-enhancements.md) | P2 |
 | 018 | [ESP32 E-Paper Display View](specs/018-2026-05-16-esp32-epaper-display-view.md) | P1 |
+| 019 | [UI Review Remediation Roadmap](specs/019-2026-05-17-ui-review-remediation-roadmap.md) | P1 |
+| 020 | [UI Foundation Polish Pass](specs/020-2026-05-17-ui-foundation-polish-pass.md) | P1 |
+| 021 | [Navigation and Icon System](specs/021-2026-05-17-navigation-and-icon-system.md) | P1 |
+| 022 | [Visits Screen Redesign](specs/022-2026-05-17-visits-screen-redesign.md) | P1 |
+| 023 | [Cats Screen Redesign](specs/023-2026-05-17-cats-screen-redesign.md) | P1 |
+| 024 | [Chart and Dashboard Refinement](specs/024-2026-05-17-chart-and-dashboard-refinement.md) | P2 |
