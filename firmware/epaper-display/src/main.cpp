@@ -334,11 +334,11 @@ void drawSummary(JsonDocument& doc) {
       JsonObjectConst cat = cats[0];
       drawText(18, 76, truncateText(nullableText(cat["name"], "Cat"), 16), &FreeMonoBold18pt7b, GxEPD_BLACK);
 
-      drawText(24, 124, "visits today", &FreeMono9pt7b, GxEPD_BLACK);
-      drawText(30, 181, String(cat["visits_today"].as<int>()), &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(24, 122, "visits today", &FreeMono9pt7b, GxEPD_BLACK);
+      drawText(62, 174, String(cat["visits_today"].as<int>()), &FreeMonoBold18pt7b, GxEPD_BLACK);
 
-      drawText(154, 124, "latest weight", &FreeMono9pt7b, GxEPD_BLACK);
-      drawText(154, 166, formatCompactWeight(cat["latest_weight_kg"]), &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(210, 122, "latest weight", &FreeMono9pt7b, GxEPD_BLACK);
+      drawText(210, 174, formatCompactWeight(cat["latest_weight_kg"]), &FreeMonoBold18pt7b, GxEPD_BLACK);
 
       display.drawLine(10, 202, DisplayWidth - 10, 202, GxEPD_BLACK);
       drawComparison(24, 232, "1 month", cat["one_month_ago"]);

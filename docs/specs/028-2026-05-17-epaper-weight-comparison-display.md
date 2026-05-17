@@ -24,6 +24,9 @@ The display should feel like a small dedicated measurement panel, not a mini web
 - Primary row:
   - large visits-today number with label `visits today`
   - large latest weight with label `latest weight`
+  - labels must have clear horizontal separation; `visits today` and `latest weight` must not visually merge
+  - the visits count and latest weight value should share the same baseline
+  - the latest weight column should start far enough right to read as a distinct block
 - Comparison area:
   - `1 month ago` weight and delta from latest
   - `3 months ago` weight and delta from latest
@@ -118,6 +121,8 @@ Suggested shape for each display cat:
 
 - The e-paper display shows only visits-today, latest weight, one-month comparison, and three-month comparison as primary content.
 - Single-cat and two-cat layouts are both supported without overlap on 400x300.
+- In the single-cat layout, the visits count and latest weight value align on the same visual row.
+- In the single-cat layout, the primary labels have enough spacing to avoid reading as one joined phrase.
 - Red is only used for warnings or meaningful negative deltas.
 - Missing historical comparison data is handled gracefully.
 - The backend provides comparison data directly; firmware does not calculate historical windows.
