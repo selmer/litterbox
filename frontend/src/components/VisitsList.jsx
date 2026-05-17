@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
+import { EmptyState, StatusBadge } from './ui'
 
 function formatDuration(seconds) {
   if (!seconds) return '—'
@@ -10,9 +11,9 @@ function formatDuration(seconds) {
 }
 
 function IdentificationBadge({ identifiedBy, catId }) {
-  if (!catId) return <span className="badge badge-yellow">unidentified</span>
-  if (identifiedBy === 'manual') return <span className="badge badge-accent">manual</span>
-  return <span className="badge badge-green">auto</span>
+  if (!catId) return <StatusBadge tone="yellow">unidentified</StatusBadge>
+  if (identifiedBy === 'manual') return <StatusBadge tone="accent">manual</StatusBadge>
+  return <StatusBadge tone="green">auto</StatusBadge>
 }
 
 export default function VisitsList({ visits, cats = [], onReassign, onDelete }) {
@@ -20,16 +21,11 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete }) 
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
-    return (
-      <div className="empty-state">
-        <div className="empty-icon">🐱</div>
-        <p>No visits recorded yet</p>
-      </div>
-    )
+    return <EmptyState icon="🐱" message="No visits recorded yet" compact />
   }
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="card card--flush">
       <table className="table">
         <thead>
           <tr>
@@ -45,54 +41,43 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete }) 
         <tbody>
           {visits.map(visit => (
             <tr key={visit.id} className="visit-row">
-              <td data-label="Cat" className="visit-cat" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
+              <td data-label="Cat" className="visit-cat text-primary">
                 {visit.cat_id ? (catMap[visit.cat_id]?.name || `Cat #${visit.cat_id}`) : '—'}
               </td>
-              <td data-label="Started" className="text-mono" style={{ fontSize: 12 }}>
+              <td data-label="Started" className="text-mono table-small">
                 {format(new Date(visit.started_at), 'dd MMM, HH:mm')}
               </td>
               <td data-label="Duration">{formatDuration(visit.duration_seconds)}</td>
-              <td data-label="Weight" style={{ color: 'var(--text-primary)' }}>
+              <td data-label="Weight" className="text-primary">
                 {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '—'}
               </td>
               <td data-label="ID">
-                <IdentificationBadge
-                  identifiedBy={visit.identified_by}
-                  catId={visit.cat_id}
-                />
+                <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
               </td>
               {onReassign && (
-                <td>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => onReassign(visit)}
-                  >
+                <td data-label="Actions">
+                  <button className="btn btn-secondary btn-sm" onClick={() => onReassign(visit)}>
                     reassign
                   </button>
                 </td>
               )}
               {onDelete && (
-                <td>
+                <td data-label={onReassign ? '' : 'Actions'}>
                   {pendingDelete === visit.id ? (
-                    <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <span className="action-row">
                       <button
-                        className="btn btn-secondary btn-sm"
-                        style={{ color: 'var(--color-danger, #e53e3e)', whiteSpace: 'nowrap' }}
+                        className="btn btn-secondary btn-sm text-danger no-wrap"
                         onClick={() => { onDelete(visit); setPendingDelete(null) }}
                       >
                         Yes, delete
                       </button>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setPendingDelete(null)}
-                      >
+                      <button className="btn btn-secondary btn-sm" onClick={() => setPendingDelete(null)}>
                         Cancel
                       </button>
                     </span>
                   ) : (
                     <button
-                      className="btn btn-secondary btn-sm"
-                      style={{ color: 'var(--color-danger, #e53e3e)' }}
+                      className="btn btn-secondary btn-sm text-danger"
                       onClick={() => setPendingDelete(visit.id)}
                     >
                       delete

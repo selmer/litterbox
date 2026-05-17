@@ -14,6 +14,7 @@ import WeightChart from '../components/WeightChart'
 import VisitsList from '../components/VisitsList'
 import PollerStatus from '../components/PollerStatus'
 import { useToast } from '../components/ToastContext'
+import { EmptyState, ModalShell, PageHeader } from '../components/ui'
 
 const REFRESH_INTERVAL_MS = 15000
 
@@ -144,55 +145,42 @@ export default function Dashboard() {
   }
 
   if (loading) return <div className="loading">Loading…</div>
-  if (error) return (
-    <div className="empty-state">
-      <div className="empty-icon">⚠️</div>
-      <p>{error}</p>
-    </div>
-  )
+  if (error) return <EmptyState icon="⚠️" message={error} />
 
-  // Active cats from dashboard + a placeholder for cats not yet active
   const activeCatIds = new Set(dashboard.cats.map(c => c.cat_id))
   const inactiveCats = cats.filter(c => !activeCatIds.has(c.id) && c.active)
+  const pageDate = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  })
 
   return (
     <div>
-      <div className="page-header">
-        <div className="flex-between">
-          <div>
-            <h2>Dashboard</h2>
-            <p>
-              {new Date().toLocaleDateString('en-GB', {
-                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-              })}
-            </p>
-          </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle={pageDate}
+        actions={(
           <PollerStatus
             healthy={dashboard.poller_healthy}
             generatedAt={dashboard.generated_at}
             lastSuccessfulAt={dashboard.poller_last_successful_at}
             lastError={dashboard.poller_last_error}
           />
-        </div>
-      </div>
+        )}
+      />
 
       <div className="dashboard-grid mb-6">
         <div className="cat-summary-column">
-          {dashboard.cats.map(cat => {
-            return <CatCard key={cat.cat_id} cat={cat} onAddVisit={openAddVisit} />
-          })}
+          {dashboard.cats.map(cat => (
+            <CatCard key={cat.cat_id} cat={cat} onAddVisit={openAddVisit} />
+          ))}
           {inactiveCats.map(cat => (
             <CatCard key={cat.id} cat={cat} isPlaceholder />
           ))}
           {dashboard.cats.length === 0 && inactiveCats.length === 0 && (
             <div className="card">
-              <div className="empty-state">
-                <div className="empty-icon">🐱</div>
-                <p>No cats added yet.</p>
-                <Link to="/cats" className="btn btn-primary" style={{ marginTop: 12 }}>
-                  Add a cat →
-                </Link>
-              </div>
+              <EmptyState icon="🐱" message="No cats added yet.">
+                <Link to="/cats" className="btn btn-primary">Add a cat →</Link>
+              </EmptyState>
             </div>
           )}
         </div>
@@ -204,7 +192,6 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Alerts */}
       {dashboard.unidentified_visits_today > 0 && (
         <div className="alert alert-yellow mb-6">
           ⚠️ {dashboard.unidentified_visits_today} unidentified visit
@@ -213,102 +200,84 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent visits */}
       <div>
-        <div className="flex-between mb-4">
-          <div className="card-label" style={{ margin: 0 }}>Recent visits</div>
-          <Link to="/visits" className="text-muted" style={{ fontSize: 12 }}>
-            view all →
-          </Link>
+        <div className="section-header">
+          <div className="card-label">Recent visits</div>
+          <Link to="/visits" className="section-link">view all →</Link>
         </div>
         <VisitsList visits={recentVisits} cats={cats} />
       </div>
 
-      {/* Cleaning cycles today */}
       {dashboard.cleaning_cycles_today > 0 && (
-        <div className="mt-4 text-muted" style={{ fontSize: 12 }}>
+        <div className="status-note">
           🧹 {dashboard.cleaning_cycles_today} cleaning cycle
           {dashboard.cleaning_cycles_today > 1 ? 's' : ''} today
         </div>
       )}
 
-      {/* Add visit modal */}
       {addingVisitForCat && (
-        <div className="modal-overlay" onClick={closeAddVisit}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-title">Add visit</div>
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-              Manual visit for {addingVisitForCat.cat_name || addingVisitForCat.name}
-            </p>
-            <form onSubmit={handleSubmitVisit} className="cat-form">
-              <div className="form-field">
-                <label className="form-label">Date &amp; time</label>
-                <input
-                  type="datetime-local"
-                  className="form-input"
-                  value={visitForm.date}
-                  onChange={e => setVisitForm(f => ({ ...f, date: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="form-field">
-                <label className="form-label">Weight (g)</label>
+        <ModalShell
+          title="Add visit"
+          description={`Manual visit for ${addingVisitForCat.cat_name || addingVisitForCat.name}`}
+          onClose={closeAddVisit}
+        >
+          <form onSubmit={handleSubmitVisit} className="cat-form">
+            <div className="form-field">
+              <label className="form-label">Date &amp; time</label>
+              <input
+                type="datetime-local"
+                className="form-input"
+                value={visitForm.date}
+                onChange={e => setVisitForm(f => ({ ...f, date: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-field">
+              <label className="form-label">Weight (g)</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="e.g. 4520"
+                min="0"
+                step="1"
+                value={visitForm.weight_g}
+                onChange={e => setVisitForm(f => ({ ...f, weight_g: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-field">
+              <label className="form-label">Duration</label>
+              <div className="form-row">
                 <input
                   type="number"
                   className="form-input"
-                  placeholder="e.g. 4520"
+                  placeholder="min"
                   min="0"
                   step="1"
-                  value={visitForm.weight_g}
-                  onChange={e => setVisitForm(f => ({ ...f, weight_g: e.target.value }))}
-                  required
+                  value={visitForm.duration_min}
+                  onChange={e => setVisitForm(f => ({ ...f, duration_min: e.target.value }))}
+                />
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="sec"
+                  min="0"
+                  max="59"
+                  step="1"
+                  value={visitForm.duration_sec}
+                  onChange={e => setVisitForm(f => ({ ...f, duration_sec: e.target.value }))}
                 />
               </div>
-              <div className="form-field">
-                <label className="form-label">Duration</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="min"
-                    min="0"
-                    step="1"
-                    style={{ flex: 1 }}
-                    value={visitForm.duration_min}
-                    onChange={e => setVisitForm(f => ({ ...f, duration_min: e.target.value }))}
-                  />
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="sec"
-                    min="0"
-                    max="59"
-                    step="1"
-                    style={{ flex: 1 }}
-                    value={visitForm.duration_sec}
-                    onChange={e => setVisitForm(f => ({ ...f, duration_sec: e.target.value }))}
-                  />
-                </div>
-              </div>
-              {submitError && (
-                <p style={{ fontSize: 12, color: 'var(--red)' }}>{submitError}</p>
-              )}
-              <button
-                type="submit"
-                className="btn btn-primary w-full"
-                disabled={submitting}
-              >
-                {submitting ? 'Saving…' : 'Save visit'}
-              </button>
-            </form>
-            <button
-              className="btn btn-secondary w-full mt-4"
-              onClick={closeAddVisit}
-            >
-              Cancel
+            </div>
+            {submitError && <p className="form-error">{submitError}</p>}
+            <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
+              {submitting ? 'Saving…' : 'Save visit'}
             </button>
-          </div>
-        </div>
+          </form>
+          <button className="btn btn-secondary w-full mt-4" onClick={closeAddVisit}>
+            Cancel
+          </button>
+        </ModalShell>
       )}
     </div>
   )

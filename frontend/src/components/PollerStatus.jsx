@@ -14,7 +14,7 @@ export default function PollerStatus({ healthy, generatedAt, lastSuccessfulAt, l
     <div className="poller-status" title={tooltip}>
       <div className={`poller-dot ${healthy ? 'healthy' : 'unhealthy'}`} />
       <span>{healthy ? 'polling' : 'disconnected'}</span>
-      {ago && <span style={{ color: 'var(--text-faint)' }}>· {ago}</span>}
+      {ago && <span className="poller-status__time">· {ago}</span>}
     </div>
   )
 }

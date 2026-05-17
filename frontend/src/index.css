@@ -474,6 +474,11 @@ textarea {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
+.visit-cat {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 .visit-cat::before {
   content: "";
   width: 8px;
@@ -693,7 +698,12 @@ textarea {
     text-transform: uppercase;
   }
 
-  .visit-cat::before {
+  .visit-cat {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.visit-cat::before {
     display: none;
   }
 }

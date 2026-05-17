@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getCats, createCat, updateCat } from '../api/client'
 import { useToast } from '../components/ToastContext'
+import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 function CatForm({ initial, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
@@ -49,7 +50,7 @@ function CatForm({ initial, onSave, onCancel }) {
           Leave blank if unknown — you can set it later.
         </p>
       </div>
-      <div className="flex-center gap-2" style={{ marginTop: 16 }}>
+      <div className="action-row">
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? 'Saving…' : (initial ? 'Save changes' : 'Add cat')}
         </button>
@@ -67,14 +68,14 @@ export default function Cats() {
   const [cats, setCats] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
-  const [editing, setEditing] = useState(null) // cat id being edited
+  const [editing, setEditing] = useState(null)
   const toast = useToast()
 
   useEffect(() => {
     async function fetch() {
       setLoading(true)
       try {
-        const data = await getCats(true) // include inactive
+        const data = await getCats(true)
         setCats(data)
       } finally {
         setLoading(false)
@@ -121,31 +122,24 @@ export default function Cats() {
 
   return (
     <div>
-      <div className="page-header">
-        <div className="flex-between">
-          <div>
-            <h2>Cats</h2>
-            <p>Manage cats and their reference weights</p>
-          </div>
-          {!adding && (
-            <button className="btn btn-primary" onClick={() => setAdding(true)}>
-              + Add cat
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Cats"
+        subtitle="Manage cats and their reference weights"
+        actions={!adding && (
+          <button className="btn btn-primary" onClick={() => setAdding(true)}>
+            + Add cat
+          </button>
+        )}
+      />
 
       {adding && (
         <div className="card mb-6">
           <div className="card-label">New cat</div>
-          <CatForm
-            onSave={handleCreate}
-            onCancel={() => setAdding(false)}
-          />
+          <CatForm onSave={handleCreate} onCancel={() => setAdding(false)} />
         </div>
       )}
 
-      <div className="flex-col gap-4">
+      <div className="cat-list">
         {cats.map(cat => (
           <div key={cat.id} className={`card ${!cat.active ? 'cat-inactive' : ''}`}>
             {editing === cat.id ? (
@@ -161,10 +155,10 @@ export default function Cats() {
               <div className="flex-between">
                 <div>
                   <div className="flex-center gap-2">
-                    <span style={{ fontWeight: 500, fontSize: 15 }}>🐱 {cat.name}</span>
-                    {!cat.active && <span className="badge badge-muted">inactive</span>}
+                    <span className="cat-list__name">🐱 {cat.name}</span>
+                    {!cat.active && <StatusBadge tone="muted">inactive</StatusBadge>}
                   </div>
-                  <div className="text-muted mt-1" style={{ fontSize: 12 }}>
+                  <div className="text-muted mt-1 text-small">
                     Reference weight:{' '}
                     {cat.reference_weight_kg
                       ? <strong>{cat.reference_weight_kg.toFixed(3)} kg</strong>
@@ -173,17 +167,11 @@ export default function Cats() {
                     {' · '}Added {new Date(cat.created_at).toLocaleDateString('en-GB')}
                   </div>
                 </div>
-                <div className="flex-center gap-2">
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setEditing(cat.id)}
-                  >
+                <div className="action-row action-row--end">
+                  <button className="btn btn-secondary btn-sm" onClick={() => setEditing(cat.id)}>
                     Edit
                   </button>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => handleToggleActive(cat)}
-                  >
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleToggleActive(cat)}>
                     {cat.active ? 'Deactivate' : 'Reactivate'}
                   </button>
                 </div>
@@ -193,10 +181,7 @@ export default function Cats() {
         ))}
 
         {cats.length === 0 && !adding && (
-          <div className="empty-state">
-            <div className="empty-icon">🐱</div>
-            <p>No cats yet. Add one to get started.</p>
-          </div>
+          <EmptyState icon="🐱" message="No cats yet. Add one to get started." />
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
 import { useToast } from '../components/ToastContext'
+import { ModalShell, PageHeader } from '../components/ui'
 
 const PAGE_SIZE = 50
 
@@ -19,7 +20,7 @@ export default function Visits() {
   const [hasMore, setHasMore] = useState(false)
   const [loadError, setLoadError] = useState(null)
   const [reloadNonce, setReloadNonce] = useState(0)
-  const [reassigning, setReassigning] = useState(null) // visit being reassigned
+  const [reassigning, setReassigning] = useState(null)
   const toast = useToast()
 
   useEffect(() => {
@@ -101,13 +102,9 @@ export default function Visits() {
 
   return (
     <div>
-      <div className="page-header">
-        <h2>Visits</h2>
-        <p>Full history of litterbox visits</p>
-      </div>
+      <PageHeader title="Visits" subtitle="Full history of litterbox visits" />
 
-      {/* Filter bar */}
-      <div className="flex-center gap-2 mb-6">
+      <div className="filter-bar">
         <button
           className={`btn btn-sm ${selectedCat === null ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => selectFilter(null)}
@@ -123,7 +120,7 @@ export default function Visits() {
             {cat.name}
           </button>
         ))}
-        <span style={{ color: 'var(--border)', margin: '0 2px', userSelect: 'none' }}>|</span>
+        <span className="filter-divider" aria-hidden="true" />
         <button
           className={`btn btn-sm ${selectedCat === 'unidentified' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => selectFilter('unidentified')}
@@ -132,97 +129,77 @@ export default function Visits() {
         </button>
       </div>
 
-      <div style={{ opacity: fetching ? 0.5 : 1, transition: 'opacity 0.15s', pointerEvents: fetching ? 'none' : 'auto' }}>
+      <div className={`fetch-state ${fetching ? 'is-fetching' : ''}`}>
         {loadError && (
           <div className="alert alert-yellow mb-4">
-            {loadError}{' '}
-            <button className="btn btn-secondary btn-sm" onClick={() => setReloadNonce(n => n + 1)}>
+            {loadError}
+            <button className="btn btn-secondary btn-sm alert__action" onClick={() => setReloadNonce(n => n + 1)}>
               Retry
             </button>
           </div>
         )}
-        <VisitsList
-          visits={visits}
-          cats={cats}
-          onReassign={handleReassign}
-          onDelete={handleDelete}
-        />
+        <VisitsList visits={visits} cats={cats} onReassign={handleReassign} onDelete={handleDelete} />
       </div>
 
-      {/* Pagination controls */}
       {(page > 0 || hasMore) && (
-        <div className="flex-center gap-2 mt-4">
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setPage(p => p - 1)}
-            disabled={page === 0}
-          >
+        <div className="pagination">
+          <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p - 1)} disabled={page === 0}>
             ← Previous
           </button>
-          <span className="text-muted" style={{ fontSize: 13 }}>
+          <span className="pagination__label">
             Page {page + 1} · Visits {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + visits.length}
           </span>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setPage(p => p + 1)}
-            disabled={!hasMore}
-          >
+          <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p + 1)} disabled={!hasMore}>
             Next →
           </button>
         </div>
       )}
 
-      {/* Reassign modal */}
       {reassigning && (
-        <div className="modal-overlay" onClick={() => setReassigning(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-title">Reassign visit</div>
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 4 }}>
+        <ModalShell
+          title="Reassign visit"
+          onClose={() => setReassigning(null)}
+          description={(
+            <>
               Who used the litterbox at{' '}
               {new Date(reassigning.started_at).toLocaleTimeString('en-GB', {
                 hour: '2-digit', minute: '2-digit'
               })}
               {reassigning.weight_kg && ` · ${reassigning.weight_kg.toFixed(3)} kg`}?
-            </p>
-            <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
-              Currently:{' '}
-              {reassigning.cat_id
-                ? <strong>{cats.find(c => c.id === reassigning.cat_id)?.name ?? `Cat #${reassigning.cat_id}`}</strong>
-                : <em>unidentified</em>
-              }
-            </p>
-            <div className="flex-col gap-2">
-              {cats.map(cat => (
-                <button
-                  key={cat.id}
-                  className={`btn w-full ${cat.id === reassigning.cat_id ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start' }}
-                  onClick={() => confirmReassign(cat.id)}
-                >
-                  🐱 {cat.name}
-                  {cat.reference_weight_kg && (
-                    <span className="text-muted" style={{ marginLeft: 'auto', fontSize: 11 }}>
-                      ref: {cat.reference_weight_kg.toFixed(2)} kg
-                    </span>
-                  )}
-                </button>
-              ))}
+            </>
+          )}
+        >
+          <p className="modal-description modal-description--tight">
+            Currently:{' '}
+            {reassigning.cat_id
+              ? <strong>{cats.find(c => c.id === reassigning.cat_id)?.name ?? `Cat #${reassigning.cat_id}`}</strong>
+              : <em>unidentified</em>
+            }
+          </p>
+          <div className="flex-col gap-2">
+            {cats.map(cat => (
               <button
-                className="btn btn-secondary w-full"
-                style={{ justifyContent: 'flex-start', color: 'var(--text-muted)' }}
-                onClick={() => confirmReassign(null)}
+                key={cat.id}
+                className={`btn w-full btn-align-start ${cat.id === reassigning.cat_id ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => confirmReassign(cat.id)}
               >
-                Mark as visitor cat
+                🐱 {cat.name}
+                {cat.reference_weight_kg && (
+                  <span className="button-meta">ref: {cat.reference_weight_kg.toFixed(2)} kg</span>
+                )}
               </button>
-            </div>
+            ))}
             <button
-              className="btn btn-secondary w-full mt-4"
-              onClick={() => setReassigning(null)}
+              className="btn btn-secondary w-full btn-align-start text-muted"
+              onClick={() => confirmReassign(null)}
             >
-              Cancel
+              Mark as visitor cat
             </button>
           </div>
-        </div>
+          <button className="btn btn-secondary w-full mt-4" onClick={() => setReassigning(null)}>
+            Cancel
+          </button>
+        </ModalShell>
       )}
     </div>
   )

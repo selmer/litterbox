@@ -4,6 +4,7 @@ import {
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 import { subDays, subMonths, subYears, format } from 'date-fns'
+import { EmptyState } from './ui'
 
 const RANGES = [
   { label: '1W', getDates: () => ({ from: subDays(new Date(), 7),   to: new Date() }) },
@@ -82,10 +83,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
       </div>
 
       {chartData.length === 0 ? (
-        <div className="empty-state" style={{ padding: '40px 0' }}>
-          <div className="empty-icon">📈</div>
-          <p>No weight data yet for this period</p>
-        </div>
+        <EmptyState icon="📈" message="No weight data yet for this period" compact />
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>

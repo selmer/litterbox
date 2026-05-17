@@ -275,6 +275,10 @@
   box-shadow: var(--shadow-md);
 }
 
+.modal--crop {
+  max-width: 400px;
+}
+
 .modal-title {
   font-size: 20px;
   line-height: 26px;
@@ -325,6 +329,257 @@
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+
+/* ===================== FOUNDATION PRIMITIVES ===================== */
+.page-header__row,
+.section-header,
+.modal-actions,
+.form-row,
+.action-row,
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.page-header__row,
+.section-header,
+.pagination {
+  justify-content: space-between;
+}
+
+.page-header__content {
+  min-width: 0;
+}
+
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.section-header {
+  margin-bottom: var(--space-4);
+}
+
+.section-header .card-label {
+  margin: 0;
+}
+
+.section-link {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.section-link:hover {
+  color: var(--accent);
+}
+
+.card--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.modal-description {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 20px;
+  margin-bottom: var(--space-4);
+}
+
+.modal-actions {
+  margin-top: var(--space-4);
+}
+
+.modal-actions .btn {
+  flex: 1;
+}
+
+.form-row {
+  gap: var(--space-2);
+}
+
+.form-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-error {
+  color: var(--red);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.filter-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 24px;
+  background: var(--border-soft);
+  margin: 0 var(--space-1);
+}
+
+.fetch-state {
+  transition: opacity 150ms ease;
+}
+
+.fetch-state.is-fetching {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.alert__action {
+  margin-left: var(--space-3);
+}
+
+.pagination {
+  justify-content: center;
+  margin-top: var(--space-4);
+}
+
+.pagination__label,
+.status-note,
+.button-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.status-note {
+  margin-top: var(--space-4);
+}
+
+.action-row {
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
+.action-row--end {
+  justify-content: flex-end;
+}
+
+.btn-align-start {
+  justify-content: flex-start;
+}
+
+.button-meta {
+  margin-left: auto;
+}
+
+.empty-state--compact {
+  padding: var(--space-8);
+}
+
+.empty-state__actions {
+  margin-top: var(--space-2);
+}
+
+.text-danger {
+  color: var(--red);
+}
+
+.cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cat-list__name {
+  font-weight: 500;
+  font-size: 15px;
+}
+
+
+.modal-description--tight {
+  margin-bottom: var(--space-3);
+}
+
+.modal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.modal-action-wide,
+.modal-actions .modal-action-wide {
+  flex: 2;
+}
+
+.text-small,
+.table-small {
+  font-size: 12px;
+}
+
+.no-wrap {
+  white-space: nowrap;
+}
+
+.poller-status__time {
+  color: var(--text-faint);
+}
+
+.photo-cropper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+}
+
+.photo-cropper__canvas {
+  max-width: 100%;
+  cursor: crosshair;
+  border-radius: var(--radius-sm);
+  display: block;
+  touch-action: none;
+}
+
+.photo-preview {
+  text-align: center;
+}
+
+.photo-preview__image {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.visually-hidden-input {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .page-header__row,
+  .section-header,
+  .pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .page-header__actions,
+  .modal-actions,
+  .action-row--end {
+    width: 100%;
+  }
+
+  .page-header__actions .btn,
+  .action-row--end .btn {
+    flex: 1;
+  }
+
+  .filter-bar {
+    align-items: stretch;
+  }
 }
 
 /* ===================== TOAST ===================== */

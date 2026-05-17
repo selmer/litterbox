@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { ModalShell } from './ui'
 
 const MAX_DIMENSION = 1000
 const CANVAS_MAX = 320
@@ -206,21 +207,15 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal"
-        onClick={e => e.stopPropagation()}
-        style={stage === 'crop' ? { maxWidth: 400 } : {}}
-      >
-        <div className="modal-title">Cat photo</div>
+    <ModalShell title="Cat photo" onClose={onClose} className={stage === 'crop' ? 'modal--crop' : ''}>
 
         {stage === 'idle' && (
           <>
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
+            <p className="modal-description">
               {catName ? `Upload a photo of ${catName}` : 'Upload a photo of your cat'}, or use the
               default icon. Large images are automatically compressed to max {MAX_DIMENSION}×{MAX_DIMENSION}px.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="modal-stack">
               <button
                 className="btn btn-secondary w-full"
                 onClick={() => inputRef.current?.click()}
@@ -240,13 +235,13 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
 
         {stage === 'crop' && (
           <>
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+            <p className="modal-description modal-description--tight">
               Drag to select the area to keep. Leave unselected to use the full image.
             </p>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <div className="photo-cropper">
               <canvas
                 ref={canvasRef}
-                style={{ maxWidth: '100%', cursor: 'crosshair', borderRadius: 6, display: 'block', touchAction: 'none' }}
+                className="photo-cropper__canvas"
                 onMouseDown={handlePointerDown}
                 onMouseMove={handlePointerMove}
                 onMouseUp={handlePointerUp}
@@ -256,12 +251,12 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
                 onTouchEnd={handlePointerUp}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={resetCropSelection}>
+            <div className="modal-stack">
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={resetCropSelection}>
                   Reset
                 </button>
-                <button className="btn btn-primary" style={{ flex: 2 }} onClick={applyCrop}>
+                <button className="btn btn-primary modal-action-wide" onClick={applyCrop}>
                   Apply crop
                 </button>
               </div>
@@ -277,15 +272,15 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
 
         {stage === 'preview' && (
           <>
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
+            <p className="modal-description">
               Looking good! Save this photo or go back to adjust the crop.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ textAlign: 'center' }}>
+            <div className="modal-stack">
+              <div className="photo-preview">
                 <img
                   src={preview}
                   alt="Preview"
-                  style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover' }}
+                  className="photo-preview__image"
                 />
               </div>
               <button className="btn btn-primary w-full" onClick={() => onSave(preview)}>
@@ -311,13 +306,12 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
           ref={inputRef}
           type="file"
           accept="image/*"
-          style={{ display: 'none' }}
+          className="visually-hidden-input"
           onChange={handleFile}
         />
         {error && (
-          <p style={{ fontSize: 12, color: 'var(--red)', margin: '8px 0 0' }}>{error}</p>
+          <p className="form-error mt-2">{error}</p>
         )}
-      </div>
-    </div>
+    </ModalShell>
   )
 }
