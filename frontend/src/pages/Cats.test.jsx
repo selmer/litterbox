@@ -33,8 +33,12 @@ describe('Cats page', () => {
 
   it('loads and displays cats', async () => {
     renderCats()
-    await waitFor(() => expect(screen.getByText(/Mochi/)).toBeInTheDocument())
-    expect(screen.getByText(/Biscuit/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Mochi' })).toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: 'Biscuit' })).toBeInTheDocument()
+    expect(screen.getByText('4.100 kg')).toBeInTheDocument()
+    expect(screen.getByText('not set')).toBeInTheDocument()
+    expect(screen.getByText('active')).toBeInTheDocument()
+    expect(screen.getByText('inactive')).toBeInTheDocument()
   })
 
   describe('handleCreate', () => {
@@ -50,10 +54,7 @@ describe('Cats page', () => {
       fireEvent.click(screen.getByText('Add cat'))
 
       await waitFor(() =>
-        expect(screen.getByText((_, element) =>
-          element?.tagName.toLowerCase() === 'span' &&
-          element.textContent?.trim() === 'Whisker'
-        )).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: 'Whisker' })).toBeInTheDocument()
       )
       expect(client.createCat).toHaveBeenCalledWith({ name: 'Whisker', reference_weight_kg: null })
     })

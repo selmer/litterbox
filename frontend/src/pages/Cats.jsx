@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react'
 import { getCats, createCat, updateCat } from '../api/client'
-import Icon from '../components/Icon'
+import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
+function CatAvatar({ cat }) {
+  return (
+    <div className="cat-profile__avatar">
+      {cat.photo_url ? <img src={cat.photo_url} alt={cat.name} /> : <CatAvatarIcon />}
+    </div>
+  )
+}
+
+function ReferenceWeight({ weight }) {
+  if (weight == null) return <StatusBadge tone="muted">not set</StatusBadge>
+  return <strong>{weight.toFixed(3)} kg</strong>
+}
+
 function CatForm({ initial, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
-  const [weight, setWeight] = useState(initial?.reference_weight_kg || '')
+  const [weight, setWeight] = useState(initial?.reference_weight_kg ?? '')
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e) {
@@ -23,34 +36,35 @@ function CatForm({ initial, onSave, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="cat-form">
-      <div className="form-field">
-        <label className="form-label">Name</label>
-        <input
-          className="form-input"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="e.g. Griezeltje"
-          required
-        />
+    <form onSubmit={handleSubmit} className="cat-form cat-profile-form">
+      <div className="cat-profile-form__grid">
+        <div className="form-field">
+          <label className="form-label">Name</label>
+          <input
+            className="form-input"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="e.g. Griezeltje"
+            required
+          />
+        </div>
+        <div className="form-field">
+          <label className="form-label">Reference weight (kg)</label>
+          <input
+            className="form-input"
+            type="number"
+            step="0.001"
+            min="0"
+            max="20"
+            value={weight}
+            onChange={e => setWeight(e.target.value)}
+            placeholder="e.g. 4.200"
+          />
+        </div>
       </div>
-      <div className="form-field">
-        <label className="form-label">Reference weight (kg)</label>
-        <input
-          className="form-input"
-          type="number"
-          step="0.001"
-          min="0"
-          max="20"
-          value={weight}
-          onChange={e => setWeight(e.target.value)}
-          placeholder="e.g. 4.200"
-        />
-        <p className="form-hint">
-          Used to automatically identify this cat from weight readings.
-          Leave blank if unknown — you can set it later.
-        </p>
-      </div>
+      <p className="form-hint">
+        Used to automatically identify this cat from weight readings. Leave blank if unknown.
+      </p>
       <div className="action-row">
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? 'Saving…' : (initial ? 'Save changes' : 'Add cat')}
@@ -62,6 +76,55 @@ function CatForm({ initial, onSave, onCancel }) {
         )}
       </div>
     </form>
+  )
+}
+
+function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleActive }) {
+  if (editing) {
+    return (
+      <section className={`card cat-profile-card cat-profile-card--editing ${!cat.active ? 'cat-profile-card--inactive' : ''}`}>
+        <div className="cat-profile-card__edit-header">
+          <CatAvatar cat={cat} />
+          <div>
+            <div className="card-label">Editing {cat.name}</div>
+            <p className="text-muted text-small">Update identity matching details.</p>
+          </div>
+        </div>
+        <CatForm initial={cat} onSave={onSave} onCancel={onCancelEdit} />
+      </section>
+    )
+  }
+
+  return (
+    <section className={`card cat-profile-card ${!cat.active ? 'cat-profile-card--inactive' : ''}`}>
+      <div className="cat-profile">
+        <CatAvatar cat={cat} />
+        <div className="cat-profile__main">
+          <div className="cat-profile__title-row">
+            <h3>{cat.name}</h3>
+            {cat.active ? <StatusBadge tone="green">active</StatusBadge> : <StatusBadge tone="muted">inactive</StatusBadge>}
+          </div>
+          <div className="cat-profile__meta-grid">
+            <div className="cat-profile__meta-item">
+              <span>Reference weight</span>
+              <ReferenceWeight weight={cat.reference_weight_kg} />
+            </div>
+            <div className="cat-profile__meta-item">
+              <span>Added</span>
+              <strong>{new Date(cat.created_at).toLocaleDateString('en-GB')}</strong>
+            </div>
+          </div>
+        </div>
+        <div className="cat-profile__actions">
+          <button className="btn btn-secondary btn-sm" onClick={onEdit}>
+            Edit
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={onToggleActive}>
+            {cat.active ? 'Deactivate' : 'Reactivate'}
+          </button>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -134,55 +197,41 @@ export default function Cats() {
       />
 
       {adding && (
-        <div className="card mb-6">
-          <div className="card-label">New cat</div>
+        <section className="card cat-profile-card cat-profile-card--new mb-6">
+          <div className="cat-profile-card__edit-header">
+            <div className="cat-profile__avatar cat-profile__avatar--new">
+              <Icon name="cat" size={28} />
+            </div>
+            <div>
+              <div className="card-label">New cat</div>
+              <p className="text-muted text-small">Add a cat profile for weight-based identification.</p>
+            </div>
+          </div>
           <CatForm onSave={handleCreate} onCancel={() => setAdding(false)} />
-        </div>
+        </section>
       )}
 
-      <div className="cat-list">
+      <div className="cat-profile-list">
         {cats.map(cat => (
-          <div key={cat.id} className={`card ${!cat.active ? 'cat-inactive' : ''}`}>
-            {editing === cat.id ? (
-              <>
-                <div className="card-label">Editing {cat.name}</div>
-                <CatForm
-                  initial={cat}
-                  onSave={(data) => handleUpdate(cat.id, data)}
-                  onCancel={() => setEditing(null)}
-                />
-              </>
-            ) : (
-              <div className="flex-between">
-                <div>
-                  <div className="flex-center gap-2">
-                    <span className="cat-list__name"><Icon name="cat" size={15} /> {cat.name}</span>
-                    {!cat.active && <StatusBadge tone="muted">inactive</StatusBadge>}
-                  </div>
-                  <div className="text-muted mt-1 text-small">
-                    Reference weight:{' '}
-                    {cat.reference_weight_kg
-                      ? <strong>{cat.reference_weight_kg.toFixed(3)} kg</strong>
-                      : <em>not set</em>
-                    }
-                    {' · '}Added {new Date(cat.created_at).toLocaleDateString('en-GB')}
-                  </div>
-                </div>
-                <div className="action-row action-row--end">
-                  <button className="btn btn-secondary btn-sm" onClick={() => setEditing(cat.id)}>
-                    Edit
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleToggleActive(cat)}>
-                    {cat.active ? 'Deactivate' : 'Reactivate'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <CatProfileRow
+            key={cat.id}
+            cat={cat}
+            editing={editing === cat.id}
+            onEdit={() => setEditing(cat.id)}
+            onCancelEdit={() => setEditing(null)}
+            onSave={(data) => handleUpdate(cat.id, data)}
+            onToggleActive={() => handleToggleActive(cat)}
+          />
         ))}
 
         {cats.length === 0 && !adding && (
-          <EmptyState icon={<Icon name="cat" />} message="No cats yet. Add one to get started." />
+          <div className="card">
+            <EmptyState icon={<Icon name="cat" />} message="No cats yet. Add one to get started.">
+              <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                + Add cat
+              </button>
+            </EmptyState>
+          </div>
         )}
       </div>
     </div>
