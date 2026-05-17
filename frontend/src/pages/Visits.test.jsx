@@ -75,6 +75,7 @@ describe('Visits page', () => {
       await waitFor(() => screen.getByText('Delete 1'))
 
       fireEvent.click(screen.getByText('Delete 1'))
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete visit' }))
       await waitFor(() => expect(screen.queryByText('Visit 1')).toBeNull())
       expect(screen.getByText('Visit 2')).toBeInTheDocument()
     })
@@ -85,6 +86,7 @@ describe('Visits page', () => {
       await waitFor(() => screen.getByText('Delete 1'))
 
       fireEvent.click(screen.getByText('Delete 1'))
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete visit' }))
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('Failed to delete visit')
       )
@@ -144,23 +146,23 @@ describe('Visits page', () => {
       renderVisits()
       await waitFor(() => screen.getByText('Visit 1'))
 
-      expect(screen.queryByText('← Previous')).toBeNull()
-      expect(screen.queryByText('Next →')).toBeNull()
+      expect(screen.queryByText('Previous')).toBeNull()
+      expect(screen.queryByText('Next')).toBeNull()
     })
 
     it('shows Next button when there are more pages', async () => {
       client.getVisits.mockResolvedValue(makeLargePage())
       renderVisits()
 
-      await waitFor(() => screen.getByText('Next →'))
-      expect(screen.queryByText('← Previous')).toBeInTheDocument()
+      await waitFor(() => screen.getByText('Next'))
+      expect(screen.queryByText('Previous')).toBeInTheDocument()
     })
 
     it('Next button is disabled on the last page', async () => {
       renderVisits()
       await waitFor(() => screen.getByText('Visit 1'))
       // no next page — hasMore is false with only 2 visits
-      expect(screen.queryByText('Next →')).toBeNull()
+      expect(screen.queryByText('Next')).toBeNull()
     })
 
     it('advances to the next page when Next is clicked', async () => {
@@ -170,8 +172,8 @@ describe('Visits page', () => {
         .mockResolvedValueOnce(page2Visits)
       renderVisits()
 
-      await waitFor(() => screen.getByText('Next →'))
-      fireEvent.click(screen.getByText('Next →'))
+      await waitFor(() => screen.getByText('Next'))
+      fireEvent.click(screen.getByText('Next'))
 
       await waitFor(() => expect(client.getVisits).toHaveBeenCalledWith(
         expect.objectContaining({ offset: PAGE_SIZE })
@@ -186,11 +188,11 @@ describe('Visits page', () => {
         .mockResolvedValueOnce(mockVisits)
       renderVisits()
 
-      await waitFor(() => screen.getByText('Next →'))
-      fireEvent.click(screen.getByText('Next →'))
+      await waitFor(() => screen.getByText('Next'))
+      fireEvent.click(screen.getByText('Next'))
       await waitFor(() => screen.getByText('Visit 99'))
 
-      fireEvent.click(screen.getByText('← Previous'))
+      fireEvent.click(screen.getByText('Previous'))
       await waitFor(() => expect(client.getVisits).toHaveBeenLastCalledWith(
         expect.objectContaining({ offset: 0 })
       ))
@@ -203,8 +205,8 @@ describe('Visits page', () => {
         .mockResolvedValueOnce(mockVisits)       // after filter change
       renderVisits()
 
-      await waitFor(() => screen.getByText('Next →'))
-      fireEvent.click(screen.getByText('Next →'))
+      await waitFor(() => screen.getByText('Next'))
+      fireEvent.click(screen.getByText('Next'))
       await waitFor(() =>
         screen.getByText((_, element) =>
           element?.textContent?.startsWith('Page 2 ·')

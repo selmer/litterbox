@@ -22,6 +22,7 @@ export default function Visits() {
   const [loadError, setLoadError] = useState(null)
   const [reloadNonce, setReloadNonce] = useState(0)
   const [reassigning, setReassigning] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
   const toast = useToast()
 
   useEffect(() => {
@@ -72,10 +73,12 @@ export default function Visits() {
     setPage(0)
   }
 
-  async function handleDelete(visit) {
+  async function confirmDelete() {
+    if (!pendingDelete) return
     try {
-      await deleteVisit(visit.id)
-      setVisits(prev => prev.filter(v => v.id !== visit.id))
+      await deleteVisit(pendingDelete.id)
+      setVisits(prev => prev.filter(v => v.id !== pendingDelete.id))
+      setPendingDelete(null)
     } catch (e) {
       console.error('Failed to delete visit', e)
       toast('Failed to delete visit. Please try again.')
@@ -105,29 +108,30 @@ export default function Visits() {
     <div>
       <PageHeader title="Visits" subtitle="Full history of litterbox visits" />
 
-      <div className="filter-bar">
-        <button
-          className={`btn btn-sm ${selectedCat === null ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => selectFilter(null)}
-        >
-          All
-        </button>
-        {cats.map(cat => (
+      <div className="visits-toolbar">
+        <div className="filter-group" aria-label="Visit filters">
           <button
-            key={cat.id}
-            className={`btn btn-sm ${selectedCat === cat.id ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => selectFilter(cat.id)}
+            className={`filter-chip ${selectedCat === null ? 'active' : ''}`}
+            onClick={() => selectFilter(null)}
           >
-            {cat.name}
+            All
           </button>
-        ))}
-        <span className="filter-divider" aria-hidden="true" />
-        <button
-          className={`btn btn-sm ${selectedCat === 'unidentified' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => selectFilter('unidentified')}
-        >
-          Unidentified
-        </button>
+          {cats.map(cat => (
+            <button
+              key={cat.id}
+              className={`filter-chip ${selectedCat === cat.id ? 'active' : ''}`}
+              onClick={() => selectFilter(cat.id)}
+            >
+              {cat.name}
+            </button>
+          ))}
+          <button
+            className={`filter-chip filter-chip--warning ${selectedCat === 'unidentified' ? 'active' : ''}`}
+            onClick={() => selectFilter('unidentified')}
+          >
+            Unidentified
+          </button>
+        </div>
       </div>
 
       <div className={`fetch-state ${fetching ? 'is-fetching' : ''}`}>
@@ -139,45 +143,83 @@ export default function Visits() {
             </button>
           </div>
         )}
-        <VisitsList visits={visits} cats={cats} onReassign={handleReassign} onDelete={handleDelete} />
+        <VisitsList
+          visits={visits}
+          cats={cats}
+          onReassign={handleReassign}
+          onDelete={setPendingDelete}
+          emptyMessage={selectedCat === null ? 'No visits recorded yet' : 'No visits match this filter'}
+        />
       </div>
 
       {(page > 0 || hasMore) && (
-        <div className="pagination">
+        <div className="pagination pagination--visits">
           <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p - 1)} disabled={page === 0}>
-            ← Previous
+            Previous
           </button>
           <span className="pagination__label">
-            Page {page + 1} · Visits {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + visits.length}
+            Page {page + 1} · {page * PAGE_SIZE + 1}-{page * PAGE_SIZE + visits.length}
           </span>
           <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p + 1)} disabled={!hasMore}>
-            Next →
+            Next
           </button>
         </div>
+      )}
+
+
+      {pendingDelete && (
+        <ModalShell
+          title="Delete visit"
+          onClose={() => setPendingDelete(null)}
+          description="Remove this visit from the history. This cannot be undone."
+        >
+          <div className="delete-visit-summary">
+            <div>
+              <span>Started</span>
+              <strong>{new Date(pendingDelete.started_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+            </div>
+            <div>
+              <span>Weight</span>
+              <strong>{pendingDelete.weight_kg ? `${pendingDelete.weight_kg.toFixed(3)} kg` : '-'}</strong>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setPendingDelete(null)}>
+              Cancel
+            </button>
+            <button className="btn btn-secondary text-danger" onClick={confirmDelete}>
+              Delete visit
+            </button>
+          </div>
+        </ModalShell>
       )}
 
       {reassigning && (
         <ModalShell
           title="Reassign visit"
           onClose={() => setReassigning(null)}
-          description={(
-            <>
-              Who used the litterbox at{' '}
-              {new Date(reassigning.started_at).toLocaleTimeString('en-GB', {
-                hour: '2-digit', minute: '2-digit'
-              })}
-              {reassigning.weight_kg && ` · ${reassigning.weight_kg.toFixed(3)} kg`}?
-            </>
-          )}
+          description="Choose the cat that most likely used the litterbox for this visit."
         >
-          <p className="modal-description modal-description--tight">
-            Currently:{' '}
-            {reassigning.cat_id
-              ? <strong>{cats.find(c => c.id === reassigning.cat_id)?.name ?? `Cat #${reassigning.cat_id}`}</strong>
-              : <em>unidentified</em>
-            }
-          </p>
-          <div className="flex-col gap-2">
+          <div className="reassign-summary">
+            <div>
+              <span>Started</span>
+              <strong>{new Date(reassigning.started_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+            </div>
+            <div>
+              <span>Weight</span>
+              <strong>{reassigning.weight_kg ? `${reassigning.weight_kg.toFixed(3)} kg` : '-'}</strong>
+            </div>
+            <div>
+              <span>Current</span>
+              <strong>
+                {reassigning.cat_id
+                  ? cats.find(c => c.id === reassigning.cat_id)?.name ?? `Cat #${reassigning.cat_id}`
+                  : 'unidentified'
+                }
+              </strong>
+            </div>
+          </div>
+          <div className="reassign-options">
             {cats.map(cat => (
               <button
                 key={cat.id}
@@ -192,7 +234,7 @@ export default function Visits() {
               </button>
             ))}
             <button
-              className="btn btn-secondary w-full btn-align-start text-muted"
+              className="btn btn-secondary w-full btn-align-start reassign-option--visitor"
               onClick={() => confirmReassign(null)}
             >
               Mark as visitor cat
