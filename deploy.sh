@@ -16,6 +16,11 @@ ensure_backend_venv() {
     echo "Creating backend virtual environment..."
     python3 -m venv "$VENV_DIR"
   fi
+
+  if ! "$PYTHON" -m pip --version >/dev/null 2>&1; then
+    echo "Bootstrapping pip in backend virtual environment..."
+    "$PYTHON" -m ensurepip --upgrade
+  fi
 }
 
 validate() {
