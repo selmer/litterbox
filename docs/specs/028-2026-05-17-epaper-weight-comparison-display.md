@@ -17,10 +17,9 @@ The display should feel like a small dedicated measurement panel, not a mini web
 
 ### Single Cat Layout
 
-- Top bar:
-  - cat name on the left
-  - `Today` or last update time on the right
-  - optional tiny status dot
+- No persistent top bar; do not spend pixels on static labels such as `Litterbox` or `Today`
+- Cat name should be the first strong visual element
+- A red alert band may appear at the top only when there is a real warning or stale/offline state
 - Primary row:
   - large visits-today number with label `visits today`
   - large latest weight with label `latest weight`
@@ -123,6 +122,7 @@ Suggested shape for each display cat:
 - Single-cat and two-cat layouts are both supported without overlap on 400x300.
 - In the single-cat layout, the visits count and latest weight value align on the same visual row.
 - In the single-cat layout, the primary labels have enough spacing to avoid reading as one joined phrase.
+- Static top-bar text such as `Litterbox` and `Today` is not rendered in the normal state.
 - Red is only used for warnings or meaningful negative deltas.
 - Missing historical comparison data is handled gracefully.
 - The backend provides comparison data directly; firmware does not calculate historical windows.

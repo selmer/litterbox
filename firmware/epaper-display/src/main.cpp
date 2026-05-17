@@ -314,39 +314,34 @@ void drawSummary(JsonDocument& doc) {
   do {
     display.fillScreen(GxEPD_WHITE);
 
-    drawText(12, 24, "Litterbox", &FreeMonoBold12pt7b, GxEPD_BLACK);
-    drawRightText(DisplayWidth - 12, 23, "Today", &FreeMonoBold9pt7b, GxEPD_BLACK);
-    display.fillCircle(DisplayWidth - 82, 17, 3, accent);
-    display.drawLine(10, 34, DisplayWidth - 10, 34, GxEPD_BLACK);
-
     if (!doc["alert"].isNull()) {
-      display.fillRect(10, 42, DisplayWidth - 20, 24, GxEPD_RED);
-      drawText(16, 60, truncateText(nullableText(doc["alert"]), 38), &FreeMonoBold9pt7b, GxEPD_WHITE);
+      display.fillRect(10, 10, DisplayWidth - 20, 24, GxEPD_RED);
+      drawText(16, 28, truncateText(nullableText(doc["alert"]), 38), &FreeMonoBold9pt7b, GxEPD_WHITE);
     }
 
     JsonArrayConst cats = doc["cats"].as<JsonArrayConst>();
     if (cats.size() == 0) {
       JsonObjectConst today = doc["today"];
-      drawText(22, 96, "No cat data", &FreeMonoBold18pt7b, GxEPD_BLACK);
-      drawText(24, 132, "Visits today", &FreeMono9pt7b, GxEPD_BLACK);
-      drawText(24, 178, String(today["visits"].as<int>()), &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(22, 58, "No cat data", &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(24, 106, "Visits today", &FreeMono9pt7b, GxEPD_BLACK);
+      drawText(24, 158, String(today["visits"].as<int>()), &FreeMonoBold18pt7b, GxEPD_BLACK);
     } else if (cats.size() == 1) {
       JsonObjectConst cat = cats[0];
-      drawText(18, 76, truncateText(nullableText(cat["name"], "Cat"), 16), &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(18, 52, truncateText(nullableText(cat["name"], "Cat"), 16), &FreeMonoBold18pt7b, GxEPD_BLACK);
 
-      drawText(24, 122, "visits today", &FreeMono9pt7b, GxEPD_BLACK);
-      drawText(62, 174, String(cat["visits_today"].as<int>()), &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(24, 100, "visits today", &FreeMono9pt7b, GxEPD_BLACK);
+      drawText(62, 152, String(cat["visits_today"].as<int>()), &FreeMonoBold18pt7b, GxEPD_BLACK);
 
-      drawText(210, 122, "latest weight", &FreeMono9pt7b, GxEPD_BLACK);
-      drawText(210, 174, formatCompactWeight(cat["latest_weight_kg"]), &FreeMonoBold18pt7b, GxEPD_BLACK);
+      drawText(210, 100, "latest weight", &FreeMono9pt7b, GxEPD_BLACK);
+      drawText(210, 152, formatCompactWeight(cat["latest_weight_kg"]), &FreeMonoBold18pt7b, GxEPD_BLACK);
 
-      display.drawLine(10, 202, DisplayWidth - 10, 202, GxEPD_BLACK);
-      drawComparison(24, 232, "1 month", cat["one_month_ago"]);
-      drawComparison(178, 232, "3 months", cat["three_months_ago"]);
-      drawTinySparkline(cat["sparkline"].as<JsonArrayConst>(), 304, 232, 70, 28);
+      display.drawLine(10, 182, DisplayWidth - 10, 182, GxEPD_BLACK);
+      drawComparison(24, 214, "1 month", cat["one_month_ago"]);
+      drawComparison(178, 214, "3 months", cat["three_months_ago"]);
+      drawTinySparkline(cat["sparkline"].as<JsonArrayConst>(), 304, 214, 70, 28);
     } else {
-      drawCatComparisonRow(cats[0].as<JsonObjectConst>(), 48, 108);
-      drawCatComparisonRow(cats[1].as<JsonObjectConst>(), 168, 108);
+      drawCatComparisonRow(cats[0].as<JsonObjectConst>(), 18, 116);
+      drawCatComparisonRow(cats[1].as<JsonObjectConst>(), 148, 116);
     }
 
     drawRightText(DisplayWidth - 10, 292, nullableText(doc["generated_at"]), &FreeMono9pt7b, GxEPD_BLACK);
