@@ -1,108 +1,186 @@
-# litterbox
+# Litterbox
 
-Attempting to connect to a viervoeter Litterbox
+A self-hosted health monitor for a Tuya-connected automatic litterbox. The app tracks cat visits, weights, cleaning cycles, poller health, and a small ESP32 e-paper status display.
 
-## Documentation
+The project is built for a real household setup: a FastAPI backend talks to the litterbox/Tuya data source, a React dashboard makes the data inspectable, PostgreSQL stores history, and optional ESP32 firmware renders a quiet always-on weight comparison view.
 
-Project documentation has been consolidated into `docs/`:
+## What It Does
 
-- `docs/SPECIFICATION.md` — current codebase specification
-- `docs/update-modes.md` — polling and webhook setup
-- `docs/AGENTS.md` and `docs/CLAUDE.md` — supporting notes and reference material
-- `frontend/docs/README.md` — frontend-specific documentation
+- Tracks litterbox visits, duration, weight, and cat assignment.
+- Identifies cats by weight against per-cat reference weights.
+- Shows dashboard summaries for today, recent visits, and weight over time.
+- Supports manual cats and visit operations such as reassign/delete.
+- Exposes `/display/summary` for a 400x300 ESP32 e-paper display.
+- Records diagnostics for visit duration evidence and poller reconciliation.
+- Keeps implementation plans in numbered specs under `docs/specs/`.
 
-## ESP32 e-paper display
+## Project Layout
 
-A first PlatformIO firmware scaffold lives in `firmware/epaper-display/`. It connects an ESP32 to WiFi, fetches `GET /display/summary`, parses the compact display JSON, and prints it to Serial. E-paper rendering is the next milestone after the data path is verified on hardware.
-
-## Running the test suite
-
-Install dependencies (pytest and httpx are included in `requirements.txt`):
-
-```bash
-pip install -r requirements.txt
-```
-
-Run all tests:
-
-```bash
-python3 -m pytest tests/ -v
-```
-
-Run a specific test file:
-
-```bash
-python3 -m pytest tests/test_api_cats.py -v
-python3 -m pytest tests/test_poller.py -v
-```
-
-Tests use an in-memory SQLite database and mock out the Tuya cloud connection, so no real device or credentials are needed.
-
-The backend and frontend verification suites are run automatically by `deploy.sh` before every deploy. If any check fails, the deploy aborts. To run the same checks without deploying, use `./deploy.sh validate`.
-
-### Test files
-
-| File | What it covers |
+| Path | Purpose |
 |---|---|
-| `tests/test_cat_identifier.py` | `identify_cat()` and `update_reference_weight()` pure-logic tests |
-| `tests/test_health.py` | `GET /health` endpoint |
-| `tests/test_api_cats.py` | Cats CRUD (`POST /cats`, `GET /cats`, `GET /cats/{id}`, `PATCH /cats/{id}`) |
-| `tests/test_api_visits.py` | Visits CRUD + weight history endpoint |
-| `tests/test_api_cleaning_cycles.py` | `GET /cleaning-cycles` listing |
-| `tests/test_api_dashboard.py` | Dashboard aggregation (visits today, cleaning cycles, poller health) |
-| `tests/test_poller.py` | `LitterboxPoller` internal logic (visit creation, timeout, cleaning cycles, snapshots, settings) |
+| `app/` | FastAPI backend, routers, models, poller, Tuya integration logic |
+| `frontend/` | React/Vite web UI |
+| `firmware/epaper-display/` | PlatformIO ESP32 e-paper firmware |
+| `tests/` | Backend pytest suite |
+| `docs/specs/` | Numbered implementation specs |
+| `docs/IMPROVEMENT_SPECIFICATIONS.md` | Spec index |
+| `alembic/` | Database migrations |
+| `docker-compose.yml` | App + PostgreSQL runtime stack |
 
-Frontend tests live next to the relevant page or component under `frontend/src/**/*.test.jsx`.
+## Runtime Stack
 
-## Cleaning git history with BFG
+- Backend: FastAPI, SQLAlchemy, Alembic, PostgreSQL
+- Frontend: React, Vite, Recharts, Vitest
+- Device integration: Tuya polling/webhook support
+- Firmware: ESP32 DevKit + Waveshare/Pico 4.2 inch black/white/red e-paper display
 
-[BFG Repo Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) is a faster alternative to `git filter-branch` for removing large files or sensitive data from git history.
+## Quick Start
 
-### Setup
-
-Download the BFG jar (do **not** commit it to the repository):
-
-```bash
-curl -L -o bfg.jar https://repo1.maven.org/maven2/com/madgag/bfg/1.14.0/bfg-1.14.0.jar
-```
-
-Requires Java 8+. Check with `java -version`.
-
-### Common usage
-
-**Remove a committed file from all history:**
+Create local environment config:
 
 ```bash
-# First, delete the file from the latest commit if it's still there
-git rm --cached path/to/file && git commit -m "Remove file"
-
-# Then rewrite history
-java -jar bfg.jar --delete-files filename.ext
-
-# Clean up and force-push
-git reflog expire --expire=now --all && git gc --prune=now --aggressive
-git push --force
+cp .env.example .env
 ```
 
-**Remove files larger than a given size:**
+Set at minimum:
 
 ```bash
-java -jar bfg.jar --strip-blobs-bigger-than 10M
+POSTGRES_PASSWORD=...
+DATABASE_URL=postgresql://litterbox:<password>@localhost:5432/litterbox
+TUYA_DEVICE_ID=...
+TUYA_DEVICE_IP=...
+TUYA_API_KEY=...
+TUYA_API_SECRET=...
+TUYA_API_REGION=...
 ```
 
-> **Note:** Always take a full backup (`git clone --mirror`) before rewriting history.
-> Coordinate with all collaborators — everyone must re-clone after a force-push.
+Start the Docker stack:
 
-### Areas that need your input for tests
+```bash
+docker compose up --build
+```
 
-The following cannot be fully covered without real-world data or your specific setup:
+The app is exposed on:
 
-1. **Tuya cloud integration** — `LitterboxPoller.poll()` and `_init_cloud()` require live Tuya API credentials (`TUYA_DEVICE_ID`, `TUYA_API_KEY`, `TUYA_API_SECRET`) and a connected device. These are mocked in the current test suite. If you want end-to-end polling tests, provide credentials in a `.env` file and write integration tests tagged with `@pytest.mark.integration`.
+```text
+http://localhost:8001
+```
 
-2. **Cat identification threshold** — `IDENTIFICATION_THRESHOLD_KG` is set to `0.5 kg`. If your cats have very similar weights, this threshold may need tightening and the corresponding tests in `test_cat_identifier.py` updated with real weight values.
+## Development
 
-3. **Reference weight smoothing** — The exponential moving-average smoothing factor (`0.1`) controls how quickly a cat's reference weight adapts. Tests verify the math, but the right value depends on your cats' weight patterns.
+Backend setup:
 
-4. **Visit timeout** — `VISIT_TIMEOUT_SECONDS` (300 s) is a fallback for when neither latest status polling nor Tuya report-log reconciliation finds a completion event. If your device behaves differently, this constant and the related poller tests may need adjustment.
+```bash
+python3 -m venv .venv
+.venv/bin/python -m ensurepip --upgrade
+.venv/bin/python -m pip install -r requirements.txt
+```
 
-5. **Frontend browser coverage** — Vitest covers selected pages and components under `frontend/src/`. Full end-to-end browser coverage is not yet implemented; use Playwright or a similar tool for real browser workflows.
+Run backend tests:
+
+```bash
+.venv/bin/python -m pytest tests/ -q
+```
+
+Frontend setup:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Frontend checks:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+Run the same validation path used by deploy:
+
+```bash
+./deploy.sh validate
+```
+
+## Deployment
+
+`deploy.sh` validates backend and frontend before deploying. By default it deploys to the NAS configured in the script:
+
+```bash
+./deploy.sh
+```
+
+Useful environment overrides:
+
+```bash
+NAS_USER=selmer
+NAS_HOST=192.168.68.115
+NAS_PATH=/volume2/docker/litterbox
+ALLOW_DIRTY_DEPLOY=false
+```
+
+The script refuses to deploy with local uncommitted changes unless `ALLOW_DIRTY_DEPLOY=true` is set.
+
+## ESP32 E-Paper Display
+
+Firmware lives in `firmware/epaper-display/`. It connects to Wi-Fi, fetches:
+
+```text
+GET /display/summary
+```
+
+and renders a minimal weight-comparison view:
+
+- visits today
+- latest weight
+- weight around one month ago
+- weight around three months ago
+
+Configure local firmware secrets by copying:
+
+```bash
+cp firmware/epaper-display/include/config.example.h firmware/epaper-display/include/config.h
+```
+
+Build/upload with PlatformIO:
+
+```bash
+cd firmware/epaper-display
+~/.platformio/penv/bin/pio run
+~/.platformio/penv/bin/pio run --target upload
+```
+
+## Specifications
+
+The project is intentionally spec-driven. New features should get a numbered spec before implementation.
+
+Start here:
+
+- `docs/IMPROVEMENT_SPECIFICATIONS.md` — index of all specs
+- `docs/specs/` — implementation-ready specs
+- `docs/SPECIFICATION.md` — broader codebase specification
+- `docs/update-modes.md` — polling and webhook setup
+
+Recent active areas include visit correction, weight confidence, e-paper display profiles, and diagnostics.
+
+## Testing Notes
+
+Backend tests use an in-memory SQLite database and mock Tuya cloud behavior, so no real litterbox credentials are needed for the normal test suite.
+
+Test coverage includes:
+
+- cat identification logic
+- cats, visits, cleaning cycles, dashboard, and display APIs
+- poller visit lifecycle and Tuya report-log reconciliation
+- frontend pages/components with Vitest
+
+Real Tuya end-to-end behavior still depends on live credentials and hardware.
+
+## Operational Notes
+
+- `DATABASE_URL` is required; the backend refuses to start without it.
+- `UPDATE_MODE=polling` is the default. Webhook mode is documented in `docs/update-modes.md`.
+- The e-paper display refresh interval is currently one hour by default.
+- Weight history and display output depend on data quality; suspicious records should be corrected or marked ignored once those workflows are implemented.

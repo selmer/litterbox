@@ -59,3 +59,8 @@ No application code change should be made unless a written specification exists 
 | 026 | [Weight History Diagnostics and Mutation Consistency](specs/026-2026-05-17-weight-history-diagnostics-and-mutation-consistency.md) | P1 |
 | 027 | [Visit ID UI Consistency](specs/027-2026-05-17-visit-id-ui-consistency.md) | P2 |
 | 028 | [E-Paper Weight Comparison Display](specs/028-2026-05-17-epaper-weight-comparison-display.md) | P1 |
+| 029 | [Visit Correction Workflow](specs/029-2026-05-17-visit-correction-workflow.md) | P0 |
+| 030 | [Weight Trend Confidence](specs/030-2026-05-17-weight-trend-confidence.md) | P0 |
+| 031 | [Cat Health Signals](specs/031-2026-05-17-cat-health-signals.md) | P1 |
+| 032 | [Device and Data Diagnostics Screen](specs/032-2026-05-17-device-and-data-diagnostics-screen.md) | P1 |
+| 033 | [E-Paper Display Profiles](specs/033-2026-05-17-epaper-display-profiles.md) | P2 |
