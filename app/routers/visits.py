@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Cat, Visit
-from app.schemas import VisitOut, VisitCreate, VisitUpdate, WeightHistory, WeightDataPoint
+from app.models import Cat, Visit, VisitDiagnostic
+from app.schemas import VisitOut, VisitCreate, VisitUpdate, VisitDiagnosticOut, WeightHistory, WeightDataPoint
 
 router = APIRouter(prefix="/visits", tags=["visits"])
 
@@ -24,6 +24,8 @@ def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
         started_at=visit_data.started_at,
         ended_at=visit_data.started_at + timedelta(seconds=visit_data.duration_seconds),
         duration_seconds=visit_data.duration_seconds,
+        duration_source="manual",
+        duration_is_estimated=False,
         weight_kg=visit_data.weight_kg,
         last_weight_at=visit_data.started_at,
     )
@@ -112,6 +114,18 @@ def weight_history(
         )
 
     return result
+
+
+@router.get("/{visit_id}/diagnostics", response_model=list[VisitDiagnosticOut])
+def get_visit_diagnostics(visit_id: int, db: Session = Depends(get_db)):
+    if not db.query(Visit.id).filter(Visit.id == visit_id).first():
+        raise HTTPException(status_code=404, detail="Visit not found")
+    return (
+        db.query(VisitDiagnostic)
+        .filter(VisitDiagnostic.visit_id == visit_id)
+        .order_by(VisitDiagnostic.recorded_at.asc(), VisitDiagnostic.id.asc())
+        .all()
+    )
 
 
 @router.get("/{visit_id}", response_model=VisitOut)

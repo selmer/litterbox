@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 MAX_CAT_WEIGHT_KG = 20.0
 MAX_VISIT_DURATION_SECONDS = 60 * 60
+DurationSource = Literal["status_dp", "report_log_counter", "report_log_duration", "manual", "hard_timeout", "unknown"]
 
 
 # --- Cat schemas ---
@@ -60,8 +61,20 @@ class VisitOut(BaseModel):
     started_at: datetime
     ended_at: Optional[datetime]
     duration_seconds: Optional[int]
+    duration_source: DurationSource = "unknown"
+    duration_is_estimated: bool = False
     weight_kg: Optional[float]
     created_at: datetime
+
+
+class VisitDiagnosticOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    visit_id: int
+    event_type: str
+    payload: dict[str, Any]
+    recorded_at: datetime
 
 
 class VisitCreate(BaseModel):

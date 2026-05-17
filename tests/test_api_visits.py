@@ -1,6 +1,8 @@
 """Tests for the /visits API endpoints."""
 from datetime import datetime, timezone, timedelta
 
+from app.models import VisitDiagnostic
+
 
 def _make_cat(client, name="Luna", weight=4.0):
     resp = client.post("/cats", json={"name": name, "reference_weight_kg": weight})
@@ -32,6 +34,8 @@ def test_create_visit(client):
     assert visit["weight_kg"] == 4.1
     assert visit["duration_seconds"] == 60
     assert visit["identified_by"] == "manual"
+    assert visit["duration_source"] == "manual"
+    assert visit["duration_is_estimated"] is False
     assert visit["ended_at"] is not None
 
 
@@ -169,7 +173,43 @@ def test_get_visit(client):
 
     response = client.get(f"/visits/{visit_id}")
     assert response.status_code == 200
-    assert response.json()["id"] == visit_id
+    data = response.json()
+    assert data["id"] == visit_id
+    assert data["duration_source"] == "manual"
+    assert data["duration_is_estimated"] is False
+
+
+def test_get_visit_diagnostics(client, db_session):
+    cat_id = _make_cat(client)
+    visit = _make_visit(client, cat_id)
+    first = VisitDiagnostic(
+        visit_id=visit["id"],
+        event_type="reconciliation_attempt",
+        payload={"step": 1},
+        recorded_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+    )
+    second = VisitDiagnostic(
+        visit_id=visit["id"],
+        event_type="pending_retry",
+        payload={"reason": "no_completion_match"},
+        recorded_at=datetime(2024, 1, 1, 12, 1, tzinfo=timezone.utc),
+    )
+    db_session.add_all([second, first])
+    db_session.commit()
+
+    response = client.get(f"/visits/{visit['id']}/diagnostics")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert [item["event_type"] for item in data] == ["reconciliation_attempt", "pending_retry"]
+    assert data[0]["payload"] == {"step": 1}
+
+
+def test_get_visit_diagnostics_not_found(client):
+    response = client.get("/visits/9999/diagnostics")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Visit not found"
 
 
 def test_get_visit_not_found(client):

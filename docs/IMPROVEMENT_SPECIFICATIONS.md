@@ -55,3 +55,4 @@ No application code change should be made unless a written specification exists 
 | 022 | [Visits Screen Redesign](specs/022-2026-05-17-visits-screen-redesign.md) | P1 |
 | 023 | [Cats Screen Redesign](specs/023-2026-05-17-cats-screen-redesign.md) | P1 |
 | 024 | [Chart and Dashboard Refinement](specs/024-2026-05-17-chart-and-dashboard-refinement.md) | P2 |
+| 025 | [Visit Duration Evidence and Diagnostics](specs/025-2026-05-17-visit-duration-evidence-and-diagnostics.md) | P0 |

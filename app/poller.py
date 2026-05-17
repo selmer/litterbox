@@ -8,7 +8,7 @@ from typing import Optional
 import tinytuya
 
 from app.cat_identifier import identify_cat, update_reference_weight
-from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visit
+from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visit, VisitDiagnostic
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +255,18 @@ class LitterboxPoller:
 
         self.current_visit.ended_at = now
         self.current_visit.duration_seconds = duration
+        self.current_visit.duration_source = "status_dp"
+        self.current_visit.duration_is_estimated = False
+        self._record_visit_diagnostic(
+            self.current_visit,
+            "completion_matched",
+            {
+                "strategy": "status_dp",
+                "duration_seconds": duration,
+                "completed_at": now,
+            },
+            now,
+        )
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
         self.db.commit()
         self.current_visit = None
@@ -282,9 +294,22 @@ class LitterboxPoller:
             )
             return
 
-        logger.info("Visit hard-timed out after %.0fs — closing as fallback", elapsed)
+        logger.info("Visit hard-timed out after %.0fs — closing as unresolved fallback", elapsed)
         self.current_visit.ended_at = now
-        self.current_visit.duration_seconds = int(elapsed)
+        self.current_visit.duration_seconds = None
+        self.current_visit.duration_source = "hard_timeout"
+        self.current_visit.duration_is_estimated = True
+        self._record_visit_diagnostic(
+            self.current_visit,
+            "hard_timeout",
+            {
+                "elapsed_seconds": int(elapsed),
+                "visit_timeout_seconds": VISIT_TIMEOUT_SECONDS,
+                "visit_hard_timeout_seconds": VISIT_HARD_TIMEOUT_SECONDS,
+                "last_weight_at": self.last_weight_at,
+            },
+            now,
+        )
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
         self.db.commit()
         self.current_visit = None
@@ -299,16 +324,45 @@ class LitterboxPoller:
             return False
 
         started_at = self.current_visit.started_at
+        self._record_visit_diagnostic(
+            self.current_visit,
+            "reconciliation_attempt",
+            {
+                "started_at": started_at,
+                "checked_at": now,
+                "elapsed_seconds": int((now - (self.last_weight_at or started_at)).total_seconds()),
+                "excretion_times_at_start": self.current_visit_excretion_times_at_start,
+            },
+            now,
+        )
         try:
             logs = self._fetch_excretion_report_logs(started_at, now)
         except Exception as exc:
             logger.warning("Failed to fetch Tuya report logs for visit reconciliation: %s", exc)
+            self._record_visit_diagnostic(
+                self.current_visit,
+                "pending_retry",
+                {"reason": "report_log_fetch_failed", "error": str(exc)},
+                now,
+            )
             return False
 
         logger.info("Fetched %s Tuya report logs for visit reconciliation", len(logs))
+        self._record_visit_diagnostic(
+            self.current_visit,
+            "report_logs_fetched",
+            {"log_count": len(logs), "logs": self._summarize_report_logs(logs)},
+            now,
+        )
         completion = self._find_report_log_completion(logs, started_at, now)
         if completion is None:
             logger.info("No Tuya report-log completion found; pending_retry")
+            self._record_visit_diagnostic(
+                self.current_visit,
+                "pending_retry",
+                {"reason": "no_completion_match", "log_count": len(logs)},
+                now,
+            )
             return False
 
         logger.info(
@@ -318,8 +372,23 @@ class LitterboxPoller:
         )
         self.current_visit.ended_at = completion.completed_at
         self.current_visit.duration_seconds = completion.duration_seconds
+        self.current_visit.duration_source = (
+            "report_log_counter" if completion.strategy == "counter" else "report_log_duration"
+        )
+        self.current_visit.duration_is_estimated = False
         if completion.weight_kg is not None:
             self.current_visit.weight_kg = completion.weight_kg
+        self._record_visit_diagnostic(
+            self.current_visit,
+            "completion_matched",
+            {
+                "strategy": completion.strategy,
+                "duration_seconds": completion.duration_seconds,
+                "completed_at": completion.completed_at,
+                "weight_kg": completion.weight_kg,
+            },
+            completion.completed_at,
+        )
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
         self.db.commit()
         self.current_visit = None
@@ -485,6 +554,42 @@ class LitterboxPoller:
                 latest_value = value
         return latest_value
 
+
+    def _record_visit_diagnostic(self, visit: Visit, event_type: str, payload: dict, recorded_at: datetime):
+        if self.db is None or visit is None:
+            return
+        if visit.id is None:
+            self.db.flush()
+        diagnostic = VisitDiagnostic(
+            visit_id=visit.id,
+            event_type=event_type,
+            payload=self._json_safe(payload),
+            recorded_at=recorded_at,
+        )
+        self.db.add(diagnostic)
+        self.db.commit()
+
+    def _summarize_report_logs(self, logs: list[dict], limit: int = 20) -> list[dict]:
+        snippets = []
+        for log in logs[:limit]:
+            snippets.append({
+                "code": log.get("code"),
+                "value": log.get("value"),
+                "event_time": log.get("event_time"),
+            })
+        return snippets
+
+    def _json_safe(self, value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, dict):
+            return {str(k): self._json_safe(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._json_safe(v) for v in value]
+        if isinstance(value, tuple):
+            return [self._json_safe(v) for v in value]
+        return value
+
     @staticmethod
     def _datetime_to_epoch_ms(value: datetime) -> int:
         if value.tzinfo is None:
@@ -516,6 +621,16 @@ class LitterboxPoller:
             )
             self.db.add(self.current_visit)
             self.db.commit()
+            self._record_visit_diagnostic(
+                self.current_visit,
+                "weight_seen",
+                {
+                    "weight_kg": weight_kg,
+                    "raw_weight": raw_weight,
+                    "excretion_times_at_start": self.current_visit_excretion_times_at_start,
+                },
+                now,
+            )
         else:
             # Update weight on existing visit (take the latest reading)
             self.current_visit.weight_kg = weight_kg

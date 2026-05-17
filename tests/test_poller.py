@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visit
+from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visit, VisitDiagnostic
 
 
 NOW = datetime(2024, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
@@ -36,6 +36,8 @@ def test_weight_update_creates_new_visit(poller, db_session):
     assert len(visits) == 1
     assert visits[0].weight_kg == pytest.approx(4.1)
     assert visits[0].started_at == NOW
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(visit_id=visits[0].id, event_type="weight_seen").one()
+    assert diagnostic.payload["weight_kg"] == pytest.approx(4.1)
 
 
 def test_weight_update_sets_current_visit(poller):
@@ -74,6 +76,10 @@ def test_visit_complete_closes_current_visit(poller, db_session):
     visit = db_session.query(Visit).first()
     assert visit.ended_at is not None
     assert visit.duration_seconds == 45
+    assert visit.duration_source == "status_dp"
+    assert visit.duration_is_estimated is False
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(visit_id=visit.id, event_type="completion_matched").one()
+    assert diagnostic.payload["strategy"] == "status_dp"
     assert poller.current_visit is None
     assert poller.last_weight_at is None
 
@@ -87,6 +93,7 @@ def test_visit_complete_without_prior_visit_creates_one(poller, db_session):
     visits = db_session.query(Visit).all()
     assert len(visits) == 1
     assert visits[0].duration_seconds == 30
+    assert visits[0].duration_source == "status_dp"
 
 
 def test_visit_complete_assigns_cat_when_matching_weight(poller, db_session):
@@ -131,6 +138,7 @@ def test_visit_timeout_keeps_overdue_visit_open_when_reconciliation_is_pending(p
     visit = db_session.query(Visit).first()
     assert visit.ended_at is None
     assert visit.duration_seconds is None
+    assert db_session.query(VisitDiagnostic).filter_by(visit_id=visit.id, event_type="pending_retry").count() == 1
     assert poller.current_visit is not None
 
 
@@ -155,6 +163,10 @@ def test_visit_timeout_uses_report_log_completion_when_status_poll_missed_it(pol
     assert visit.ended_at == completed_at
     assert visit.duration_seconds == 75
     assert visit.weight_kg == pytest.approx(4.1)
+    assert visit.duration_source == "report_log_counter"
+    assert visit.duration_is_estimated is False
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(visit_id=visit.id, event_type="completion_matched").one()
+    assert diagnostic.payload["strategy"] == "counter"
     assert poller.current_visit is None
     poller.cloud.cloudrequest.assert_called_once()
 
@@ -178,6 +190,8 @@ def test_visit_timeout_uses_duration_only_report_log_completion(poller, db_sessi
     assert visit.ended_at == completed_at
     assert visit.duration_seconds == 75
     assert visit.weight_kg == pytest.approx(4.1)
+    assert visit.duration_source == "report_log_duration"
+    assert visit.duration_is_estimated is False
     assert poller.current_visit is None
 
 
@@ -191,6 +205,7 @@ def test_visit_timeout_retries_when_report_log_lookup_fails_before_hard_timeout(
     visit = db_session.query(Visit).first()
     assert visit.ended_at is None
     assert visit.duration_seconds is None
+    assert db_session.query(VisitDiagnostic).filter_by(visit_id=visit.id, event_type="pending_retry").count() == 1
     assert poller.current_visit is not None
 
 
@@ -203,7 +218,11 @@ def test_visit_hard_timeout_falls_back_when_report_logs_never_reconcile(poller, 
 
     visit = db_session.query(Visit).first()
     assert visit.ended_at == far_future
-    assert visit.duration_seconds == 1800
+    assert visit.duration_seconds is None
+    assert visit.duration_source == "hard_timeout"
+    assert visit.duration_is_estimated is True
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(visit_id=visit.id, event_type="hard_timeout").one()
+    assert diagnostic.payload["elapsed_seconds"] == 1800
     assert poller.current_visit is None
 
 
@@ -227,6 +246,7 @@ def test_visit_timeout_uses_duration_log_when_counter_does_not_increase(poller, 
     visit = db_session.query(Visit).first()
     assert visit.ended_at == completed_at
     assert visit.duration_seconds == 80
+    assert visit.duration_source == "report_log_duration"
     assert poller.current_visit is None
 
 
@@ -249,6 +269,7 @@ def test_visit_timeout_ignores_invalid_duration_logs_and_keeps_visit_open(poller
     visit = db_session.query(Visit).first()
     assert visit.ended_at is None
     assert visit.duration_seconds is None
+    assert db_session.query(VisitDiagnostic).filter_by(visit_id=visit.id, event_type="pending_retry").count() == 1
     assert poller.current_visit is not None
 
 
@@ -315,6 +336,7 @@ def test_recovered_open_visit_retries_report_log_reconciliation(db_session):
     visit = db_session.get(Visit, open_visit_id)
     assert visit.ended_at == completed_at
     assert visit.duration_seconds == 70
+    assert visit.duration_source == "report_log_duration"
     assert recovered.current_visit is None
 
 

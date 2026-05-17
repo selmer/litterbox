@@ -50,11 +50,29 @@ class Visit(Base):
     started_at = Column(TZDateTime(timezone=True), nullable=False, index=True)
     ended_at = Column(TZDateTime(timezone=True), nullable=True)
     duration_seconds = Column(Integer, nullable=True)
+    duration_source = Column(String, default="unknown", nullable=False)
+    duration_is_estimated = Column(Boolean, default=False, nullable=False)
     weight_kg = Column(Float, nullable=True)
     last_weight_at = Column(TZDateTime(timezone=True), nullable=True)
     created_at = Column(TZDateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     cat = relationship("Cat", back_populates="visits")
+    diagnostics = relationship("VisitDiagnostic", back_populates="visit", cascade="all, delete-orphan")
+
+
+class VisitDiagnostic(Base):
+    __tablename__ = "visit_diagnostics"
+    __table_args__ = (
+        Index("ix_visit_diagnostics_visit_id_recorded_at", "visit_id", "recorded_at"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    visit_id = Column(Integer, ForeignKey("visits.id"), nullable=False, index=True)
+    event_type = Column(String, nullable=False)
+    payload = Column(JSON, nullable=False, default=dict)
+    recorded_at = Column(TZDateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    visit = relationship("Visit", back_populates="diagnostics")
 
 
 class CleaningCycle(Base):
