@@ -3,6 +3,8 @@ from decimal import Decimal
 from typing import Any, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.durations import TRUSTED_DURATION_SOURCES
+
 
 MAX_CAT_WEIGHT_KG = 20.0
 MAX_VISIT_DURATION_SECONDS = 60 * 60
@@ -154,7 +156,11 @@ class VisitOut(BaseModel):
 
     @model_validator(mode="after")
     def hide_untrusted_duration(self):
-        if self.duration_source == "hard_timeout" or self.duration_is_estimated:
+        if (
+            self.duration_seconds is None
+            or self.duration_is_estimated
+            or self.duration_source not in TRUSTED_DURATION_SOURCES
+        ):
             self.duration_seconds = None
         return self
 

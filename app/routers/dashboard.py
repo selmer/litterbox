@@ -2,11 +2,12 @@ import threading
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import and_, case, func
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Cat, CleaningCycle, Visit
+from app.durations import trusted_duration_expr
 from app.schemas import CatDashboard, DashboardOut
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -34,13 +35,7 @@ def get_dashboard(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    trusted_duration = case(
-        (
-            and_(Visit.duration_is_estimated.is_(False), Visit.duration_source != "hard_timeout"),
-            Visit.duration_seconds,
-        ),
-        else_=None,
-    )
+    trusted_duration = trusted_duration_expr()
 
     # Aggregate today's visits per cat (count + total trusted duration)
     today_subq = (

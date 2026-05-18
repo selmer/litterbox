@@ -45,7 +45,7 @@ def run_poller():
                         dashboard_state.last_poll_error = None
                     else:
                         dashboard_state.last_poll_error = outcome.message or outcome.status
-                time.sleep(POLL_INTERVAL_SECONDS)
+                time.sleep(poller.next_poll_delay_seconds(POLL_INTERVAL_SECONDS))
         except Exception as e:
             logger.exception("Poller crashed, restarting")
             time.sleep(10)

@@ -19,6 +19,11 @@ TUYA_API_SECRET = os.getenv("TUYA_API_SECRET")
 TUYA_API_REGION = os.getenv("TUYA_API_REGION", "eu")
 
 SNAPSHOT_INTERVAL_SECONDS = int(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "300"))
+ADAPTIVE_VISIT_POLLING = os.getenv("ADAPTIVE_VISIT_POLLING", "false").lower() in {"1", "true", "yes", "on"}
+ADAPTIVE_POLL_INTERVAL_SECONDS = int(os.getenv("ADAPTIVE_POLL_INTERVAL_SECONDS", "30"))
+ADAPTIVE_POLL_MAX_SECONDS = int(os.getenv("ADAPTIVE_POLL_MAX_SECONDS", "600"))
+ADAPTIVE_POLL_DAILY_BUDGET = int(os.getenv("ADAPTIVE_POLL_DAILY_BUDGET", "200"))
+ADAPTIVE_POLL_COOLDOWN_SECONDS = int(os.getenv("ADAPTIVE_POLL_COOLDOWN_SECONDS", "3600"))
 
 
 
@@ -87,6 +92,12 @@ class LitterboxPoller:
         self.current_visit_excretion_times_at_start: Optional[int] = None
         self.last_snapshot_at: Optional[datetime] = None
         self.last_weight_at = None
+        self.adaptive_visit_started_at: Optional[datetime] = None
+        self.adaptive_visit_attempts = 0
+        self.adaptive_daily_date = datetime.now(timezone.utc).date()
+        self.adaptive_daily_count = 0
+        self.adaptive_cooldown_until: Optional[datetime] = None
+        self._pending_adaptive_diagnostics: list[tuple[int | None, str, dict, datetime]] = []
         if mode == "polling":
             self._init_cloud()
         self._recover_open_state()
@@ -148,9 +159,14 @@ class LitterboxPoller:
         Opens a fresh DB session for the duration of this poll and closes it
         before returning, ensuring no session state leaks between cycles.
         """
+        poll_started_at = datetime.now(timezone.utc)
+        adaptive_attempt = self._reserve_adaptive_poll(poll_started_at)
+
         if self.cloud is None:
             logger.warning("Cloud not initialized, retrying...")
             self._init_cloud()
+            if adaptive_attempt:
+                self._adaptive_error("cloud_unavailable", poll_started_at)
             return PollOutcome(False, "cloud_unavailable", "Cloud connection is not initialized")
 
         try:
@@ -158,10 +174,14 @@ class LitterboxPoller:
         except Exception as e:
             logger.exception("Failed to read device status from cloud")
             self._init_cloud()
+            if adaptive_attempt:
+                self._adaptive_error("cloud_error", poll_started_at, str(e))
             return PollOutcome(False, "cloud_error", str(e))
 
         if not result or not result.get("success"):
             logger.warning(f"Unexpected cloud response: {result}")
+            if adaptive_attempt:
+                self._adaptive_error("cloud_response_error", poll_started_at, str(result))
             return PollOutcome(False, "cloud_response_error", "Unexpected cloud response")
 
         # Convert list of {code, value} to a dict keyed by code
@@ -179,6 +199,18 @@ class LitterboxPoller:
             self.current_cleaning_cycle = db.get(CleaningCycle, self.current_cleaning_cycle_id) if self.current_cleaning_cycle_id else None
 
             now = datetime.now(timezone.utc)
+            self._flush_pending_adaptive_diagnostics(db)
+            if adaptive_attempt and self.current_visit is not None:
+                self._record_visit_diagnostic(
+                    self.current_visit,
+                    "adaptive_poll_attempt",
+                    {
+                        "attempt": self.adaptive_visit_attempts,
+                        "daily_count": self.adaptive_daily_count,
+                        "dps": self._summarize_dps(dps),
+                    },
+                    now,
+                )
             self._handle_changes(dps, now)
             self._check_visit_timeout(now)
             self._maybe_snapshot(dps, now)
@@ -220,6 +252,129 @@ class LitterboxPoller:
                 self.db = None
                 db.close()
 
+    def next_poll_delay_seconds(self, default_seconds: int) -> int:
+        now = datetime.now(timezone.utc)
+        if self._adaptive_poll_available(now):
+            return max(1, ADAPTIVE_POLL_INTERVAL_SECONDS)
+        return default_seconds
+
+    def _start_adaptive_visit(self, now: datetime):
+        if not ADAPTIVE_VISIT_POLLING or self.mode != "polling" or self.current_visit is None:
+            return
+        self.adaptive_visit_started_at = now
+        self.adaptive_visit_attempts = 0
+        self._record_visit_diagnostic(
+            self.current_visit,
+            "adaptive_poll_started",
+            {
+                "interval_seconds": ADAPTIVE_POLL_INTERVAL_SECONDS,
+                "max_seconds": ADAPTIVE_POLL_MAX_SECONDS,
+                "daily_budget": ADAPTIVE_POLL_DAILY_BUDGET,
+            },
+            now,
+        )
+
+    def _stop_adaptive_visit(self, reason: str, now: datetime):
+        if not self.adaptive_visit_started_at or self.current_visit is None:
+            return
+        self._record_visit_diagnostic(
+            self.current_visit,
+            "adaptive_poll_stopped",
+            {
+                "reason": reason,
+                "attempts": self.adaptive_visit_attempts,
+                "elapsed_seconds": int((now - self.adaptive_visit_started_at).total_seconds()),
+                "daily_count": self.adaptive_daily_count,
+            },
+            now,
+        )
+        self.adaptive_visit_started_at = None
+        self.adaptive_visit_attempts = 0
+
+    def _reset_adaptive_daily_budget_if_needed(self, now: datetime):
+        today = now.date()
+        if today != self.adaptive_daily_date:
+            self.adaptive_daily_date = today
+            self.adaptive_daily_count = 0
+
+    def _adaptive_poll_available(self, now: datetime) -> bool:
+        if not ADAPTIVE_VISIT_POLLING or self.mode != "polling" or self.current_visit_id is None:
+            return False
+        self._reset_adaptive_daily_budget_if_needed(now)
+        if self.adaptive_cooldown_until and now < self.adaptive_cooldown_until:
+            return False
+        started_at = self.adaptive_visit_started_at or self.last_weight_at
+        if started_at is None:
+            return False
+        if (now - started_at).total_seconds() > ADAPTIVE_POLL_MAX_SECONDS:
+            self._queue_adaptive_diagnostic(
+                self.current_visit_id,
+                "adaptive_poll_stopped",
+                {"reason": "max_window_elapsed", "attempts": self.adaptive_visit_attempts},
+                now,
+            )
+            self.adaptive_visit_started_at = None
+            self.adaptive_visit_attempts = 0
+            return False
+        if self.adaptive_daily_count >= ADAPTIVE_POLL_DAILY_BUDGET:
+            self._queue_adaptive_diagnostic(
+                self.current_visit_id,
+                "adaptive_poll_budget_exhausted",
+                {"daily_budget": ADAPTIVE_POLL_DAILY_BUDGET, "daily_count": self.adaptive_daily_count},
+                now,
+            )
+            return False
+        return True
+
+    def _reserve_adaptive_poll(self, now: datetime) -> bool:
+        if not self._adaptive_poll_available(now):
+            return False
+        self.adaptive_visit_attempts += 1
+        self.adaptive_daily_count += 1
+        return True
+
+    def _adaptive_error(self, reason: str, now: datetime, error: str | None = None):
+        self.adaptive_cooldown_until = now + timedelta(seconds=ADAPTIVE_POLL_COOLDOWN_SECONDS)
+        payload = {
+            "reason": reason,
+            "attempts": self.adaptive_visit_attempts,
+            "cooldown_until": self.adaptive_cooldown_until,
+        }
+        if error:
+            payload["error"] = error
+        self._queue_adaptive_diagnostic(self.current_visit_id, "adaptive_poll_stopped", payload, now)
+        self.adaptive_visit_started_at = None
+        self.adaptive_visit_attempts = 0
+
+    def _queue_adaptive_diagnostic(self, visit_id: int | None, event_type: str, payload: dict, recorded_at: datetime):
+        self._pending_adaptive_diagnostics.append((visit_id, event_type, payload, recorded_at))
+
+    def _flush_pending_adaptive_diagnostics(self, db):
+        if not self._pending_adaptive_diagnostics:
+            return
+        pending = self._pending_adaptive_diagnostics
+        self._pending_adaptive_diagnostics = []
+        for visit_id, event_type, payload, recorded_at in pending:
+            target_visit_id = visit_id or self.current_visit_id
+            if target_visit_id is None:
+                continue
+            if db.get(Visit, target_visit_id) is None:
+                continue
+            db.add(VisitDiagnostic(
+                visit_id=target_visit_id,
+                event_type=event_type,
+                payload=self._json_safe(payload),
+                recorded_at=recorded_at,
+            ))
+        db.commit()
+
+    def _summarize_dps(self, dps: dict) -> dict:
+        return {
+            code: dps.get(code)
+            for code in (DP_CAT_WEIGHT, DP_EXCRETION_TIME, DP_EXCRETION_TIMES)
+            if code in dps
+        }
+
     def _handle_changes(self, dps: dict, now: datetime):
         for dp, value in dps.items():
             if self.previous_dps.get(dp) == value:
@@ -233,6 +388,9 @@ class LitterboxPoller:
             elif dp == DP_EXCRETION_TIMES:
                 self._handle_visit_complete(dps, now)
 
+            elif dp == DP_EXCRETION_TIME and self.current_visit is not None and self._coerce_int(value):
+                self._handle_visit_complete(dps, now)
+
             elif dp == DP_CLEANING_CYCLE:
                 self._handle_cleaning_cycle(value, now)
 
@@ -240,15 +398,25 @@ class LitterboxPoller:
                 self._record_setting_change(dp, value, now)
 
     def _handle_visit_complete(self, dps: dict, now: datetime):
-        duration = dps.get(DP_EXCRETION_TIME)
+        duration = self._coerce_int(dps.get(DP_EXCRETION_TIME))
         logger.info(f"Visit completed from status DPs — duration: {duration}s")
+
+        if duration is None or duration <= 0:
+            if self.current_visit is not None:
+                self._record_visit_diagnostic(
+                    self.current_visit,
+                    "pending_retry",
+                    {"reason": "status_completion_without_duration", "dps": self._summarize_dps(dps)},
+                    now,
+                )
+            return
 
         if self.current_visit is None:
             # Visit completed but we missed the weight — create one now
             weight_raw = dps.get(DP_CAT_WEIGHT, 0)
             weight_kg = round(weight_raw / 1000, 3) if weight_raw else None
             self.current_visit = Visit(
-                started_at=now - timedelta(seconds=duration or 0),
+                started_at=now - timedelta(seconds=duration),
                 weight_kg=weight_kg,
             )
             self.db.add(self.current_visit)
@@ -268,6 +436,7 @@ class LitterboxPoller:
             now,
         )
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
+        self._stop_adaptive_visit("completion_status_dp", now)
         self.db.commit()
         self.current_visit = None
         self.current_visit_excretion_times_at_start = None
@@ -311,6 +480,7 @@ class LitterboxPoller:
             now,
         )
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
+        self._stop_adaptive_visit("hard_timeout", now)
         self.db.commit()
         self.current_visit = None
         self.current_visit_excretion_times_at_start = None
@@ -390,6 +560,7 @@ class LitterboxPoller:
             completion.completed_at,
         )
         self._identify_visit_cat(self.current_visit, self.current_visit.weight_kg)
+        self._stop_adaptive_visit("completion_report_log", completion.completed_at)
         self.db.commit()
         self.current_visit = None
         self.current_visit_excretion_times_at_start = None
@@ -631,6 +802,7 @@ class LitterboxPoller:
                 },
                 now,
             )
+            self._start_adaptive_visit(now)
             self._identify_visit_cat(self.current_visit, weight_kg, update_reference=False, recorded_at=now)
         else:
             # Update weight on existing visit (take the latest reading)

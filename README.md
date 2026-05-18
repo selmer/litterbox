@@ -184,5 +184,6 @@ Real Tuya end-to-end behavior still depends on live credentials and hardware.
 
 - `DATABASE_URL` is required; the backend refuses to start without it.
 - `UPDATE_MODE=polling` is the default. Webhook mode is documented in `docs/update-modes.md`.
+- Adaptive visit polling is available behind `ADAPTIVE_VISIT_POLLING=true`; it is bounded by per-visit max seconds, daily budget, and cooldown settings.
 - The e-paper display refresh interval is currently one hour by default.
 - Weight history and display output depend on data quality; suspicious records should be corrected or marked ignored once those workflows are implemented.

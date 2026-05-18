@@ -107,6 +107,8 @@ def test_dashboard_time_in_box_today(client, db_session):
             cat_id=cat.id,
             started_at=today_start + timedelta(hours=1),
             duration_seconds=120,
+            duration_source="manual",
+            duration_is_estimated=False,
         )
     )
     db_session.add(
@@ -114,6 +116,8 @@ def test_dashboard_time_in_box_today(client, db_session):
             cat_id=cat.id,
             started_at=today_start + timedelta(hours=2),
             duration_seconds=60,
+            duration_source="manual",
+            duration_is_estimated=False,
         )
     )
     db_session.commit()
@@ -159,14 +163,49 @@ def test_dashboard_ignores_hard_timeout_duration(client, db_session):
     assert cat_data["last_visit_duration_seconds"] is None
 
 
+def test_dashboard_ignores_legacy_unknown_timeout_duration(client, db_session):
+    cat = Cat(name="Luna", reference_weight_kg=4.0)
+    db_session.add(cat)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    db_session.add_all([
+        Visit(
+            cat_id=cat.id,
+            started_at=today_start + timedelta(hours=1),
+            duration_seconds=60,
+            duration_source="manual",
+            duration_is_estimated=False,
+        ),
+        Visit(
+            cat_id=cat.id,
+            started_at=today_start + timedelta(hours=2),
+            ended_at=today_start + timedelta(hours=2, minutes=30),
+            duration_seconds=1800,
+            duration_source="unknown",
+            duration_is_estimated=False,
+            weight_kg=4.2,
+        ),
+    ])
+    db_session.commit()
+
+    response = client.get("/dashboard")
+
+    assert response.status_code == 200
+    cat_data = response.json()["cats"][0]
+    assert cat_data["time_in_box_today_seconds"] == 60
+    assert cat_data["last_visit_duration_seconds"] is None
+
+
 def test_dashboard_latest_visit_is_deterministic_on_timestamp_tie(client, db_session):
     cat = Cat(name="Luna", reference_weight_kg=4.0)
     db_session.add(cat)
     db_session.commit()
 
     started_at = datetime.now(timezone.utc)
-    first = Visit(cat_id=cat.id, started_at=started_at, weight_kg=4.0, duration_seconds=30)
-    second = Visit(cat_id=cat.id, started_at=started_at, weight_kg=4.2, duration_seconds=40)
+    first = Visit(cat_id=cat.id, started_at=started_at, weight_kg=4.0, duration_seconds=30, duration_source="manual", duration_is_estimated=False)
+    second = Visit(cat_id=cat.id, started_at=started_at, weight_kg=4.2, duration_seconds=40, duration_source="manual", duration_is_estimated=False)
     db_session.add_all([first, second])
     db_session.commit()
 

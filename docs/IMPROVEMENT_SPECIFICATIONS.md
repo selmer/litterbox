@@ -68,3 +68,8 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 033 | [E-Paper Display Profiles](specs/033-2026-05-17-epaper-display-profiles.md) | P2 |
 | 034 | [Early Cat Identification and Match Diagnostics](specs/archive/034-2026-05-18-early-cat-identification-and-match-diagnostics.md) | P1 |
 | 035 | [Cat Lifecycle Events and Birthdays](specs/archive/035-2026-05-18-cat-lifecycle-events-and-birthdays.md) | P1 |
+| 036 | [Trusted Duration and Adaptive Visit Polling](specs/archive/036-2026-05-18-trusted-duration-and-adaptive-visit-polling.md) | P0 |
+| 037 | [Visits ID Visibility Cleanup](specs/037-2026-05-18-visits-id-visibility-cleanup.md) | P2 |
+| 038 | [OpenAPI and Swagger Documentation](specs/038-2026-05-18-openapi-and-swagger-documentation.md) | P2 |
+| 039 | [Backup and Restore](specs/039-2026-05-18-backup-and-restore.md) | P1 |
+| 040 | [E-Paper Two-Cat Label Overlap Polish](specs/040-2026-05-18-epaper-two-cat-label-overlap-polish.md) | P1 |

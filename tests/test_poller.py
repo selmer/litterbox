@@ -461,6 +461,81 @@ def test_poll_returns_success_outcome_for_valid_dps(poller):
     assert outcome.success is True
 
 
+
+
+def test_status_completion_without_duration_keeps_visit_open(poller, db_session):
+    poller._handle_weight_update(4100, NOW)
+
+    poller._handle_visit_complete({"excretion_times_day": 1, "cat_weight": 4100}, NOW + timedelta(seconds=60))
+
+    visit = db_session.query(Visit).first()
+    assert visit.ended_at is None
+    assert visit.duration_seconds is None
+    assert poller.current_visit is not None
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(visit_id=visit.id, event_type="pending_retry").one()
+    assert diagnostic.payload["reason"] == "status_completion_without_duration"
+
+
+def test_adaptive_polling_uses_short_delay_for_open_visit(monkeypatch, poller):
+    import app.poller as poller_module
+
+    monkeypatch.setattr(poller_module, "ADAPTIVE_VISIT_POLLING", True)
+    monkeypatch.setattr(poller_module, "ADAPTIVE_POLL_INTERVAL_SECONDS", 30)
+    monkeypatch.setattr(poller_module, "ADAPTIVE_POLL_MAX_SECONDS", 100000000)
+
+    poller._handle_weight_update(4100, NOW)
+    poller.current_visit_id = poller.current_visit.id
+
+    assert poller.next_poll_delay_seconds(300) == 30
+
+
+def test_adaptive_polling_respects_daily_budget(monkeypatch, poller, db_session):
+    import app.poller as poller_module
+
+    monkeypatch.setattr(poller_module, "ADAPTIVE_VISIT_POLLING", True)
+    monkeypatch.setattr(poller_module, "ADAPTIVE_POLL_DAILY_BUDGET", 1)
+    monkeypatch.setattr(poller_module, "ADAPTIVE_POLL_MAX_SECONDS", 100000000)
+
+    poller._handle_weight_update(4100, NOW)
+    poller.current_visit_id = poller.current_visit.id
+    poller.adaptive_daily_count = 1
+
+    assert poller.next_poll_delay_seconds(300) == 300
+
+
+def test_adaptive_poll_captures_status_duration(monkeypatch, poller, db_session):
+    import app.poller as poller_module
+
+    monkeypatch.setattr(poller_module, "ADAPTIVE_VISIT_POLLING", True)
+    monkeypatch.setattr(poller_module, "ADAPTIVE_POLL_MAX_SECONDS", 100000000)
+    poller.previous_dps = {"cat_weight": 4100, "excretion_time_day": 0, "excretion_times_day": 1}
+    poller._handle_weight_update(4100, NOW)
+    visit_id = poller.current_visit.id
+    poller.current_visit_id = visit_id
+    poller.db = None
+    poller.cloud.getstatus.return_value = {
+        "success": True,
+        "result": [
+            {"code": "cat_weight", "value": 4100},
+            {"code": "excretion_time_day", "value": 75},
+            {"code": "excretion_times_day", "value": 1},
+        ],
+    }
+
+    outcome = poller.poll()
+
+    visit = db_session.get(Visit, visit_id)
+    assert outcome.success is True
+    assert visit.ended_at is not None
+    assert visit.duration_seconds == 75
+    assert visit.duration_source == "status_dp"
+    assert poller.current_visit is None
+    event_types = [row[0] for row in db_session.query(VisitDiagnostic.event_type).filter_by(visit_id=visit_id).all()]
+    assert "adaptive_poll_started" in event_types
+    assert "adaptive_poll_attempt" in event_types
+    assert "adaptive_poll_stopped" in event_types
+
+
 # ---------------------------------------------------------------------------
 # _handle_cleaning_cycle
 # ---------------------------------------------------------------------------

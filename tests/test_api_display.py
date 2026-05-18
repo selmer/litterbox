@@ -56,9 +56,9 @@ def test_display_summary_returns_latest_visit_today_counts_and_chart(client, db_
 
     now = datetime.now(timezone.utc)
     db_session.add_all([
-        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=20), duration_seconds=280, weight_kg=3.72),
-        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=10), duration_seconds=290, weight_kg=3.78),
-        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(minutes=30), duration_seconds=300, weight_kg=3.76),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=20), duration_seconds=280, duration_source="manual", duration_is_estimated=False, weight_kg=3.72),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=10), duration_seconds=290, duration_source="manual", duration_is_estimated=False, weight_kg=3.78),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(minutes=30), duration_seconds=300, duration_source="manual", duration_is_estimated=False, weight_kg=3.76),
         CleaningCycle(started_at=now - timedelta(minutes=5)),
     ])
     db_session.commit()
@@ -149,6 +149,35 @@ def test_display_summary_ignores_hard_timeout_duration(client, db_session):
             duration_seconds=1800,
             duration_source="hard_timeout",
             duration_is_estimated=True,
+            weight_kg=3.76,
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["latest_visit"]["duration_seconds"] is None
+    assert data["today"]["time_in_box_seconds"] == 0
+
+
+def test_display_summary_ignores_legacy_unknown_timeout_duration(client, db_session):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    db_session.add(
+        Visit(
+            cat_id=cat.id,
+            identified_by="auto",
+            started_at=now - timedelta(minutes=35),
+            ended_at=now - timedelta(minutes=5),
+            duration_seconds=1800,
+            duration_source="unknown",
+            duration_is_estimated=False,
             weight_kg=3.76,
         )
     )

@@ -218,6 +218,31 @@ def test_get_visit_not_found(client):
     assert response.json()["detail"] == "Visit not found"
 
 
+def test_legacy_unknown_timeout_visit_returns_unknown_duration(client, db_session):
+    cat_id = _make_cat(client)
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=30)
+    visit = Visit(
+        cat_id=cat_id,
+        identified_by="auto",
+        started_at=started_at,
+        ended_at=started_at + timedelta(minutes=30),
+        duration_seconds=1800,
+        duration_source="unknown",
+        duration_is_estimated=False,
+        weight_kg=4.1,
+    )
+    db_session.add(visit)
+    db_session.commit()
+
+    response = client.get(f"/visits/{visit.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["duration_seconds"] is None
+    assert data["duration_source"] == "unknown"
+    assert data["duration_is_estimated"] is False
+
+
 def test_hard_timeout_visit_returns_unknown_duration(client, db_session):
     cat_id = _make_cat(client)
     started_at = datetime.now(timezone.utc) - timedelta(minutes=30)

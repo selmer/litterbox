@@ -1,11 +1,12 @@
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import and_, case, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Cat, CleaningCycle, Visit
+from app.durations import trusted_duration_expr, trusted_duration_seconds
 from app.schemas import (
     DisplayCatSummary,
     DisplayChart,
@@ -90,22 +91,6 @@ def _today_start(now: datetime) -> datetime:
     return now.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def _trusted_duration_expr():
-    return case(
-        (
-            and_(Visit.duration_is_estimated.is_(False), Visit.duration_source != "hard_timeout"),
-            Visit.duration_seconds,
-        ),
-        else_=None,
-    )
-
-
-def _trusted_duration_value(visit: Visit) -> int | None:
-    if visit.duration_is_estimated or visit.duration_source == "hard_timeout":
-        return None
-    return visit.duration_seconds
-
-
 def _today_summary(db: Session, today_start: datetime) -> DisplayToday:
     visits_today = (
         db.query(Visit)
@@ -113,7 +98,7 @@ def _today_summary(db: Session, today_start: datetime) -> DisplayToday:
         .count()
     )
     time_in_box = (
-        db.query(func.sum(func.coalesce(_trusted_duration_expr(), 0)))
+        db.query(func.sum(func.coalesce(trusted_duration_expr(), 0)))
         .filter(Visit.started_at >= today_start)
         .scalar()
         or 0
@@ -161,7 +146,7 @@ def _latest_visit(db: Session, now: datetime) -> tuple[DisplayLatestVisit | None
             identified=identified,
             started_at=visit.started_at,
             time_ago_label=_format_time_ago(visit.started_at, now),
-            duration_seconds=_trusted_duration_value(visit),
+            duration_seconds=trusted_duration_seconds(visit),
             weight_kg=visit.weight_kg,
             identified_by=visit.identified_by,
         ),

@@ -16,7 +16,7 @@ This document describes the current architecture, API contract, persistence mode
 
 ### Core responsibilities
 
-- Polls Tuya Cloud for device data in `polling` mode.
+- Polls Tuya Cloud for device data in `polling` mode, with optional bounded adaptive polling while a visit is open.
 - Receives Tuya webhook events in `webhook` mode.
 - Detects litterbox visits from weight readings.
 - Detects cleaning cycles and device setting changes.
@@ -191,7 +191,8 @@ This document describes the current architecture, API contract, persistence mode
   - `id`, `cat_id`, `event_type`, `occurred_at`, `title`, `notes`, `cost_amount`, `cost_currency`, `created_at`, `updated_at`.
 
 - `Visit`
-  - `id`, `cat_id`, `identified_by`, `started_at`, `ended_at`, `duration_seconds`, `weight_kg`, `last_weight_at`, `created_at`.
+  - `id`, `cat_id`, `identified_by`, `started_at`, `ended_at`, `duration_seconds`, `duration_source`, `duration_is_estimated`, `weight_kg`, `last_weight_at`, `created_at`.
+  - Duration is trusted only for `status_dp`, `report_log_counter`, `report_log_duration`, and `manual`; untrusted fallback durations are exposed as unknown.
 
 - `CleaningCycle`
   - `id`, `started_at`, `ended_at`.
@@ -263,6 +264,11 @@ This document describes the current architecture, API contract, persistence mode
 | `TUYA_API_SECRET` | — | Required in polling mode. |
 | `TUYA_API_REGION` | `eu` | Tuya cloud region: `eu`, `us`, `cn`, `in`. |
 | `WEBHOOK_SECRET` | — | If set, required by `X-Webhook-Secret` on webhook requests. |
+| `ADAPTIVE_VISIT_POLLING` | `false` | Enables bounded faster polling while a visit is open. |
+| `ADAPTIVE_POLL_INTERVAL_SECONDS` | `30` | Temporary poll interval during adaptive visit polling. |
+| `ADAPTIVE_POLL_MAX_SECONDS` | `600` | Maximum adaptive polling window per visit. |
+| `ADAPTIVE_POLL_DAILY_BUDGET` | `200` | Maximum adaptive poll attempts per process day. |
+| `ADAPTIVE_POLL_COOLDOWN_SECONDS` | `3600` | Cooldown after adaptive Tuya errors. |
 
 ### Modes of operation
 
@@ -271,7 +277,7 @@ This document describes the current architecture, API contract, persistence mode
 - Default mode: `UPDATE_MODE=polling`.
 - Starts a background thread in `app/main.py`.
 - Requires Tuya cloud credentials.
-- Polls every 300 seconds and marks dashboard polling health stale after 900 seconds without a successful poll.
+- Polls every 300 seconds and marks dashboard polling health stale after 900 seconds without a successful poll. When enabled, adaptive visit polling can temporarily shorten the interval during an open visit within configured budget and cooldown limits.
 - Dashboard health is based on last successful poll.
 
 #### Webhook mode
