@@ -23,7 +23,7 @@ const mockEvents = [
     id: 10,
     cat_id: 1,
     event_type: 'vet_visit',
-    occurred_at: '2026-05-18T14:30:00Z',
+    occurred_at: '2026-05-18',
     title: 'Annual checkup',
     notes: 'All good',
     cost_amount: '45.50',
@@ -69,6 +69,7 @@ describe('CatDetail page', () => {
       id: 11,
       event_type: 'medication',
       title: 'Started medication',
+      occurred_at: '2026-05-18',
       notes: null,
       cost_amount: '12',
     }
@@ -77,7 +78,7 @@ describe('CatDetail page', () => {
     await waitFor(() => screen.getByText('Annual checkup'))
 
     fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'medication' } })
-    fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2026-05-18T16:00' } })
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-18' } })
     await userEvent.type(screen.getByPlaceholderText('e.g. Annual checkup'), 'Started medication')
     await userEvent.type(screen.getByPlaceholderText('0.00'), '12.00')
     fireEvent.click(screen.getByRole('button', { name: 'Add event' }))
@@ -85,6 +86,7 @@ describe('CatDetail page', () => {
     await waitFor(() => expect(client.createCatEvent).toHaveBeenCalledWith('1', expect.objectContaining({
       event_type: 'medication',
       title: 'Started medication',
+      occurred_at: '2026-05-18',
       cost_amount: '12',
       cost_currency: 'EUR',
     })))

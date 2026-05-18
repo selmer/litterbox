@@ -59,7 +59,7 @@ class CatOut(BaseModel):
 
 class CatEventCreate(BaseModel):
     event_type: CatEventType
-    occurred_at: datetime
+    occurred_at: date
     title: str = Field(min_length=1, max_length=120)
     notes: Optional[str] = Field(default=None, max_length=2000)
     cost_amount: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
@@ -89,7 +89,7 @@ class CatEventCreate(BaseModel):
 
 class CatEventUpdate(BaseModel):
     event_type: Optional[CatEventType] = None
-    occurred_at: Optional[datetime] = None
+    occurred_at: Optional[date] = None
     title: Optional[str] = Field(default=None, min_length=1, max_length=120)
     notes: Optional[str] = Field(default=None, max_length=2000)
     cost_amount: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
@@ -127,7 +127,7 @@ class CatEventOut(BaseModel):
     id: int
     cat_id: int
     event_type: CatEventType
-    occurred_at: datetime
+    occurred_at: date
     title: str
     notes: Optional[str]
     cost_amount: Optional[Decimal]

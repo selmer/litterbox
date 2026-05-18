@@ -7,7 +7,7 @@ Add individual cat detail pages with a lightweight lifecycle timeline. Each cat 
 ## Key Changes
 
 - Add nullable `birth_date` to cats and expose it through cat create/update/read APIs.
-- Add `cat_events` with event type, occurrence timestamp, title, notes, optional cost, currency, and audit timestamps.
+- Add `cat_events` with event type, occurrence date, title, notes, optional cost, currency, and audit timestamps.
 - Add cat event CRUD endpoints under `/cats/{cat_id}/events`.
 - Add `/cats/:catId` frontend detail page with profile context, generated birthday row, event form, and event table.
 - Show birthday/age context on the Cats overview while keeping full lifecycle details on the detail page.

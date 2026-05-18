@@ -1,5 +1,5 @@
 """Tests for the /cats API endpoints."""
-from datetime import datetime, timezone, timedelta
+from datetime import date, timedelta
 
 
 TINY_GIF_DATA_URL = "data:image/gif;base64,R0lGODlhAQABAAAAACw="
@@ -166,7 +166,7 @@ def test_update_cat_birth_date(client):
 
 def test_create_cat_event(client):
     cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
-    occurred_at = datetime(2026, 5, 18, 14, 30, tzinfo=timezone.utc).isoformat()
+    occurred_at = '2026-05-18'
 
     response = client.post(
         f"/cats/{cat_id}/events",
@@ -184,6 +184,7 @@ def test_create_cat_event(client):
     data = response.json()
     assert data["cat_id"] == cat_id
     assert data["event_type"] == "vet_visit"
+    assert data["occurred_at"] == occurred_at
     assert data["title"] == "Annual checkup"
     assert data["notes"] == "Everything looked good."
     assert data["cost_amount"] == "45.50"
@@ -194,7 +195,7 @@ def test_create_cat_event(client):
 
 def test_list_cat_events_sorts_newest_first(client):
     cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
-    older = datetime(2026, 5, 17, 10, 0, tzinfo=timezone.utc)
+    older = date(2026, 5, 17)
     newer = older + timedelta(days=1)
     client.post(
         f"/cats/{cat_id}/events",
@@ -215,7 +216,7 @@ def test_update_cat_event(client):
     cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
     event = client.post(
         f"/cats/{cat_id}/events",
-        json={"event_type": "other", "occurred_at": datetime.now(timezone.utc).isoformat(), "title": "Initial"},
+        json={"event_type": "other", "occurred_at": '2026-05-18', "title": "Initial"},
     ).json()
 
     response = client.patch(
@@ -233,7 +234,7 @@ def test_delete_cat_event(client):
     cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
     event = client.post(
         f"/cats/{cat_id}/events",
-        json={"event_type": "other", "occurred_at": datetime.now(timezone.utc).isoformat(), "title": "Delete me"},
+        json={"event_type": "other", "occurred_at": '2026-05-18', "title": "Delete me"},
     ).json()
 
     response = client.delete(f"/cats/{cat_id}/events/{event['id']}")
@@ -254,22 +255,27 @@ def test_cat_event_validation(client):
 
     blank_title = client.post(
         f"/cats/{cat_id}/events",
-        json={"event_type": "other", "occurred_at": datetime.now(timezone.utc).isoformat(), "title": "   "},
+        json={"event_type": "other", "occurred_at": '2026-05-18', "title": "   "},
     )
     invalid_type = client.post(
         f"/cats/{cat_id}/events",
-        json={"event_type": "nap", "occurred_at": datetime.now(timezone.utc).isoformat(), "title": "Nap"},
+        json={"event_type": "nap", "occurred_at": '2026-05-18', "title": "Nap"},
     )
     negative_cost = client.post(
         f"/cats/{cat_id}/events",
         json={
             "event_type": "vet_visit",
-            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "occurred_at": '2026-05-18',
             "title": "Vet",
             "cost_amount": "-1.00",
         },
+    )
+    datetime_value = client.post(
+        f"/cats/{cat_id}/events",
+        json={"event_type": "other", "occurred_at": "2026-05-18T14:30:00Z", "title": "Timestamp"},
     )
 
     assert blank_title.status_code == 422
     assert invalid_type.status_code == 422
     assert negative_cost.status_code == 422
+    assert datetime_value.status_code == 422

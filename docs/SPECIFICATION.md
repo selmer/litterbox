@@ -124,7 +124,7 @@ This document describes the current architecture, API contract, persistence mode
   - Lists lifecycle events newest first.
 
 - `POST /cats/{cat_id}/events`
-  - Creates a lifecycle event with type, occurrence timestamp, title, optional notes, and optional cost.
+  - Creates a lifecycle event with type, occurrence date, title, optional notes, and optional cost.
 
 - `PATCH /cats/{cat_id}/events/{event_id}`
   - Updates a lifecycle event.

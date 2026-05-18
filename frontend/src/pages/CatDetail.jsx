@@ -25,25 +25,16 @@ const EVENT_LABELS = Object.fromEntries(EVENT_TYPES)
 
 function toDateInputValue(value) {
   if (!value) return ''
-  const date = new Date(value)
+  const date = new Date(`${value}`.slice(0, 10) + 'T00:00:00')
   if (Number.isNaN(date.getTime())) return ''
-  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-  return offsetDate.toISOString().slice(0, 16)
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-function fromDateInputValue(value) {
-  if (!value) return null
-  return new Date(value).toISOString()
-}
-
-function formatDateTime(value) {
-  return new Date(value).toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function formatEventDate(value) {
+  return formatBirthDate(`${value}`.slice(0, 10))
 }
 
 function formatBirthDate(value) {
@@ -97,7 +88,7 @@ function EventForm({ initial, onSave, onCancel }) {
     try {
       await onSave({
         event_type: eventType,
-        occurred_at: fromDateInputValue(occurredAt),
+        occurred_at: occurredAt,
         title,
         notes: notes || null,
         cost_amount: costAmount === '' ? null : costAmount,
@@ -123,11 +114,11 @@ function EventForm({ initial, onSave, onCancel }) {
           </select>
         </div>
         <div className="form-field">
-          <label className="form-label" htmlFor={`${formId}-occurred-at`}>Date and time</label>
+          <label className="form-label" htmlFor={`${formId}-occurred-at`}>Date</label>
           <input
             id={`${formId}-occurred-at`}
             className="form-input"
-            type="datetime-local"
+            type="date"
             value={occurredAt}
             onChange={e => setOccurredAt(e.target.value)}
             required
@@ -226,15 +217,15 @@ export default function CatDetail() {
   const timelineRows = useMemo(() => {
     const rows = events.map(event => ({ kind: 'event', occurredAt: event.occurred_at, event }))
     if (cat?.birth_date) {
-      rows.push({ kind: 'birthday', occurredAt: `${cat.birth_date}T00:00:00`, event: null })
+      rows.push({ kind: 'birthday', occurredAt: cat.birth_date, event: null })
     }
-    return rows.sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt) || ((b.event?.id || 0) - (a.event?.id || 0)))
+    return rows.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt) || ((b.event?.id || 0) - (a.event?.id || 0)))
   }, [cat?.birth_date, events])
 
   async function handleCreateEvent(data) {
     try {
       const created = await createCatEvent(catId, data)
-      setEvents(prev => [created, ...prev].sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at) || b.id - a.id))
+      setEvents(prev => [created, ...prev].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at) || b.id - a.id))
       toast('Event added', 'success')
     } catch (e) {
       console.error('Failed to add cat event', e)
@@ -355,7 +346,7 @@ export default function CatDetail() {
               const { event } = row
               return (
                 <tr key={event.id} className="cat-event-row">
-                  <td data-label="Date" className="text-mono table-small">{formatDateTime(event.occurred_at)}</td>
+                  <td data-label="Date">{formatEventDate(event.occurred_at)}</td>
                   <td data-label="Type"><StatusBadge tone="muted">{EVENT_LABELS[event.event_type] || event.event_type}</StatusBadge></td>
                   <td data-label="Title" className="text-primary">{event.title}</td>
                   <td data-label="Notes">{event.notes || '-'}</td>

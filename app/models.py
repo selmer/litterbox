@@ -49,7 +49,7 @@ class CatEvent(Base):
     id = Column(Integer, primary_key=True)
     cat_id = Column(Integer, ForeignKey("cats.id"), nullable=False, index=True)
     event_type = Column(String, nullable=False)
-    occurred_at = Column(TZDateTime(timezone=True), nullable=False, index=True)
+    occurred_at = Column(Date, nullable=False, index=True)
     title = Column(String, nullable=False)
     notes = Column(String, nullable=True)
     cost_amount = Column(Numeric(10, 2), nullable=True)
