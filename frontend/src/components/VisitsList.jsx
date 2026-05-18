@@ -86,21 +86,21 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
       <div className="card card--flush visits-table-card">
         <table className="table visits-table">
           <colgroup>
+            {showIds && <col className="visits-table__id-col" />}
             <col className="visits-table__cat-col" />
             <col className="visits-table__started-col" />
             <col className="visits-table__duration-col" />
             <col className="visits-table__weight-col" />
-            {showIds && <col className="visits-table__id-col" />}
             <col className="visits-table__source-col" />
             {(onReassign || onDelete) && <col className="visits-table__actions-col" />}
           </colgroup>
           <thead>
             <tr>
+              {showIds && <th>ID</th>}
               <th>Cat</th>
               <th>Started</th>
               <th>Duration</th>
               <th>Weight</th>
-              {showIds && <th>ID</th>}
               <th>Source</th>
               {(onReassign || onDelete) && <th>Actions</th>}
             </tr>
@@ -108,6 +108,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
           <tbody>
             {visits.map(visit => (
               <tr key={visit.id} className={`visit-row ${visit.cat_id ? '' : 'visit-row--unidentified'}`}>
+                {showIds && <td className="visit-id text-mono table-small">#{visit.id}</td>}
                 <td className="visit-cat text-primary">
                   {getCatName(visit, catMap)}
                 </td>
@@ -118,7 +119,6 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
                 <td className="text-primary">
                   {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}
                 </td>
-                {showIds && <td className="visit-id text-mono table-small">#{visit.id}</td>}
                 <td>
                   <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
                 </td>

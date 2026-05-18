@@ -26,12 +26,8 @@ describe('VisitsList', () => {
   it('renders stable desktop columns and mobile visit cards', () => {
     render(<VisitsList visits={visits} cats={cats} />)
 
-    expect(screen.getByRole('columnheader', { name: 'Cat' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Started' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Duration' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Weight' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'ID' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument()
+    const headers = screen.getAllByRole('columnheader').map(header => header.textContent.trim())
+    expect(headers).toEqual(['ID', 'Cat', 'Started', 'Duration', 'Weight', 'Source'])
     expect(screen.getAllByText('#1')).toHaveLength(2)
     expect(screen.getAllByText('#2')).toHaveLength(2)
 
