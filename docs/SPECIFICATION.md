@@ -21,7 +21,7 @@ This document describes the current architecture, API contract, persistence mode
 - Detects litterbox visits from weight readings.
 - Detects cleaning cycles and device setting changes.
 - Matches visits to active cats using reference weight thresholds.
-- Stores visits, cats, cleaning cycles, device snapshots, and settings history in the database.
+- Stores visits, cats, cat lifecycle events, cleaning cycles, device snapshots, and settings history in the database.
 - Serves the frontend static build when `frontend/dist` exists.
 
 ### Entry point
@@ -100,7 +100,7 @@ This document describes the current architecture, API contract, persistence mode
 
 - `POST /cats`
   - Creates a new cat.
-  - Request body: `name`, optional `reference_weight_kg`.
+  - Request body: `name`, optional `reference_weight_kg`, optional `birth_date`.
   - Response: `CatOut`.
 
 - `GET /cats`
@@ -111,7 +111,7 @@ This document describes the current architecture, API contract, persistence mode
   - Returns a single cat.
 
 - `PATCH /cats/{cat_id}`
-  - Updates cat fields: `name`, `active`, `reference_weight_kg`.
+  - Updates cat fields: `name`, `active`, `reference_weight_kg`, `birth_date`.
 
 - `POST /cats/{cat_id}/photo`
   - Uploads a cat photo as a base64 data URL.
@@ -119,6 +119,18 @@ This document describes the current architecture, API contract, persistence mode
 
 - `DELETE /cats/{cat_id}/photo`
   - Deletes the stored cat photo.
+
+- `GET /cats/{cat_id}/events`
+  - Lists lifecycle events newest first.
+
+- `POST /cats/{cat_id}/events`
+  - Creates a lifecycle event with type, occurrence timestamp, title, optional notes, and optional cost.
+
+- `PATCH /cats/{cat_id}/events/{event_id}`
+  - Updates a lifecycle event.
+
+- `DELETE /cats/{cat_id}/events/{event_id}`
+  - Deletes a lifecycle event.
 
 ### Visits
 
@@ -173,7 +185,10 @@ This document describes the current architecture, API contract, persistence mode
 ### Models
 
 - `Cat`
-  - `id`, `name`, `active`, `reference_weight_kg`, `photo_path`, `created_at`.
+  - `id`, `name`, `active`, `reference_weight_kg`, `photo_path`, `birth_date`, `created_at`.
+
+- `CatEvent`
+  - `id`, `cat_id`, `event_type`, `occurred_at`, `title`, `notes`, `cost_amount`, `cost_currency`, `created_at`, `updated_at`.
 
 - `Visit`
   - `id`, `cat_id`, `identified_by`, `started_at`, `ended_at`, `duration_seconds`, `weight_kg`, `last_weight_at`, `created_at`.

@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float,
-    ForeignKey, Index, Integer, String, JSON, TypeDecorator
+    Boolean, Column, Date, DateTime, Float,
+    ForeignKey, Index, Integer, String, JSON, Numeric, TypeDecorator
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -33,9 +33,36 @@ class Cat(Base):
     active = Column(Boolean, default=True, nullable=False)
     reference_weight_kg = Column(Float, nullable=True)
     photo_path = Column(String, nullable=True)
+    birth_date = Column(Date, nullable=True)
     created_at = Column(TZDateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     visits = relationship("Visit", back_populates="cat")
+    events = relationship("CatEvent", back_populates="cat", cascade="all, delete-orphan")
+
+
+class CatEvent(Base):
+    __tablename__ = "cat_events"
+    __table_args__ = (
+        Index("ix_cat_events_cat_id_occurred_at", "cat_id", "occurred_at"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    cat_id = Column(Integer, ForeignKey("cats.id"), nullable=False, index=True)
+    event_type = Column(String, nullable=False)
+    occurred_at = Column(TZDateTime(timezone=True), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    notes = Column(String, nullable=True)
+    cost_amount = Column(Numeric(10, 2), nullable=True)
+    cost_currency = Column(String(3), nullable=False, default="EUR")
+    created_at = Column(TZDateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        TZDateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    cat = relationship("Cat", back_populates="events")
 
 
 class Visit(Base):

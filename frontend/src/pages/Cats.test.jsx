@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import Cats from './Cats'
 import { ToastProvider } from '../components/Toast'
 import * as client from '../api/client'
@@ -8,15 +9,17 @@ import * as client from '../api/client'
 vi.mock('../api/client')
 
 const mockCats = [
-  { id: 1, name: 'Mochi', active: true, reference_weight_kg: 4.1, created_at: '2024-01-01T00:00:00Z' },
-  { id: 2, name: 'Biscuit', active: false, reference_weight_kg: null, created_at: '2024-02-01T00:00:00Z' },
+  { id: 1, name: 'Mochi', active: true, reference_weight_kg: 4.1, birth_date: '2020-05-18', created_at: '2024-01-01T00:00:00Z' },
+  { id: 2, name: 'Biscuit', active: false, reference_weight_kg: null, birth_date: null, created_at: '2024-02-01T00:00:00Z' },
 ]
 
 function renderCats() {
   return render(
-    <ToastProvider>
-      <Cats />
-    </ToastProvider>
+    <MemoryRouter>
+      <ToastProvider>
+        <Cats />
+      </ToastProvider>
+    </MemoryRouter>
   )
 }
 
@@ -36,14 +39,16 @@ describe('Cats page', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Mochi' })).toBeInTheDocument())
     expect(screen.getByRole('heading', { name: 'Biscuit' })).toBeInTheDocument()
     expect(screen.getByText('4.100 kg')).toBeInTheDocument()
-    expect(screen.getByText('not set')).toBeInTheDocument()
+    expect(screen.getAllByText('not set').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('active')).toBeInTheDocument()
     expect(screen.getByText('inactive')).toBeInTheDocument()
+    expect(screen.getByText(/18 May 2020/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Mochi' })).toHaveAttribute('href', '/cats/1')
   })
 
   describe('handleCreate', () => {
     it('adds a new cat to the list on success', async () => {
-      const newCat = { id: 3, name: 'Whisker', active: true, reference_weight_kg: null, created_at: '2024-03-01T00:00:00Z' }
+      const newCat = { id: 3, name: 'Whisker', active: true, reference_weight_kg: null, birth_date: null, created_at: '2024-03-01T00:00:00Z' }
       client.createCat.mockResolvedValue(newCat)
 
       renderCats()
@@ -56,7 +61,7 @@ describe('Cats page', () => {
       await waitFor(() =>
         expect(screen.getByRole('heading', { name: 'Whisker' })).toBeInTheDocument()
       )
-      expect(client.createCat).toHaveBeenCalledWith({ name: 'Whisker', reference_weight_kg: null })
+      expect(client.createCat).toHaveBeenCalledWith({ name: 'Whisker', reference_weight_kg: null, birth_date: null })
     })
 
     it('shows an error toast when create fails', async () => {

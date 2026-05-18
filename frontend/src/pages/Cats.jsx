@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { getCats, createCat, updateCat } from '../api/client'
 import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
@@ -17,9 +18,25 @@ function ReferenceWeight({ weight }) {
   return <strong>{weight.toFixed(3)} kg</strong>
 }
 
+
+function formatBirthInfo(birthDate) {
+  if (!birthDate) return <StatusBadge tone="muted">not set</StatusBadge>
+  const date = new Date(`${birthDate}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return <StatusBadge tone="muted">not set</StatusBadge>
+  const now = new Date()
+  let years = now.getFullYear() - date.getFullYear()
+  const hadBirthdayThisYear =
+    now.getMonth() > date.getMonth() ||
+    (now.getMonth() === date.getMonth() && now.getDate() >= date.getDate())
+  if (!hadBirthdayThisYear) years -= 1
+  const label = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  return <strong>{years >= 0 ? `${years}y · ${label}` : label}</strong>
+}
+
 function CatForm({ initial, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
   const [weight, setWeight] = useState(initial?.reference_weight_kg ?? '')
+  const [birthDate, setBirthDate] = useState(initial?.birth_date || '')
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e) {
@@ -29,6 +46,7 @@ function CatForm({ initial, onSave, onCancel }) {
       await onSave({
         name,
         reference_weight_kg: weight ? parseFloat(weight) : null,
+        birth_date: birthDate || null,
       })
     } finally {
       setSaving(false)
@@ -59,6 +77,15 @@ function CatForm({ initial, onSave, onCancel }) {
             value={weight}
             onChange={e => setWeight(e.target.value)}
             placeholder="e.g. 4.200"
+          />
+        </div>
+        <div className="form-field">
+          <label className="form-label">Birthday</label>
+          <input
+            className="form-input"
+            type="date"
+            value={birthDate}
+            onChange={e => setBirthDate(e.target.value)}
           />
         </div>
       </div>
@@ -101,7 +128,9 @@ function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleAct
         <CatAvatar cat={cat} />
         <div className="cat-profile__main">
           <div className="cat-profile__title-row">
-            <h3>{cat.name}</h3>
+            <h3>
+              <Link to={`/cats/${cat.id}`} className="cat-profile__name-link">{cat.name}</Link>
+            </h3>
             {cat.active ? <StatusBadge tone="green">active</StatusBadge> : <StatusBadge tone="muted">inactive</StatusBadge>}
           </div>
           <div className="cat-profile__meta-grid">
@@ -110,12 +139,19 @@ function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleAct
               <ReferenceWeight weight={cat.reference_weight_kg} />
             </div>
             <div className="cat-profile__meta-item">
+              <span>Birthday</span>
+              {formatBirthInfo(cat.birth_date)}
+            </div>
+            <div className="cat-profile__meta-item">
               <span>Added</span>
               <strong>{new Date(cat.created_at).toLocaleDateString('en-GB')}</strong>
             </div>
           </div>
         </div>
         <div className="cat-profile__actions">
+          <Link className="btn btn-secondary btn-sm" to={`/cats/${cat.id}`}>
+            View
+          </Link>
           <button className="btn btn-secondary btn-sm" onClick={onEdit}>
             Edit
           </button>

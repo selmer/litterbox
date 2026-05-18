@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Cat
-from app.schemas import CatCreate, CatOut, CatUpdate
+from app.models import Cat, CatEvent
+from app.schemas import CatCreate, CatEventCreate, CatEventOut, CatEventUpdate, CatOut, CatUpdate
 
 router = APIRouter(prefix="/cats", tags=["cats"])
 
@@ -59,6 +59,7 @@ def cat_to_out(cat: Cat) -> CatOut:
         name=cat.name,
         active=cat.active,
         reference_weight_kg=cat.reference_weight_kg,
+        birth_date=cat.birth_date,
         photo_url=photo_url,
         created_at=cat.created_at,
     )
@@ -66,7 +67,7 @@ def cat_to_out(cat: Cat) -> CatOut:
 
 @router.post("", response_model=CatOut)
 def create_cat(cat: CatCreate, db: Session = Depends(get_db)):
-    db_cat = Cat(name=cat.name, reference_weight_kg=cat.reference_weight_kg)
+    db_cat = Cat(name=cat.name, reference_weight_kg=cat.reference_weight_kg, birth_date=cat.birth_date)
     db.add(db_cat)
     db.commit()
     db.refresh(db_cat)
@@ -79,6 +80,64 @@ def list_cats(include_inactive: bool = False, db: Session = Depends(get_db)):
     if not include_inactive:
         query = query.filter(Cat.active == True)
     return [cat_to_out(c) for c in query.all()]
+
+
+def _get_cat_or_404(cat_id: int, db: Session) -> Cat:
+    cat = db.query(Cat).filter(Cat.id == cat_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Cat not found")
+    return cat
+
+
+def _get_cat_event_or_404(cat_id: int, event_id: int, db: Session) -> CatEvent:
+    event = (
+        db.query(CatEvent)
+        .filter(CatEvent.cat_id == cat_id, CatEvent.id == event_id)
+        .first()
+    )
+    if not event:
+        raise HTTPException(status_code=404, detail="Cat event not found")
+    return event
+
+
+@router.get("/{cat_id}/events", response_model=list[CatEventOut])
+def list_cat_events(cat_id: int, db: Session = Depends(get_db)):
+    _get_cat_or_404(cat_id, db)
+    return (
+        db.query(CatEvent)
+        .filter(CatEvent.cat_id == cat_id)
+        .order_by(CatEvent.occurred_at.desc(), CatEvent.id.desc())
+        .all()
+    )
+
+
+@router.post("/{cat_id}/events", response_model=CatEventOut, status_code=201)
+def create_cat_event(cat_id: int, event_data: CatEventCreate, db: Session = Depends(get_db)):
+    _get_cat_or_404(cat_id, db)
+    event = CatEvent(cat_id=cat_id, **event_data.model_dump())
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.patch("/{cat_id}/events/{event_id}", response_model=CatEventOut)
+def update_cat_event(cat_id: int, event_id: int, update: CatEventUpdate, db: Session = Depends(get_db)):
+    _get_cat_or_404(cat_id, db)
+    event = _get_cat_event_or_404(cat_id, event_id, db)
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(event, field, value)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.delete("/{cat_id}/events/{event_id}", status_code=204)
+def delete_cat_event(cat_id: int, event_id: int, db: Session = Depends(get_db)):
+    _get_cat_or_404(cat_id, db)
+    event = _get_cat_event_or_404(cat_id, event_id, db)
+    db.delete(event)
+    db.commit()
 
 
 @router.get("/{cat_id}", response_model=CatOut)

@@ -8,6 +8,7 @@ import './App.css'
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Visits    = lazy(() => import('./pages/Visits'))
 const Cats      = lazy(() => import('./pages/Cats'))
+const CatDetail = lazy(() => import('./pages/CatDetail'))
 
 const LIGHT_THEME = 'light-professional'
 const DARK_THEME = 'dark-elegant'
@@ -92,6 +93,7 @@ function AppShell() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/visits" element={<Visits />} />
             <Route path="/cats" element={<Cats />} />
+            <Route path="/cats/:catId" element={<CatDetail />} />
           </Routes>
         </Suspense>
       </main>

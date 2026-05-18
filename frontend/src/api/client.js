@@ -27,6 +27,18 @@ export const createCat = (data) =>
 export const updateCat = (id, data) =>
   api.patch(`/cats/${id}`, data).then(r => r.data)
 
+export const getCatEvents = (catId, { signal } = {}) =>
+  api.get(`/cats/${catId}/events`, { signal }).then(r => r.data)
+
+export const createCatEvent = (catId, data) =>
+  api.post(`/cats/${catId}/events`, data).then(r => r.data)
+
+export const updateCatEvent = (catId, eventId, data) =>
+  api.patch(`/cats/${catId}/events/${eventId}`, data).then(r => r.data)
+
+export const deleteCatEvent = (catId, eventId) =>
+  api.delete(`/cats/${catId}/events/${eventId}`)
+
 // --- Visits ---
 
 export const getVisits = ({ limit = 50, offset = 0, catId, unidentified, signal } = {}) =>

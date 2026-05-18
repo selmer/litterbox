@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -6,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 MAX_CAT_WEIGHT_KG = 20.0
 MAX_VISIT_DURATION_SECONDS = 60 * 60
 DurationSource = Literal["status_dp", "report_log_counter", "report_log_duration", "manual", "hard_timeout", "unknown"]
+CatEventType = Literal["vet_visit", "medication", "diet_change", "grooming", "health_note", "milestone", "other"]
 
 
 # --- Cat schemas ---
@@ -13,6 +15,7 @@ DurationSource = Literal["status_dp", "report_log_counter", "report_log_duration
 class CatCreate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     reference_weight_kg: Optional[float] = Field(default=None, gt=0, le=MAX_CAT_WEIGHT_KG)
+    birth_date: Optional[date] = None
 
     @field_validator("name")
     @classmethod
@@ -27,6 +30,7 @@ class CatUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=80)
     active: Optional[bool] = None
     reference_weight_kg: Optional[float] = Field(default=None, gt=0, le=MAX_CAT_WEIGHT_KG)
+    birth_date: Optional[date] = None
 
     @field_validator("name")
     @classmethod
@@ -46,8 +50,90 @@ class CatOut(BaseModel):
     name: str
     active: bool
     reference_weight_kg: Optional[float]
+    birth_date: Optional[date] = None
     photo_url: Optional[str] = None
     created_at: datetime
+
+
+# --- Cat event schemas ---
+
+class CatEventCreate(BaseModel):
+    event_type: CatEventType
+    occurred_at: datetime
+    title: str = Field(min_length=1, max_length=120)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+    cost_amount: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    cost_currency: str = Field(default="EUR", min_length=3, max_length=3)
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Title must not be blank")
+        return value
+
+    @field_validator("notes")
+    @classmethod
+    def notes_blank_to_none(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        return value or None
+
+    @field_validator("cost_currency")
+    @classmethod
+    def normalize_currency(cls, value: str) -> str:
+        return value.strip().upper()
+
+
+class CatEventUpdate(BaseModel):
+    event_type: Optional[CatEventType] = None
+    occurred_at: Optional[datetime] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+    cost_amount: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    cost_currency: Optional[str] = Field(default=None, min_length=3, max_length=3)
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_blank(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("Title must not be blank")
+        return value
+
+    @field_validator("notes")
+    @classmethod
+    def notes_blank_to_none(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        return value or None
+
+    @field_validator("cost_currency")
+    @classmethod
+    def normalize_currency(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        return value.strip().upper()
+
+
+class CatEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    cat_id: int
+    event_type: CatEventType
+    occurred_at: datetime
+    title: str
+    notes: Optional[str]
+    cost_amount: Optional[Decimal]
+    cost_currency: str
+    created_at: datetime
+    updated_at: datetime
 
 
 # --- Visit schemas ---
