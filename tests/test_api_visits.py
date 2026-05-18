@@ -424,3 +424,82 @@ def test_weight_history_rejects_inverted_date_range(client):
         },
     )
     assert response.status_code == 400
+
+
+def test_update_visit_edits_time_duration_weight_and_confidence(client, db_session):
+    cat_id = _make_cat(client, name="Luna")
+    visit = _make_visit(client, cat_id, duration_seconds=60, weight_kg=4.1)
+    new_started = datetime(2024, 1, 2, 13, 30, tzinfo=timezone.utc)
+
+    response = client.patch(
+        f"/visits/{visit['id']}",
+        json={
+            "started_at": new_started.isoformat(),
+            "duration_seconds": 125,
+            "weight_kg": 4.25,
+            "weight_confidence": "ignored",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["started_at"] == new_started.isoformat().replace("+00:00", "Z")
+    assert data["ended_at"] == (new_started + timedelta(seconds=125)).isoformat().replace("+00:00", "Z")
+    assert data["duration_seconds"] == 125
+    assert data["duration_source"] == "manual"
+    assert data["duration_is_estimated"] is False
+    assert data["weight_kg"] == 4.25
+    assert data["weight_confidence"] == "ignored"
+    assert data["weight_confidence_reason"] == "operator_ignored"
+
+    diagnostics = client.get(f"/visits/{visit['id']}/diagnostics").json()
+    assert diagnostics[-1]["event_type"] == "manual_edit"
+    assert diagnostics[-1]["payload"]["changes"]["weight_kg"]["to"] == 4.25
+
+
+def test_update_visit_rejects_invalid_edit_values(client):
+    cat_id = _make_cat(client)
+    visit = _make_visit(client, cat_id)
+
+    response = client.patch(
+        f"/visits/{visit['id']}",
+        json={"duration_seconds": 0, "weight_kg": -1, "weight_confidence": "wild"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_weight_history_excludes_ignored_weights_by_default(client, db_session):
+    cat_id = _make_cat(client, name="Luna")
+    normal = _make_visit(client, cat_id, weight_kg=4.1)
+    ignored = _make_visit(client, cat_id, weight_kg=9.9)
+    client.patch(f"/visits/{ignored['id']}", json={"weight_confidence": "ignored"})
+
+    response = client.get("/visits/weight-history")
+
+    assert response.status_code == 200
+    points = response.json()[0]["data"]
+    assert [point["visit_id"] for point in points] == [normal["id"]]
+    assert points[0]["weight_confidence"] == "normal"
+
+    response = client.get("/visits/weight-history?include_ignored=true")
+    assert response.status_code == 200
+    assert [point["visit_id"] for point in response.json()[0]["data"]] == [normal["id"], ignored["id"]]
+
+
+def test_create_visit_accepts_confidence_state(client):
+    cat_id = _make_cat(client)
+    response = client.post(
+        "/visits",
+        json={
+            "cat_id": cat_id,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "duration_seconds": 60,
+            "weight_kg": 4.1,
+            "weight_confidence": "suspect",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["weight_confidence"] == "suspect"
+    assert response.json()["weight_confidence_reason"] == "manual"

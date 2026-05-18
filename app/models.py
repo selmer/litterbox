@@ -80,6 +80,8 @@ class Visit(Base):
     duration_source = Column(String, default="unknown", nullable=False)
     duration_is_estimated = Column(Boolean, default=False, nullable=False)
     weight_kg = Column(Float, nullable=True)
+    weight_confidence = Column(String, default="normal", nullable=False)
+    weight_confidence_reason = Column(String, nullable=True)
     last_weight_at = Column(TZDateTime(timezone=True), nullable=True)
     created_at = Column(TZDateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 

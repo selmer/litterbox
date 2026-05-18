@@ -19,6 +19,7 @@ const visits = [
     duration_seconds: null,
     weight_kg: null,
     identified_by: null,
+    weight_confidence: 'ignored',
   },
 ]
 
@@ -37,6 +38,7 @@ describe('VisitsList', () => {
     expect(within(mobileList).getByText('#1')).toBeInTheDocument()
     expect(within(mobileList).getByText('#2')).toBeInTheDocument()
     expect(within(mobileList).getByText('unidentified')).toBeInTheDocument()
+    expect(screen.getAllByText('ignored').length).toBeGreaterThan(0)
   })
 
   it('can hide visit IDs for compact dashboard usage', () => {

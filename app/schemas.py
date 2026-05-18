@@ -9,6 +9,8 @@ from app.durations import TRUSTED_DURATION_SOURCES
 MAX_CAT_WEIGHT_KG = 20.0
 MAX_VISIT_DURATION_SECONDS = 60 * 60
 DurationSource = Literal["status_dp", "report_log_counter", "report_log_duration", "manual", "hard_timeout", "unknown"]
+WeightConfidence = Literal["normal", "suspect", "ignored"]
+WeightConfidenceReason = Literal["manual", "outlier_delta", "operator_ignored", "operator_restored"]
 CatEventType = Literal["vet_visit", "medication", "diet_change", "grooming", "health_note", "milestone", "other"]
 
 
@@ -152,6 +154,8 @@ class VisitOut(BaseModel):
     duration_source: DurationSource = "unknown"
     duration_is_estimated: bool = False
     weight_kg: Optional[float]
+    weight_confidence: WeightConfidence = "normal"
+    weight_confidence_reason: Optional[str] = None
     created_at: datetime
 
     @model_validator(mode="after")
@@ -180,16 +184,22 @@ class VisitCreate(BaseModel):
     started_at: datetime
     duration_seconds: int = Field(gt=0, le=MAX_VISIT_DURATION_SECONDS)
     weight_kg: float = Field(gt=0, le=MAX_CAT_WEIGHT_KG)
+    weight_confidence: WeightConfidence = "normal"
 
 
 class VisitUpdate(BaseModel):
     cat_id: Optional[int] = Field(default=None, gt=0)
+    started_at: Optional[datetime] = None
+    duration_seconds: Optional[int] = Field(default=None, gt=0, le=MAX_VISIT_DURATION_SECONDS)
+    weight_kg: Optional[float] = Field(default=None, gt=0, le=MAX_CAT_WEIGHT_KG)
+    weight_confidence: Optional[WeightConfidence] = None
 
 
 class WeightDataPoint(BaseModel):
     timestamp: datetime
     weight_kg: float
     visit_id: int
+    weight_confidence: WeightConfidence = "normal"
 
 
 class WeightHistory(BaseModel):

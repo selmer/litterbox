@@ -1354,3 +1354,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.visit-card dd .badge,
+.visits-table td .badge {
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}

@@ -658,3 +658,19 @@ def test_identify_visit_cat_updates_reference_weight(poller, db_session):
     # to verify the in-session state before the caller would commit.
     assert cat.reference_weight_kg != pytest.approx(4.0)
     assert 4.0 < cat.reference_weight_kg < 4.2
+
+
+def test_identify_visit_cat_marks_large_reference_deviation_suspect(poller, db_session):
+    cat = Cat(name="Luna", reference_weight_kg=4.0, active=True)
+    db_session.add(cat)
+    db_session.commit()
+    visit = Visit(started_at=NOW, weight_kg=4.42)
+    db_session.add(visit)
+    db_session.commit()
+
+    poller._identify_visit_cat(visit, 4.42, update_reference=True, recorded_at=NOW)
+
+    assert visit.cat_id == cat.id
+    assert visit.weight_confidence == "suspect"
+    assert visit.weight_confidence_reason == "outlier_delta"
+    assert cat.reference_weight_kg == pytest.approx(4.0)

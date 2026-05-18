@@ -39,6 +39,7 @@ DP_EXCRETION_TIME = "excretion_time_day"
 REPORT_LOG_LOOKBACK_BUFFER_SECONDS = 30
 REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS = 60
 REPORT_LOG_CODES = ",".join([DP_EXCRETION_TIMES, DP_EXCRETION_TIME, DP_CAT_WEIGHT])
+WEIGHT_OUTLIER_DELTA_KG = float(os.getenv("WEIGHT_OUTLIER_DELTA_KG", "0.35"))
 
 
 @dataclass(frozen=True)
@@ -844,6 +845,7 @@ class LitterboxPoller:
                     Visit.cat_id == cat.id,
                     Visit.identified_by.isnot(None),
                     Visit.weight_kg.isnot(None),
+                    Visit.weight_confidence != "ignored",
                     Visit.id != visit.id,
                 )
                 .order_by(Visit.started_at.desc(), Visit.id.desc())
@@ -903,10 +905,39 @@ class LitterboxPoller:
             recorded_at or datetime.now(timezone.utc),
         )
 
+    def _mark_weight_confidence(self, visit: Visit, cat: Cat, weight_kg: float):
+        if visit.weight_confidence == "ignored":
+            return
+        if cat.reference_weight_kg is None:
+            if not visit.weight_confidence:
+                visit.weight_confidence = "normal"
+            return
+        deviation = abs(cat.reference_weight_kg - weight_kg)
+        if deviation > WEIGHT_OUTLIER_DELTA_KG:
+            visit.weight_confidence = "suspect"
+            visit.weight_confidence_reason = "outlier_delta"
+            self._record_visit_diagnostic(
+                visit,
+                "weight_confidence_changed",
+                {
+                    "weight_confidence": "suspect",
+                    "reason": "outlier_delta",
+                    "weight_kg": weight_kg,
+                    "reference_weight_kg": cat.reference_weight_kg,
+                    "deviation_kg": round(deviation, 3),
+                    "threshold_kg": WEIGHT_OUTLIER_DELTA_KG,
+                },
+                datetime.now(timezone.utc),
+            )
+        elif visit.weight_confidence != "normal":
+            visit.weight_confidence = "normal"
+            visit.weight_confidence_reason = None
+
     def _assign_identified_cat(self, visit: Visit, cat: Cat, weight_kg: float, update_reference: bool):
         visit.cat_id = cat.id
         visit.identified_by = "auto"
-        if update_reference and cat.reference_weight_kg is not None:
+        self._mark_weight_confidence(visit, cat, weight_kg)
+        if update_reference and cat.reference_weight_kg is not None and visit.weight_confidence != "suspect":
             cat.reference_weight_kg = update_reference_weight(cat.reference_weight_kg, weight_kg)
 
     def _identify_visit_cat(
@@ -922,9 +953,10 @@ class LitterboxPoller:
 
         active_cats = self.db.query(Cat).filter(Cat.active == True).all()
         if visit.cat_id is not None:
-            if update_reference:
-                cat = next((c for c in active_cats if c.id == visit.cat_id), None)
-                if cat and cat.reference_weight_kg is not None:
+            cat = next((c for c in active_cats if c.id == visit.cat_id), None)
+            if cat:
+                self._mark_weight_confidence(visit, cat, weight_kg)
+                if update_reference and cat.reference_weight_kg is not None and visit.weight_confidence != "suspect":
                     cat.reference_weight_kg = update_reference_weight(cat.reference_weight_kg, weight_kg)
             return
 

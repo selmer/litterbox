@@ -16,16 +16,27 @@ function IdentificationBadge({ identifiedBy, catId }) {
   return <StatusBadge tone="green">auto</StatusBadge>
 }
 
+function ConfidenceBadge({ confidence }) {
+  if (confidence === 'ignored') return <StatusBadge tone="muted">ignored</StatusBadge>
+  if (confidence === 'suspect') return <StatusBadge tone="yellow">suspect</StatusBadge>
+  return null
+}
+
 function getCatName(visit, catMap) {
   if (!visit.cat_id) return 'Unknown cat'
   return catMap[visit.cat_id]?.name || `Cat #${visit.cat_id}`
 }
 
-function VisitActions({ visit, onReassign, onDelete, showDiagnosticsLink }) {
-  if (!onReassign && !onDelete && !showDiagnosticsLink) return null
+function VisitActions({ visit, onEdit, onReassign, onDelete, showDiagnosticsLink }) {
+  if (!onEdit && !onReassign && !onDelete && !showDiagnosticsLink) return null
 
   return (
     <div className="visit-actions">
+      {onEdit && (
+        <button className="btn btn-secondary btn-sm" onClick={() => onEdit(visit)}>
+          edit
+        </button>
+      )}
       {showDiagnosticsLink && (
         <a className="btn btn-secondary btn-sm" href={`/diagnostics?visit=${visit.id}`}>
           diagnostics
@@ -45,7 +56,7 @@ function VisitActions({ visit, onReassign, onDelete, showDiagnosticsLink }) {
   )
 }
 
-function VisitMobileCard({ visit, catMap, onReassign, onDelete, showId = true, showDiagnosticsLink = false }) {
+function VisitMobileCard({ visit, catMap, onEdit, onReassign, onDelete, showId = true, showDiagnosticsLink = false }) {
   const catName = getCatName(visit, catMap)
 
   return (
@@ -71,15 +82,18 @@ function VisitMobileCard({ visit, catMap, onReassign, onDelete, showId = true, s
         </div>
         <div>
           <dt>Weight</dt>
-          <dd>{visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}</dd>
+          <dd>
+            {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}
+            <ConfidenceBadge confidence={visit.weight_confidence} />
+          </dd>
         </div>
       </dl>
-      <VisitActions visit={visit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLink} />
+      <VisitActions visit={visit} onEdit={onEdit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLink} />
     </article>
   )
 }
 
-export default function VisitsList({ visits, cats = [], onReassign, onDelete, emptyMessage = 'No visits recorded yet', showIds = true, showDiagnosticsLinks = false }) {
+export default function VisitsList({ visits, cats = [], onEdit, onReassign, onDelete, emptyMessage = 'No visits recorded yet', showIds = true, showDiagnosticsLinks = false }) {
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
@@ -97,7 +111,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
             <col className="visits-table__duration-col" />
             <col className="visits-table__weight-col" />
             <col className="visits-table__source-col" />
-            {(onReassign || onDelete || showDiagnosticsLinks) && <col className="visits-table__actions-col" />}
+            {(onEdit || onReassign || onDelete || showDiagnosticsLinks) && <col className="visits-table__actions-col" />}
           </colgroup>
           <thead>
             <tr>
@@ -107,7 +121,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
               <th>Duration</th>
               <th>Weight</th>
               <th>Source</th>
-              {(onReassign || onDelete || showDiagnosticsLinks) && <th>Actions</th>}
+              {(onEdit || onReassign || onDelete || showDiagnosticsLinks) && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -123,13 +137,14 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
                 <td>{formatDuration(visit.duration_seconds)}</td>
                 <td className="text-primary">
                   {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}
+                  <ConfidenceBadge confidence={visit.weight_confidence} />
                 </td>
                 <td>
                   <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
                 </td>
-                {(onReassign || onDelete || showDiagnosticsLinks) && (
+                {(onEdit || onReassign || onDelete || showDiagnosticsLinks) && (
                   <td>
-                    <VisitActions visit={visit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLinks} />
+                    <VisitActions visit={visit} onEdit={onEdit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLinks} />
                   </td>
                 )}
               </tr>
@@ -144,6 +159,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
             key={visit.id}
             visit={visit}
             catMap={catMap}
+            onEdit={onEdit}
             onReassign={onReassign}
             onDelete={onDelete}
             showId={showIds}

@@ -314,3 +314,25 @@ def test_display_summary_returns_null_comparisons_outside_tolerance(client, db_s
     assert cat_summary["latest_weight_kg"] == 3.8
     assert cat_summary["one_month_ago"] is None
     assert cat_summary["three_months_ago"] is None
+
+
+def test_display_summary_excludes_ignored_weights_from_cat_summaries_and_chart(client, db_session):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    db_session.add_all([
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=20), duration_seconds=280, duration_source="manual", duration_is_estimated=False, weight_kg=3.72),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(days=2), duration_seconds=290, duration_source="manual", duration_is_estimated=False, weight_kg=3.80),
+        Visit(cat_id=cat.id, identified_by="auto", started_at=now - timedelta(minutes=30), duration_seconds=300, duration_source="manual", duration_is_estimated=False, weight_kg=9.99, weight_confidence="ignored"),
+    ])
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["cats"][0]["latest_weight_kg"] == 3.8
+    assert [point["weight_kg"] for point in data["chart"]["points"]] == [3.72, 3.8]

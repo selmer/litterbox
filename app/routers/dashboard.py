@@ -63,7 +63,10 @@ def get_dashboard(db: Session = Depends(get_db)):
             )
             .label("row_num"),
         )
-        .filter(Visit.cat_id.isnot(None))
+        .filter(
+            Visit.cat_id.isnot(None),
+            Visit.weight_confidence != "ignored",
+        )
         .subquery()
     )
 

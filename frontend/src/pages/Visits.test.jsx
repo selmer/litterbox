@@ -6,11 +6,12 @@ import * as client from '../api/client'
 
 vi.mock('../api/client')
 vi.mock('../components/VisitsList', () => ({
-  default: ({ visits, onDelete, onReassign }) => (
+  default: ({ visits, onDelete, onEdit, onReassign }) => (
     <ul>
       {visits.map(v => (
         <li key={v.id}>
           Visit {v.id}
+          <button onClick={() => onEdit(v)}>Edit {v.id}</button>
           <button onClick={() => onDelete(v)}>Delete {v.id}</button>
           <button onClick={() => onReassign(v)}>Reassign {v.id}</button>
         </li>
@@ -22,8 +23,8 @@ vi.mock('../components/VisitsList', () => ({
 const PAGE_SIZE = 50
 
 const mockVisits = [
-  { id: 1, cat_id: 10, started_at: '2024-01-01T10:00:00Z', weight_kg: 4.2 },
-  { id: 2, cat_id: null, started_at: '2024-01-01T11:00:00Z', weight_kg: null },
+  { id: 1, cat_id: 10, started_at: '2024-01-01T10:00:00Z', duration_seconds: 125, weight_kg: 4.2, weight_confidence: 'normal' },
+  { id: 2, cat_id: null, started_at: '2024-01-01T11:00:00Z', duration_seconds: null, weight_kg: null, weight_confidence: 'normal' },
 ]
 const mockCats = [{ id: 10, name: 'Mochi', reference_weight_kg: 4.1 }]
 
@@ -66,6 +67,26 @@ describe('Visits page', () => {
     renderVisits()
     await waitFor(() => expect(screen.getByText('Visit 1')).toBeInTheDocument())
     expect(screen.getByText('Visit 2')).toBeInTheDocument()
+  })
+
+  it('edits visit fields from the correction modal', async () => {
+    const updatedVisit = { ...mockVisits[0], weight_kg: 4.25, weight_confidence: 'ignored' }
+    client.updateVisit.mockResolvedValue(updatedVisit)
+    renderVisits()
+    await waitFor(() => screen.getByText('Edit 1'))
+
+    fireEvent.click(screen.getByText('Edit 1'))
+    await waitFor(() => screen.getByText('Edit visit'))
+    fireEvent.change(screen.getByLabelText('Weight (kg)'), { target: { value: '4.25' } })
+    fireEvent.change(screen.getByLabelText('Confidence'), { target: { value: 'ignored' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save visit' }))
+
+    await waitFor(() => expect(client.updateVisit).toHaveBeenCalledWith(1, expect.objectContaining({
+      cat_id: 10,
+      duration_seconds: 125,
+      weight_kg: 4.25,
+      weight_confidence: 'ignored',
+    })))
   })
 
   describe('handleDelete', () => {

@@ -222,6 +222,7 @@ def _cat_summaries(db: Session, today_start: datetime, now: datetime) -> list[Di
             .filter(
                 Visit.cat_id == cat.id,
                 Visit.weight_kg.isnot(None),
+                Visit.weight_confidence != "ignored",
                 Visit.started_at >= since,
                 Visit.started_at <= now,
             )
@@ -266,6 +267,7 @@ def _chart_cat_id(db: Session, latest_visit_cat_id: int | None, since: datetime)
                 Visit.cat_id == latest_visit_cat_id,
                 Visit.started_at >= since,
                 Visit.weight_kg.isnot(None),
+                Visit.weight_confidence != "ignored",
             )
             .count()
         )
@@ -278,6 +280,7 @@ def _chart_cat_id(db: Session, latest_visit_cat_id: int | None, since: datetime)
             Cat.active == True,
             Visit.started_at >= since,
             Visit.weight_kg.isnot(None),
+            Visit.weight_confidence != "ignored",
         )
         .group_by(Visit.cat_id)
         .having(func.count(Visit.id) >= MIN_CHART_POINTS)
@@ -299,6 +302,7 @@ def _weight_chart(db: Session, latest_visit_cat_id: int | None, now: datetime) -
             Visit.cat_id == cat_id,
             Visit.started_at >= since,
             Visit.weight_kg.isnot(None),
+            Visit.weight_confidence != "ignored",
         )
         .order_by(Visit.started_at.asc(), Visit.id.asc())
         .all()

@@ -12,6 +12,28 @@ from app.schemas import VisitOut, VisitCreate, VisitUpdate, VisitDiagnosticOut, 
 router = APIRouter(prefix="/visits", tags=["visits"])
 
 
+def _confidence_reason(confidence: str | None) -> str | None:
+    if confidence == "ignored":
+        return "operator_ignored"
+    if confidence == "normal":
+        return "operator_restored"
+    if confidence == "suspect":
+        return "manual"
+    return None
+
+
+def _record_manual_edit(db: Session, visit: Visit, changes: dict):
+    if not changes:
+        return
+    db.add(VisitDiagnostic(
+        visit_id=visit.id,
+        event_type="manual_edit",
+        payload={"changes": changes},
+        recorded_at=datetime.now(timezone.utc),
+    ))
+
+
+
 @router.post("", response_model=VisitOut, status_code=201)
 def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
     """Creates a manual visit entry."""
@@ -27,6 +49,8 @@ def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
         duration_source="manual",
         duration_is_estimated=False,
         weight_kg=visit_data.weight_kg,
+        weight_confidence=visit_data.weight_confidence,
+        weight_confidence_reason=_confidence_reason(visit_data.weight_confidence),
         last_weight_at=visit_data.started_at,
     )
     db.add(visit)
@@ -56,6 +80,7 @@ def weight_history(
     from_date: Optional[datetime] = Query(default=None),
     to_date: Optional[datetime] = Query(default=None),
     cat_id: Optional[int] = Query(default=None, gt=0),
+    include_ignored: bool = False,
     db: Session = Depends(get_db),
 ):
     """
@@ -78,7 +103,7 @@ def weight_history(
         return []
 
     cat_ids = [cat.id for cat in cats]
-    visits = (
+    visit_query = (
         db.query(Visit)
         .filter(
             Visit.cat_id.in_(cat_ids),
@@ -86,6 +111,11 @@ def weight_history(
             Visit.started_at >= from_date,
             Visit.started_at <= to_date,
         )
+    )
+    if not include_ignored:
+        visit_query = visit_query.filter(Visit.weight_confidence != "ignored")
+    visits = (
+        visit_query
         .order_by(Visit.cat_id.asc(), Visit.started_at.asc(), Visit.id.asc())
         .all()
     )
@@ -101,6 +131,7 @@ def weight_history(
                 timestamp=v.started_at,
                 weight_kg=v.weight_kg,
                 visit_id=v.id,
+                weight_confidence=v.weight_confidence,
             )
             for v in visits_by_cat[cat.id]
         ]
@@ -138,17 +169,60 @@ def get_visit(visit_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/{visit_id}", response_model=VisitOut)
 def update_visit(visit_id: int, update: VisitUpdate, db: Session = Depends(get_db)):
-    """Allows manual correction of cat assignment."""
+    """Allows manual correction of visit assignment, timing, duration, weight, and confidence."""
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
+
     update_data = update.model_dump(exclude_unset=True)
+    changes = {}
+
     if "cat_id" in update_data:
         cat_id = update_data["cat_id"]
         if cat_id is not None and not db.query(Cat.id).filter(Cat.id == cat_id).first():
             raise HTTPException(status_code=400, detail="Cat not found")
+        if visit.cat_id != cat_id:
+            changes["cat_id"] = {"from": visit.cat_id, "to": cat_id}
         visit.cat_id = cat_id
         visit.identified_by = "manual" if cat_id is not None else None
+
+    if "started_at" in update_data:
+        started_at = update_data["started_at"]
+        if visit.started_at != started_at:
+            changes["started_at"] = {"from": visit.started_at.isoformat(), "to": started_at.isoformat()}
+        visit.started_at = started_at
+        if visit.duration_seconds is not None:
+            visit.ended_at = started_at + timedelta(seconds=visit.duration_seconds)
+        if visit.last_weight_at is not None:
+            visit.last_weight_at = started_at
+
+    if "duration_seconds" in update_data:
+        duration = update_data["duration_seconds"]
+        if visit.duration_seconds != duration:
+            changes["duration_seconds"] = {"from": visit.duration_seconds, "to": duration}
+        visit.duration_seconds = duration
+        visit.duration_source = "manual"
+        visit.duration_is_estimated = False
+        visit.ended_at = visit.started_at + timedelta(seconds=duration)
+
+    if "weight_kg" in update_data:
+        weight = update_data["weight_kg"]
+        if visit.weight_kg != weight:
+            changes["weight_kg"] = {"from": visit.weight_kg, "to": weight}
+        visit.weight_kg = weight
+        visit.last_weight_at = visit.started_at
+        if "weight_confidence" not in update_data and visit.weight_confidence == "ignored":
+            visit.weight_confidence = "normal"
+            visit.weight_confidence_reason = "operator_restored"
+
+    if "weight_confidence" in update_data:
+        confidence = update_data["weight_confidence"]
+        if visit.weight_confidence != confidence:
+            changes["weight_confidence"] = {"from": visit.weight_confidence, "to": confidence}
+        visit.weight_confidence = confidence
+        visit.weight_confidence_reason = _confidence_reason(confidence)
+
+    _record_manual_edit(db, visit, changes)
     db.commit()
     db.refresh(visit)
     return visit
