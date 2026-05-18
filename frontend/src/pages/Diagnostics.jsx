@@ -98,7 +98,7 @@ export default function Diagnostics() {
       try {
         setSummary(await getDiagnosticsSummary({ signal: controller.signal }))
       } catch (e) {
-        if (!isCanceled(e)) setError(getApiErrorMessage(e))
+        if (!isCanceled(e)) setError(getApiErrorMessage(e) || e?.message || 'Diagnostics summary unavailable')
       } finally {
         setLoading(false)
       }
@@ -114,6 +114,7 @@ export default function Diagnostics() {
 
   if (loading) return <div className="loading">Loading…</div>
   if (error) return <EmptyState icon={<Icon name="alert" />} message={error} />
+  if (!summary) return <EmptyState icon={<Icon name="alert" />} message="Diagnostics summary unavailable" />
 
   const pollerTone = summary.poller.healthy ? 'green' : 'yellow'
   const display = summary.display

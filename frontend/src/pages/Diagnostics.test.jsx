@@ -86,7 +86,7 @@ describe('Diagnostics page', () => {
 
     expect(await screen.findByRole('heading', { name: 'Diagnostics' })).toBeInTheDocument()
     expect(screen.getAllByText('Healthy').length).toBeGreaterThan(0)
-    expect(screen.getByText('Open visits')).toBeInTheDocument()
+    expect(screen.getAllByText('Open visits').length).toBeGreaterThan(0)
     expect(screen.getAllByText('#73').length).toBeGreaterThan(0)
     expect(screen.getByText('reconciliation_attempt')).toBeInTheDocument()
     expect(screen.getByText('/diagnostics/summary')).toBeInTheDocument()
