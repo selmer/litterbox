@@ -62,8 +62,10 @@ This document describes the current architecture, API contract, persistence mode
 
 - `app/cat_identifier.py` provides `identify_cat()` and `update_reference_weight()`.
 - Identification uses a maximum deviation threshold of `0.5 kg`.
-- Active cats without a reference weight are ignored.
-- On a successful auto-identification, the cat's `reference_weight_kg` is updated by a smoothing factor of `0.1`.
+- A visit is auto-identified only when exactly one active cat is plausible for the observed weight.
+- Identification is attempted when the first nonzero visit weight is seen, so clear in-progress visits can appear under the matched cat before duration completion.
+- If no reference-weight match exists, the poller can use recent identified visit weights as a conservative fallback when exactly one cat clearly matches.
+- On a successful auto-identification, the cat's `reference_weight_kg` is updated by a smoothing factor of `0.1` when the visit closes.
 
 ### Cleaning cycles and settings
 

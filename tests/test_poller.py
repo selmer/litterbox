@@ -63,6 +63,107 @@ def test_weight_update_records_last_weight_at(poller):
     assert poller.current_visit.last_weight_at == NOW
 
 
+def test_weight_update_identifies_clear_cat_immediately(poller, db_session):
+    cat = Cat(name="Plurk", reference_weight_kg=3.8, active=True)
+    db_session.add(cat)
+    db_session.commit()
+
+    poller._handle_weight_update(3830, NOW)
+
+    visit = db_session.query(Visit).first()
+    assert visit.cat_id == cat.id
+    assert visit.identified_by == "auto"
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(
+        visit_id=visit.id,
+        event_type="identification_attempt",
+    ).one()
+    assert diagnostic.payload["strategy"] == "reference_weight"
+    assert diagnostic.payload["selected_cat_id"] == cat.id
+    assert diagnostic.payload["reason"] == "single_reference_match"
+
+
+def test_weight_update_does_not_update_reference_until_visit_closes(poller, db_session):
+    cat = Cat(name="Plurk", reference_weight_kg=3.8, active=True)
+    db_session.add(cat)
+    db_session.commit()
+
+    poller._handle_weight_update(3830, NOW)
+    assert cat.reference_weight_kg == pytest.approx(3.8)
+
+    dps = {"excretion_time_day": 60, "cat_weight": 3830, "excretion_times_day": 1}
+    poller._handle_visit_complete(dps, NOW + timedelta(seconds=60))
+
+    assert cat.reference_weight_kg == pytest.approx(3.803)
+
+
+def test_weight_update_records_unmatched_identification_diagnostic(poller, db_session):
+    cat = Cat(name="Plurk", reference_weight_kg=3.8, active=True)
+    db_session.add(cat)
+    db_session.commit()
+
+    poller._handle_weight_update(5200, NOW)
+
+    visit = db_session.query(Visit).first()
+    assert visit.cat_id is None
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(
+        visit_id=visit.id,
+        event_type="identification_attempt",
+    ).one()
+    assert diagnostic.payload["selected_cat_id"] is None
+    assert diagnostic.payload["reason"] == "no_match"
+    assert diagnostic.payload["candidates"][0]["cat_name"] == "Plurk"
+
+
+def test_recent_baseline_fallback_identifies_single_clear_match(poller, db_session):
+    plurk = Cat(name="Plurk", reference_weight_kg=None, active=True)
+    mochi = Cat(name="Mochi", reference_weight_kg=None, active=True)
+    db_session.add_all([plurk, mochi])
+    db_session.commit()
+    db_session.add_all([
+        Visit(cat_id=plurk.id, identified_by="auto", started_at=NOW - timedelta(hours=3), weight_kg=3.78),
+        Visit(cat_id=plurk.id, identified_by="auto", started_at=NOW - timedelta(hours=2), weight_kg=3.80),
+        Visit(cat_id=mochi.id, identified_by="auto", started_at=NOW - timedelta(hours=3), weight_kg=5.9),
+        Visit(cat_id=mochi.id, identified_by="auto", started_at=NOW - timedelta(hours=2), weight_kg=6.0),
+    ])
+    db_session.commit()
+
+    poller._handle_weight_update(3830, NOW)
+
+    visit = db_session.query(Visit).order_by(Visit.id.desc()).first()
+    assert visit.cat_id == plurk.id
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(
+        visit_id=visit.id,
+        event_type="identification_attempt",
+    ).one()
+    assert diagnostic.payload["strategy"] == "recent_baseline"
+    assert diagnostic.payload["selected_cat_id"] == plurk.id
+
+
+def test_recent_baseline_fallback_rejects_ambiguous_matches(poller, db_session):
+    plurk = Cat(name="Plurk", reference_weight_kg=None, active=True)
+    luna = Cat(name="Luna", reference_weight_kg=None, active=True)
+    db_session.add_all([plurk, luna])
+    db_session.commit()
+    db_session.add_all([
+        Visit(cat_id=plurk.id, identified_by="auto", started_at=NOW - timedelta(hours=4), weight_kg=3.78),
+        Visit(cat_id=plurk.id, identified_by="auto", started_at=NOW - timedelta(hours=3), weight_kg=3.80),
+        Visit(cat_id=luna.id, identified_by="auto", started_at=NOW - timedelta(hours=4), weight_kg=3.90),
+        Visit(cat_id=luna.id, identified_by="auto", started_at=NOW - timedelta(hours=3), weight_kg=3.95),
+    ])
+    db_session.commit()
+
+    poller._handle_weight_update(3830, NOW)
+
+    visit = db_session.query(Visit).order_by(Visit.id.desc()).first()
+    assert visit.cat_id is None
+    diagnostic = db_session.query(VisitDiagnostic).filter_by(
+        visit_id=visit.id,
+        event_type="identification_attempt",
+    ).one()
+    assert diagnostic.payload["strategy"] == "recent_baseline"
+    assert diagnostic.payload["reason"] == "ambiguous_recent_baseline_matches"
+
+
 # ---------------------------------------------------------------------------
 # _handle_visit_complete
 # ---------------------------------------------------------------------------

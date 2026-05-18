@@ -30,7 +30,8 @@ def identify_cat(
 
     Returns None if:
     - No active cats have a reference weight set
-    - The closest match is further than threshold_kg away
+    - No cat is within threshold_kg
+    - More than one cat is within threshold_kg
     - The weight is 0 or negative (sensor error)
     """
     if weight_kg <= 0:
@@ -40,12 +41,16 @@ def identify_cat(
     if not eligible:
         return None
 
-    closest = min(eligible, key=lambda c: abs(c["reference_weight_kg"] - weight_kg))
-    deviation = abs(closest["reference_weight_kg"] - weight_kg)
+    candidates = [
+        (c, abs(c["reference_weight_kg"] - weight_kg))
+        for c in eligible
+    ]
+    plausible = [item for item in candidates if item[1] <= threshold_kg]
 
-    if deviation > threshold_kg:
+    if len(plausible) != 1:
         return None
 
+    closest, deviation = plausible[0]
     return CatMatch(
         cat_id=closest["id"],
         cat_name=closest["name"],

@@ -66,3 +66,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 031 | [Cat Health Signals](specs/031-2026-05-17-cat-health-signals.md) | P1 |
 | 032 | [Device and Data Diagnostics Screen](specs/032-2026-05-17-device-and-data-diagnostics-screen.md) | P1 |
 | 033 | [E-Paper Display Profiles](specs/033-2026-05-17-epaper-display-profiles.md) | P2 |
+| 034 | [Early Cat Identification and Match Diagnostics](specs/034-2026-05-18-early-cat-identification-and-match-diagnostics.md) | P1 |

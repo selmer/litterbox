@@ -76,6 +76,15 @@ def test_single_cat_identified_within_threshold():
     assert match.cat_id == 1
 
 
+def test_ambiguous_matches_are_rejected():
+    cats = [
+        {"id": 1, "name": "Luna", "reference_weight_kg": 4.0},
+        {"id": 2, "name": "Plurk", "reference_weight_kg": 4.2},
+    ]
+    match = identify_cat(4.1, cats)
+    assert match is None
+
+
 # --- update_reference_weight tests ---
 
 def test_reference_weight_nudges_toward_new_reading():

@@ -7,7 +7,7 @@ from typing import Optional
 
 import tinytuya
 
-from app.cat_identifier import identify_cat, update_reference_weight
+from app.cat_identifier import IDENTIFICATION_THRESHOLD_KG, identify_cat, update_reference_weight
 from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visit, VisitDiagnostic
 
 logger = logging.getLogger(__name__)
@@ -631,36 +631,198 @@ class LitterboxPoller:
                 },
                 now,
             )
+            self._identify_visit_cat(self.current_visit, weight_kg, update_reference=False, recorded_at=now)
         else:
             # Update weight on existing visit (take the latest reading)
             self.current_visit.weight_kg = weight_kg
             self.current_visit.last_weight_at = now
             self.db.commit()
+            if self.current_visit.cat_id is None:
+                self._identify_visit_cat(self.current_visit, weight_kg, update_reference=False, recorded_at=now)
 
-    def _identify_visit_cat(self, visit: Visit, weight_kg: float):
+    def _candidate_payload(self, weight_kg: float, active_cats: list[Cat], field: str) -> list[dict]:
+        candidates = []
+        for cat in active_cats:
+            value = getattr(cat, field, None)
+            if value is None:
+                candidates.append({
+                    "cat_id": cat.id,
+                    "cat_name": cat.name,
+                    field: None,
+                    "deviation_kg": None,
+                    "within_threshold": False,
+                })
+                continue
+            deviation = round(abs(value - weight_kg), 3)
+            candidates.append({
+                "cat_id": cat.id,
+                "cat_name": cat.name,
+                field: value,
+                "deviation_kg": deviation,
+                "within_threshold": deviation <= IDENTIFICATION_THRESHOLD_KG,
+            })
+        return candidates
+
+    def _recent_baseline_payload(self, weight_kg: float, active_cats: list[Cat], visit: Visit) -> list[dict]:
+        candidates = []
+        for cat in active_cats:
+            query = (
+                self.db.query(Visit.weight_kg)
+                .filter(
+                    Visit.cat_id == cat.id,
+                    Visit.identified_by.isnot(None),
+                    Visit.weight_kg.isnot(None),
+                    Visit.id != visit.id,
+                )
+                .order_by(Visit.started_at.desc(), Visit.id.desc())
+                .limit(5)
+            )
+            weights = [row[0] for row in query.all()]
+            if len(weights) < 2:
+                candidates.append({
+                    "cat_id": cat.id,
+                    "cat_name": cat.name,
+                    "baseline_weight_kg": None,
+                    "sample_count": len(weights),
+                    "deviation_kg": None,
+                    "within_threshold": False,
+                })
+                continue
+            baseline = round(sum(weights) / len(weights), 3)
+            deviation = round(abs(baseline - weight_kg), 3)
+            candidates.append({
+                "cat_id": cat.id,
+                "cat_name": cat.name,
+                "baseline_weight_kg": baseline,
+                "sample_count": len(weights),
+                "deviation_kg": deviation,
+                "within_threshold": deviation <= IDENTIFICATION_THRESHOLD_KG,
+            })
+        return candidates
+
+    def _single_plausible_candidate(self, candidates: list[dict]) -> Optional[dict]:
+        plausible = [candidate for candidate in candidates if candidate["within_threshold"]]
+        if len(plausible) != 1:
+            return None
+        return plausible[0]
+
+    def _record_identification_attempt(
+        self,
+        visit: Visit,
+        weight_kg: float,
+        strategy: str,
+        candidates: list[dict],
+        selected: Optional[dict],
+        reason: str,
+        recorded_at: Optional[datetime],
+    ):
+        self._record_visit_diagnostic(
+            visit,
+            "identification_attempt",
+            {
+                "weight_kg": weight_kg,
+                "threshold_kg": IDENTIFICATION_THRESHOLD_KG,
+                "strategy": strategy,
+                "reason": reason,
+                "selected_cat_id": selected["cat_id"] if selected else None,
+                "selected_cat_name": selected["cat_name"] if selected else None,
+                "candidates": candidates,
+            },
+            recorded_at or datetime.now(timezone.utc),
+        )
+
+    def _assign_identified_cat(self, visit: Visit, cat: Cat, weight_kg: float, update_reference: bool):
+        visit.cat_id = cat.id
+        visit.identified_by = "auto"
+        if update_reference and cat.reference_weight_kg is not None:
+            cat.reference_weight_kg = update_reference_weight(cat.reference_weight_kg, weight_kg)
+
+    def _identify_visit_cat(
+        self,
+        visit: Visit,
+        weight_kg: float,
+        update_reference: bool = True,
+        recorded_at: Optional[datetime] = None,
+    ):
         if weight_kg is None:
             logger.info("Visit has no weight reading — skipping cat identification")
             return
 
         active_cats = self.db.query(Cat).filter(Cat.active == True).all()
+        if visit.cat_id is not None:
+            if update_reference:
+                cat = next((c for c in active_cats if c.id == visit.cat_id), None)
+                if cat and cat.reference_weight_kg is not None:
+                    cat.reference_weight_kg = update_reference_weight(cat.reference_weight_kg, weight_kg)
+            return
+
+        reference_candidates = self._candidate_payload(weight_kg, active_cats, "reference_weight_kg")
         cat_dicts = [
             {"id": c.id, "name": c.name, "reference_weight_kg": c.reference_weight_kg}
             for c in active_cats
         ]
+        reference_match = identify_cat(weight_kg, cat_dicts)
+        if reference_match:
+            selected = next(candidate for candidate in reference_candidates if candidate["cat_id"] == reference_match.cat_id)
+            cat = next(c for c in active_cats if c.id == reference_match.cat_id)
+            self._assign_identified_cat(visit, cat, weight_kg, update_reference)
+            self._record_identification_attempt(
+                visit,
+                weight_kg,
+                "reference_weight",
+                reference_candidates,
+                selected,
+                "single_reference_match",
+                recorded_at,
+            )
+            logger.info(f"Visit assigned to {reference_match.cat_name} (deviation: {reference_match.deviation_kg:.3f} kg)")
+            return
 
-        match = identify_cat(weight_kg, cat_dicts)
-        if match:
-            visit.cat_id = match.cat_id
-            visit.identified_by = match.identified_by
-            logger.info(f"Visit assigned to {match.cat_name} (deviation: {match.deviation_kg:.3f} kg)")
+        if len([candidate for candidate in reference_candidates if candidate["within_threshold"]]) > 1:
+            self._record_identification_attempt(
+                visit,
+                weight_kg,
+                "reference_weight",
+                reference_candidates,
+                None,
+                "ambiguous_reference_matches",
+                recorded_at,
+            )
+            logger.info(f"Visit unidentified — weight {weight_kg} kg matches multiple cats")
+            return
 
-            cat = next(c for c in active_cats if c.id == match.cat_id)
-            if cat.reference_weight_kg is not None:
-                cat.reference_weight_kg = update_reference_weight(
-                    cat.reference_weight_kg, weight_kg
-                )
-        else:
-            logger.info(f"Visit unidentified — weight {weight_kg} kg outside all thresholds")
+        baseline_candidates = self._recent_baseline_payload(weight_kg, active_cats, visit)
+        selected = self._single_plausible_candidate(baseline_candidates)
+        if selected:
+            cat = next(c for c in active_cats if c.id == selected["cat_id"])
+            self._assign_identified_cat(visit, cat, weight_kg, update_reference)
+            self._record_identification_attempt(
+                visit,
+                weight_kg,
+                "recent_baseline",
+                baseline_candidates,
+                selected,
+                "single_recent_baseline_match",
+                recorded_at,
+            )
+            logger.info(
+                "Visit assigned to %s from recent baseline (deviation: %.3f kg)",
+                selected["cat_name"],
+                selected["deviation_kg"],
+            )
+            return
+
+        reason = "ambiguous_recent_baseline_matches" if len([c for c in baseline_candidates if c["within_threshold"]]) > 1 else "no_match"
+        self._record_identification_attempt(
+            visit,
+            weight_kg,
+            "recent_baseline",
+            baseline_candidates,
+            None,
+            reason,
+            recorded_at,
+        )
+        logger.info(f"Visit unidentified — weight {weight_kg} kg outside all thresholds")
 
     def _handle_cleaning_cycle(self, running: bool, now: datetime):
         if running and self.current_cleaning_cycle is None:
