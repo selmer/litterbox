@@ -43,6 +43,16 @@ describe('VisitsList', () => {
     expect(within(mobileList).getByText('unidentified')).toBeInTheDocument()
   })
 
+  it('can hide visit IDs for compact dashboard usage', () => {
+    render(<VisitsList visits={visits} cats={cats} showIds={false} />)
+
+    expect(screen.queryByRole('columnheader', { name: 'ID' })).toBeNull()
+    expect(screen.queryByText('#1')).toBeNull()
+    expect(screen.queryByText('#2')).toBeNull()
+    expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Visit list')).toBeInTheDocument()
+  })
+
   it('groups row actions for each visit without inline delete confirmation', () => {
     const onReassign = vi.fn()
     const onDelete = vi.fn()

@@ -40,7 +40,7 @@ function VisitActions({ visit, onReassign, onDelete }) {
   )
 }
 
-function VisitMobileCard({ visit, catMap, onReassign, onDelete }) {
+function VisitMobileCard({ visit, catMap, onReassign, onDelete, showId = true }) {
   const catName = getCatName(visit, catMap)
 
   return (
@@ -51,7 +51,7 @@ function VisitMobileCard({ visit, catMap, onReassign, onDelete }) {
           <span>{catName}</span>
         </div>
         <div className="visit-card__meta">
-          <span className="visit-id text-mono">#{visit.id}</span>
+          {showId && <span className="visit-id text-mono">#{visit.id}</span>}
           <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
         </div>
       </div>
@@ -74,7 +74,7 @@ function VisitMobileCard({ visit, catMap, onReassign, onDelete }) {
   )
 }
 
-export default function VisitsList({ visits, cats = [], onReassign, onDelete, emptyMessage = 'No visits recorded yet' }) {
+export default function VisitsList({ visits, cats = [], onReassign, onDelete, emptyMessage = 'No visits recorded yet', showIds = true }) {
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
@@ -90,7 +90,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
             <col className="visits-table__started-col" />
             <col className="visits-table__duration-col" />
             <col className="visits-table__weight-col" />
-            <col className="visits-table__id-col" />
+            {showIds && <col className="visits-table__id-col" />}
             <col className="visits-table__source-col" />
             {(onReassign || onDelete) && <col className="visits-table__actions-col" />}
           </colgroup>
@@ -100,7 +100,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
               <th>Started</th>
               <th>Duration</th>
               <th>Weight</th>
-              <th>ID</th>
+              {showIds && <th>ID</th>}
               <th>Source</th>
               {(onReassign || onDelete) && <th>Actions</th>}
             </tr>
@@ -118,7 +118,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
                 <td className="text-primary">
                   {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}
                 </td>
-                <td className="visit-id text-mono table-small">#{visit.id}</td>
+                {showIds && <td className="visit-id text-mono table-small">#{visit.id}</td>}
                 <td>
                   <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
                 </td>
@@ -141,6 +141,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
             catMap={catMap}
             onReassign={onReassign}
             onDelete={onDelete}
+            showId={showIds}
           />
         ))}
       </div>

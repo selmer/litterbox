@@ -216,7 +216,7 @@ export default function Dashboard() {
           <div className="card-label">Recent visits</div>
           <Link to="/visits" className="section-link">view all →</Link>
         </div>
-        <VisitsList visits={recentVisits} cats={cats} />
+        <VisitsList visits={recentVisits} cats={cats} showIds={false} />
       </div>
 
       {dashboard.cleaning_cycles_today > 0 && (
