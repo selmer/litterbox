@@ -2,7 +2,7 @@ import threading
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import and_, func
+from sqlalchemy import and_, case, func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -34,12 +34,20 @@ def get_dashboard(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Aggregate today's visits per cat (count + total duration)
+    trusted_duration = case(
+        (
+            and_(Visit.duration_is_estimated.is_(False), Visit.duration_source != "hard_timeout"),
+            Visit.duration_seconds,
+        ),
+        else_=None,
+    )
+
+    # Aggregate today's visits per cat (count + total trusted duration)
     today_subq = (
         db.query(
             Visit.cat_id,
             func.count(Visit.id).label("visits_today"),
-            func.sum(func.coalesce(Visit.duration_seconds, 0)).label("time_in_box_today_seconds"),
+            func.sum(func.coalesce(trusted_duration, 0)).label("time_in_box_today_seconds"),
         )
         .filter(Visit.cat_id.isnot(None), Visit.started_at >= today_start)
         .group_by(Visit.cat_id)
@@ -52,7 +60,7 @@ def get_dashboard(db: Session = Depends(get_db)):
             Visit.cat_id.label("cat_id"),
             Visit.started_at.label("started_at"),
             Visit.weight_kg.label("weight_kg"),
-            Visit.duration_seconds.label("duration_seconds"),
+            trusted_duration.label("duration_seconds"),
             func.row_number()
             .over(
                 partition_by=Visit.cat_id,

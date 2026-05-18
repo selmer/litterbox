@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any, Literal, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 MAX_CAT_WEIGHT_KG = 20.0
@@ -65,6 +65,12 @@ class VisitOut(BaseModel):
     duration_is_estimated: bool = False
     weight_kg: Optional[float]
     created_at: datetime
+
+    @model_validator(mode="after")
+    def hide_untrusted_duration(self):
+        if self.duration_source == "hard_timeout" or self.duration_is_estimated:
+            self.duration_seconds = None
+        return self
 
 
 class VisitDiagnosticOut(BaseModel):

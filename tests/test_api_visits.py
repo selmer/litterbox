@@ -1,7 +1,7 @@
 """Tests for the /visits API endpoints."""
 from datetime import datetime, timezone, timedelta
 
-from app.models import VisitDiagnostic
+from app.models import Visit, VisitDiagnostic
 
 
 def _make_cat(client, name="Luna", weight=4.0):
@@ -216,6 +216,31 @@ def test_get_visit_not_found(client):
     response = client.get("/visits/9999")
     assert response.status_code == 404
     assert response.json()["detail"] == "Visit not found"
+
+
+def test_hard_timeout_visit_returns_unknown_duration(client, db_session):
+    cat_id = _make_cat(client)
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=30)
+    visit = Visit(
+        cat_id=cat_id,
+        identified_by="auto",
+        started_at=started_at,
+        ended_at=started_at + timedelta(minutes=30),
+        duration_seconds=1800,
+        duration_source="hard_timeout",
+        duration_is_estimated=True,
+        weight_kg=4.1,
+    )
+    db_session.add(visit)
+    db_session.commit()
+
+    response = client.get(f"/visits/{visit.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["duration_seconds"] is None
+    assert data["duration_source"] == "hard_timeout"
+    assert data["duration_is_estimated"] is True
 
 
 def test_update_visit_reassigns_cat(client):

@@ -133,6 +133,35 @@ def test_display_summary_unidentified_latest_visit_uses_unknown_cat_and_alert(cl
     assert [point["weight_kg"] for point in data["chart"]["points"]] == [3.72, 3.78]
 
 
+def test_display_summary_ignores_hard_timeout_duration(client, db_session):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    db_session.add(
+        Visit(
+            cat_id=cat.id,
+            identified_by="auto",
+            started_at=now - timedelta(minutes=35),
+            ended_at=now - timedelta(minutes=5),
+            duration_seconds=1800,
+            duration_source="hard_timeout",
+            duration_is_estimated=True,
+            weight_kg=3.76,
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["latest_visit"]["duration_seconds"] is None
+    assert data["today"]["time_in_box_seconds"] == 0
+
+
 def test_display_summary_unhealthy_poller_uses_error_alert(client, db_session):
     cat = Cat(name="Plurk", reference_weight_kg=3.8)
     db_session.add(cat)
