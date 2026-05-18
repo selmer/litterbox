@@ -21,11 +21,16 @@ function getCatName(visit, catMap) {
   return catMap[visit.cat_id]?.name || `Cat #${visit.cat_id}`
 }
 
-function VisitActions({ visit, onReassign, onDelete }) {
-  if (!onReassign && !onDelete) return null
+function VisitActions({ visit, onReassign, onDelete, showDiagnosticsLink }) {
+  if (!onReassign && !onDelete && !showDiagnosticsLink) return null
 
   return (
     <div className="visit-actions">
+      {showDiagnosticsLink && (
+        <a className="btn btn-secondary btn-sm" href={`/diagnostics?visit=${visit.id}`}>
+          diagnostics
+        </a>
+      )}
       {onReassign && (
         <button className="btn btn-secondary btn-sm" onClick={() => onReassign(visit)}>
           reassign
@@ -40,7 +45,7 @@ function VisitActions({ visit, onReassign, onDelete }) {
   )
 }
 
-function VisitMobileCard({ visit, catMap, onReassign, onDelete, showId = true }) {
+function VisitMobileCard({ visit, catMap, onReassign, onDelete, showId = true, showDiagnosticsLink = false }) {
   const catName = getCatName(visit, catMap)
 
   return (
@@ -69,12 +74,12 @@ function VisitMobileCard({ visit, catMap, onReassign, onDelete, showId = true })
           <dd>{visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}</dd>
         </div>
       </dl>
-      <VisitActions visit={visit} onReassign={onReassign} onDelete={onDelete} />
+      <VisitActions visit={visit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLink} />
     </article>
   )
 }
 
-export default function VisitsList({ visits, cats = [], onReassign, onDelete, emptyMessage = 'No visits recorded yet', showIds = true }) {
+export default function VisitsList({ visits, cats = [], onReassign, onDelete, emptyMessage = 'No visits recorded yet', showIds = true, showDiagnosticsLinks = false }) {
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
@@ -92,7 +97,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
             <col className="visits-table__duration-col" />
             <col className="visits-table__weight-col" />
             <col className="visits-table__source-col" />
-            {(onReassign || onDelete) && <col className="visits-table__actions-col" />}
+            {(onReassign || onDelete || showDiagnosticsLinks) && <col className="visits-table__actions-col" />}
           </colgroup>
           <thead>
             <tr>
@@ -102,7 +107,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
               <th>Duration</th>
               <th>Weight</th>
               <th>Source</th>
-              {(onReassign || onDelete) && <th>Actions</th>}
+              {(onReassign || onDelete || showDiagnosticsLinks) && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -122,9 +127,9 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
                 <td>
                   <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
                 </td>
-                {(onReassign || onDelete) && (
+                {(onReassign || onDelete || showDiagnosticsLinks) && (
                   <td>
-                    <VisitActions visit={visit} onReassign={onReassign} onDelete={onDelete} />
+                    <VisitActions visit={visit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLinks} />
                   </td>
                 )}
               </tr>
@@ -142,6 +147,7 @@ export default function VisitsList({ visits, cats = [], onReassign, onDelete, em
             onReassign={onReassign}
             onDelete={onDelete}
             showId={showIds}
+            showDiagnosticsLink={showDiagnosticsLinks}
           />
         ))}
       </div>

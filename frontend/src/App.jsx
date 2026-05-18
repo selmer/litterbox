@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Visits    = lazy(() => import('./pages/Visits'))
 const Cats      = lazy(() => import('./pages/Cats'))
 const CatDetail = lazy(() => import('./pages/CatDetail'))
+const Diagnostics = lazy(() => import('./pages/Diagnostics'))
 
 const LIGHT_THEME = 'light-professional'
 const DARK_THEME = 'dark-elegant'
@@ -41,6 +42,10 @@ function Sidebar({ theme, onToggleTheme }) {
         <NavLink to="/cats" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Icon name="cat" className="nav-icon" />
           Cats
+        </NavLink>
+        <NavLink to="/diagnostics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Icon name="activity" className="nav-icon" />
+          Diagnostics
         </NavLink>
       </nav>
 
@@ -94,6 +99,7 @@ function AppShell() {
             <Route path="/visits" element={<Visits />} />
             <Route path="/cats" element={<Cats />} />
             <Route path="/cats/:catId" element={<CatDetail />} />
+            <Route path="/diagnostics" element={<Diagnostics />} />
           </Routes>
         </Suspense>
       </main>

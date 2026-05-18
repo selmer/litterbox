@@ -13,6 +13,11 @@ export function getApiErrorMessage(error) {
 export const getDashboard = ({ signal } = {}) =>
   api.get('/dashboard', { signal }).then(r => r.data)
 
+// --- Diagnostics ---
+
+export const getDiagnosticsSummary = ({ signal } = {}) =>
+  api.get('/diagnostics/summary', { signal }).then(r => r.data)
+
 // --- Cats ---
 
 export const getCats = (includeInactive = false, { signal } = {}) =>

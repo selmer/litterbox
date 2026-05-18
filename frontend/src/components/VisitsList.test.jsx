@@ -49,6 +49,13 @@ describe('VisitsList', () => {
     expect(screen.getByLabelText('Visit list')).toBeInTheDocument()
   })
 
+  it('can show diagnostics links for the full visits screen', () => {
+    render(<VisitsList visits={visits} cats={cats} showDiagnosticsLinks />)
+
+    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'diagnostics' })[0]).toHaveAttribute('href', '/diagnostics?visit=1')
+  })
+
   it('groups row actions for each visit without inline delete confirmation', () => {
     const onReassign = vi.fn()
     const onDelete = vi.fn()

@@ -300,6 +300,61 @@ class DisplaySummaryOut(BaseModel):
     alert: Optional[str] = None
 
 
+# --- Diagnostics schemas ---
+
+class DiagnosticsPollerOut(BaseModel):
+    mode: str
+    healthy: bool
+    last_successful_at: Optional[datetime] = None
+    last_attempted_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+    interval_seconds: int
+    healthy_threshold_seconds: int
+
+
+class DiagnosticsOpenVisitOut(BaseModel):
+    id: int
+    cat_id: Optional[int]
+    identified_by: Optional[Literal["auto", "manual"]]
+    started_at: datetime
+    age_seconds: int
+    weight_kg: Optional[float]
+    last_weight_at: Optional[datetime]
+    duration_source: DurationSource = "unknown"
+
+
+class DiagnosticsOpenVisitsOut(BaseModel):
+    count: int
+    oldest_started_at: Optional[datetime] = None
+    oldest_age_seconds: Optional[int] = None
+    visits: list[DiagnosticsOpenVisitOut]
+
+
+class DiagnosticsReconciliationOut(BaseModel):
+    reconciliation_attempts: int
+    report_logs_fetched: int
+    pending_retries: int
+    completion_matches: int
+    hard_timeouts: int
+    latest_event_at: Optional[datetime] = None
+
+
+class DiagnosticsEndpointOut(BaseModel):
+    label: str
+    method: str
+    path: str
+
+
+class DiagnosticsSummaryOut(BaseModel):
+    generated_at: datetime
+    poller: DiagnosticsPollerOut
+    open_visits: DiagnosticsOpenVisitsOut
+    recent_diagnostics: list[VisitDiagnosticOut]
+    reconciliation: DiagnosticsReconciliationOut
+    display: DisplaySummaryOut
+    endpoints: list[DiagnosticsEndpointOut]
+
+
 # --- Tuya webhook payload schemas ---
 
 class TuyaDPStatus(BaseModel):

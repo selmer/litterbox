@@ -148,6 +148,7 @@ export default function Visits() {
           cats={cats}
           onReassign={handleReassign}
           onDelete={setPendingDelete}
+          showDiagnosticsLinks
           emptyMessage={selectedCat === null ? 'No visits recorded yet' : 'No visits match this filter'}
         />
       </div>
