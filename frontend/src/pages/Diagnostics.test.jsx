@@ -89,7 +89,7 @@ describe('Diagnostics page', () => {
     expect(screen.getAllByText('Open visits').length).toBeGreaterThan(0)
     expect(screen.getAllByText('#73').length).toBeGreaterThan(0)
     expect(screen.getByText('reconciliation_attempt')).toBeInTheDocument()
-    expect(screen.getByText('/diagnostics/summary')).toBeInTheDocument()
+    expect(screen.getByText((_, element) => element?.textContent === 'GET /diagnostics/summary')).toBeInTheDocument()
     expect(client.getDiagnosticsSummary).toHaveBeenCalled()
   })
 
