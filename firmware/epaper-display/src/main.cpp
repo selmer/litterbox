@@ -122,6 +122,87 @@ String formatWeight(JsonVariantConst value) {
   return String(buffer);
 }
 
+bool isLeapYear(int year) {
+  return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+}
+
+int daysInMonth(int year, int month) {
+  static const int daysByMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  if (month == 2 && isLeapYear(year)) {
+    return 29;
+  }
+  return daysByMonth[month - 1];
+}
+
+int dayOfWeek(int year, int month, int day) {
+  if (month < 3) {
+    month += 12;
+    --year;
+  }
+  const int k = year % 100;
+  const int j = year / 100;
+  const int h = (day + (13 * (month + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
+  return (h + 6) % 7;
+}
+
+int lastSundayOfMonth(int year, int month) {
+  int day = daysInMonth(year, month);
+  while (dayOfWeek(year, month, day) != 0) {
+    --day;
+  }
+  return day;
+}
+
+bool isAmsterdamSummerTimeUtc(int year, int month, int day, int hour) {
+  if (month > 3 && month < 10) {
+    return true;
+  }
+  if (month < 3 || month > 10) {
+    return false;
+  }
+  const int transitionDay = lastSundayOfMonth(year, month);
+  if (month == 3) {
+    return day > transitionDay || (day == transitionDay && hour >= 1);
+  }
+  return day < transitionDay || (day == transitionDay && hour < 1);
+}
+
+String formatLatestRun(JsonVariantConst value) {
+  if (value.isNull()) {
+    return "latest run: --";
+  }
+  const String timestamp = value.as<const char*>();
+  if (timestamp.length() < 19 || timestamp.charAt(10) != 'T') {
+    return "latest run: " + timestamp;
+  }
+
+  int year = timestamp.substring(0, 4).toInt();
+  int month = timestamp.substring(5, 7).toInt();
+  int day = timestamp.substring(8, 10).toInt();
+  int hour = timestamp.substring(11, 13).toInt();
+  const int minute = timestamp.substring(14, 16).toInt();
+  hour += isAmsterdamSummerTimeUtc(year, month, day, hour) ? 2 : 1;
+  if (hour >= 24) {
+    hour -= 24;
+    ++day;
+    if (day > daysInMonth(year, month)) {
+      day = 1;
+      ++month;
+      if (month > 12) {
+        month = 1;
+        ++year;
+      }
+    }
+  }
+
+  static const char* monthNames[] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  };
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "%d %s %02d:%02d", day, monthNames[month - 1], hour, minute);
+  return "latest run: " + String(buffer);
+}
+
 void drawText(int16_t x, int16_t y, const String& text, const GFXfont* font, uint16_t color) {
   display.setFont(font);
   display.setTextColor(color);
@@ -141,6 +222,16 @@ void drawRightText(int16_t rightX, int16_t y, const String& text, const GFXfont*
   display.setFont(font);
   display.getTextBounds(text, 0, y, &x1, &y1, &w, &h);
   drawText(rightX - static_cast<int16_t>(w), y, text, font, color);
+}
+
+void drawCenteredText(int16_t centerX, int16_t y, const String& text, const GFXfont* font, uint16_t color) {
+  int16_t x1 = 0;
+  int16_t y1 = 0;
+  uint16_t w = 0;
+  uint16_t h = 0;
+  display.setFont(font);
+  display.getTextBounds(text, 0, y, &x1, &y1, &w, &h);
+  drawText(centerX - static_cast<int16_t>(w / 2), y, text, font, color);
 }
 
 String truncateText(const String& value, size_t maxChars) {
@@ -214,6 +305,15 @@ void drawWeightChart(JsonVariantConst chart, int16_t x, int16_t y, int16_t w, in
 }
 
 
+String formatWeightValue(JsonVariantConst value) {
+  if (value.isNull()) {
+    return "--";
+  }
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%.2f", value.as<float>());
+  return String(buffer);
+}
+
 String formatCompactWeight(JsonVariantConst value) {
   if (value.isNull()) {
     return "--";
@@ -275,13 +375,14 @@ void drawTinySparkline(JsonArrayConst values, int16_t x, int16_t y, int16_t w, i
   }
 }
 
-void drawComparison(int16_t x, int16_t y, const char* label, JsonVariantConst comparison) {
+void drawComparison(int16_t x, int16_t y, const char* label, JsonVariantConst comparison, bool showUnit = true) {
   drawText(x, y, label, &FreeMono9pt7b, GxEPD_BLACK);
   if (comparison.isNull()) {
     drawText(x, y + 19, "--", &FreeMonoBold9pt7b, GxEPD_BLACK);
     return;
   }
-  drawText(x, y + 19, formatCompactWeight(comparison["weight_kg"]), &FreeMonoBold9pt7b, GxEPD_BLACK);
+  const String weight = showUnit ? formatCompactWeight(comparison["weight_kg"]) : formatWeightValue(comparison["weight_kg"]);
+  drawText(x, y + 19, weight, &FreeMonoBold9pt7b, GxEPD_BLACK);
   drawText(x, y + 38, formatDelta(comparison["delta_kg"]), &FreeMono9pt7b, deltaColor(comparison["delta_kg"]));
 }
 
@@ -293,11 +394,11 @@ void drawCatComparisonRow(JsonObjectConst cat, int16_t y, int16_t h) {
   drawText(22, y + 55, "visits", &FreeMono9pt7b, GxEPD_BLACK);
   drawText(92, y + 58, String(cat["visits_today"].as<int>()), &FreeMonoBold18pt7b, GxEPD_BLACK);
 
-  drawText(140, y + 21, "latest", &FreeMono9pt7b, GxEPD_BLACK);
-  drawText(140, y + 50, formatCompactWeight(cat["latest_weight_kg"]), &FreeMonoBold12pt7b, GxEPD_BLACK);
+  drawText(140, y + 52, "latest", &FreeMono9pt7b, GxEPD_BLACK);
+  drawText(140, y + 81, formatWeightValue(cat["latest_weight_kg"]), &FreeMonoBold12pt7b, GxEPD_BLACK);
 
-  drawComparison(238, y + 21, "1m", cat["one_month_ago"]);
-  drawComparison(315, y + 21, "3m", cat["three_months_ago"]);
+  drawComparison(238, y + 52, "1m", cat["one_month_ago"], false);
+  drawComparison(315, y + 52, "3m", cat["three_months_ago"], false);
 
   JsonArrayConst sparkline = cat["sparkline"].as<JsonArrayConst>();
   drawTinySparkline(sparkline, 22, y + h - 22, 92, 12);
@@ -344,7 +445,7 @@ void drawSummary(JsonDocument& doc) {
       drawCatComparisonRow(cats[1].as<JsonObjectConst>(), 148, 116);
     }
 
-    drawRightText(DisplayWidth - 10, 292, nullableText(doc["generated_at"]), &FreeMono9pt7b, GxEPD_BLACK);
+    drawCenteredText(DisplayWidth / 2, 286, formatLatestRun(doc["generated_at"]), &FreeMono9pt7b, GxEPD_BLACK);
   } while (display.nextPage());
 }
 
