@@ -124,6 +124,19 @@ ALLOW_DIRTY_DEPLOY=false
 
 The script refuses to deploy with local uncommitted changes unless `ALLOW_DIRTY_DEPLOY=true` is set.
 
+
+## API Documentation
+
+FastAPI exposes interactive API documentation automatically when the app is running:
+
+```text
+http://localhost:8001/docs        Swagger UI
+http://localhost:8001/redoc       ReDoc
+http://localhost:8001/openapi.json OpenAPI JSON
+```
+
+On the NAS, replace `localhost` with the NAS host, for example `http://192.168.68.115:8001/docs`.
+
 ## ESP32 E-Paper Display
 
 Firmware lives in `firmware/epaper-display/`. It connects to Wi-Fi, fetches:

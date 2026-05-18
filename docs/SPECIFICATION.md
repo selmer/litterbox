@@ -77,6 +77,20 @@ This document describes the current architecture, API contract, persistence mode
 
 ## API Contract
 
+
+### API documentation
+
+FastAPI provides built-in API documentation endpoints:
+
+- `GET /docs`
+  - Interactive Swagger UI for the current API.
+
+- `GET /redoc`
+  - ReDoc view of the current API.
+
+- `GET /openapi.json`
+  - Machine-readable OpenAPI schema.
+
 ### Health
 
 - `GET /health`
