@@ -12,7 +12,7 @@ The project is built for a real household setup: a FastAPI backend talks to the 
 - Supports manual cats and visit operations such as reassign/delete.
 - Exposes `/display/summary` for a 400x300 ESP32 e-paper display.
 - Records diagnostics for visit duration evidence and poller reconciliation.
-- Keeps implementation plans in numbered specs under `docs/specs/`.
+- Keeps active implementation plans in numbered specs under `docs/specs/`, with built specs archived under `docs/specs/archive/`.
 
 ## Project Layout
 
@@ -22,7 +22,8 @@ The project is built for a real household setup: a FastAPI backend talks to the 
 | `frontend/` | React/Vite web UI |
 | `firmware/epaper-display/` | PlatformIO ESP32 e-paper firmware |
 | `tests/` | Backend pytest suite |
-| `docs/specs/` | Numbered implementation specs |
+| `docs/specs/` | Active numbered implementation specs |
+| `docs/specs/archive/` | Built implementation specs |
 | `docs/IMPROVEMENT_SPECIFICATIONS.md` | Spec index |
 | `alembic/` | Database migrations |
 | `docker-compose.yml` | App + PostgreSQL runtime stack |
@@ -154,12 +155,13 @@ cd firmware/epaper-display
 
 ## Specifications
 
-The project is intentionally spec-driven. New features should get a numbered spec before implementation.
+The project is intentionally spec-driven. New features should get a numbered spec before implementation. Active specs live in `docs/specs/`; once built and verified, move them to `docs/specs/archive/` as cleanup.
 
 Start here:
 
 - `docs/IMPROVEMENT_SPECIFICATIONS.md` — index of all specs
-- `docs/specs/` — implementation-ready specs
+- `docs/specs/` — active implementation-ready specs
+- `docs/specs/archive/` — built specs
 - `docs/SPECIFICATION.md` — broader codebase specification
 - `docs/update-modes.md` — polling and webhook setup
 
