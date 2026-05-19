@@ -55,7 +55,7 @@ describe('VisitsList', () => {
     render(<VisitsList visits={visits} cats={cats} showDiagnosticsLinks />)
 
     expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'diagnostics' })[0]).toHaveAttribute('href', '/diagnostics?visit=1')
+    expect(screen.getAllByRole('link', { name: 'Diagnostics' })[0]).toHaveAttribute('href', '/diagnostics?visit=1')
   })
 
   it('keeps row actions in an edit menu without inline delete confirmation', () => {
