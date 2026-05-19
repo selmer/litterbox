@@ -9,7 +9,7 @@ import {
 } from '../api/client'
 import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 const EVENT_TYPES = [

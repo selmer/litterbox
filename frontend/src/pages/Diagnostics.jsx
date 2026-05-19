@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage, getDiagnosticsSummary } from '../api/client'
 import Icon from '../components/Icon'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 
 function isCanceled(error) {
   return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'

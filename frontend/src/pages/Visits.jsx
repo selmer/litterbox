@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
 import { useToast } from '../components/ToastContext'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 import { ModalShell, PageHeader } from '../components/ui'
 
 const PAGE_SIZE = 50

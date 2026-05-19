@@ -4,7 +4,7 @@ import { nl } from 'date-fns/locale'
 import CatPhotoUpload from './CatPhotoUpload'
 import Icon, { CatAvatarIcon } from './Icon'
 import { uploadCatPhoto, deleteCatPhoto } from '../api/client'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 
 function getCatId(cat) {
   return cat.cat_id || cat.id

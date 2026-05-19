@@ -1,25 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { DEFAULT_LANGUAGE, LANGUAGES, LANGUAGE_STORAGE_KEY, translations } from './translations'
-
-const LanguageContext = createContext(null)
-
-function interpolate(template, params = {}) {
-  return Object.entries(params).reduce(
-    (value, [key, replacement]) => value.replaceAll(`{${key}}`, replacement),
-    template
-  )
-}
-
-function createTranslator(language) {
-  return (key, params) => {
-    const template = translations[language]?.[key] ?? translations[DEFAULT_LANGUAGE]?.[key] ?? key
-    return interpolate(template, params)
-  }
-}
-
-function normalizeLanguage(language) {
-  return LANGUAGES.some(item => item.code === language) ? language : DEFAULT_LANGUAGE
-}
+import { useEffect, useMemo, useState } from 'react'
+import { LanguageContext } from './languageContextObject'
+import { createTranslator, normalizeLanguage } from './languageUtils'
+import { DEFAULT_LANGUAGE, LANGUAGES, LANGUAGE_STORAGE_KEY } from './translations'
 
 export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(() => {
@@ -45,19 +27,4 @@ export function LanguageProvider({ children }) {
   }, [language])
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
-}
-
-export function useLanguage() {
-  const context = useContext(LanguageContext)
-  if (!context) {
-    const fallback = LANGUAGES.find(item => item.code === DEFAULT_LANGUAGE)
-    return {
-      language: DEFAULT_LANGUAGE,
-      locale: fallback.locale,
-      languages: LANGUAGES,
-      setLanguage: () => {},
-      t: createTranslator(DEFAULT_LANGUAGE),
-    }
-  }
-  return context
 }

@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { enGB, nl } from 'date-fns/locale'
 import Icon from './Icon'
 import { EmptyState, StatusBadge } from './ui'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 
 function formatDuration(seconds) {
   if (!seconds) return '-'

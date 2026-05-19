@@ -14,7 +14,7 @@ import { getInitialRangeLabel, getRangeDates } from '../utils/chartRanges'
 import VisitsList from '../components/VisitsList'
 import PollerStatus from '../components/PollerStatus'
 import { useToast } from '../components/ToastContext'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 import Icon from '../components/Icon'
 import { EmptyState, ModalShell, PageHeader } from '../components/ui'
 

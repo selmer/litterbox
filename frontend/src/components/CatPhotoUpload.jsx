@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { ModalShell } from './ui'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 
 const MAX_DIMENSION = 1000
 const CANVAS_MAX = 320

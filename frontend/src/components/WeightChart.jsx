@@ -8,7 +8,7 @@ import { enGB, nl } from 'date-fns/locale'
 import Icon from './Icon'
 import { EmptyState } from './ui'
 import { CHART_RANGE_STORAGE_KEY, getInitialRangeLabel, RANGES } from '../utils/chartRanges'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 
 function getTickCount(rangeLabel) {
   return { '1W': 4, '1M': 5, '3M': 6, '1Y': 7, All: 6 }[rangeLabel] || 6

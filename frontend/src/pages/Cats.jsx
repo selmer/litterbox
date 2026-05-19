@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getCats, createCat, updateCat } from '../api/client'
 import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 function CatAvatar({ cat }) {

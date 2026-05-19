@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../i18n/useLanguage'
 
 export default function PollerStatus({ healthy, generatedAt, lastSuccessfulAt, lastError }) {
   const { language, t } = useLanguage()
