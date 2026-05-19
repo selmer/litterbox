@@ -31,6 +31,8 @@ This spec intentionally includes a Dutch terminology draft. The product owner ca
 - Translate navigation labels, page titles, subtitles, filters, table headers, buttons, modals, status labels, form labels, empty states, alerts, and toast messages.
 - Format dates with `en-GB` for English and `nl-NL` for Dutch.
 - Keep measurements in `kg` and duration units compact unless a screen needs full prose.
+- Use `Profile` / `Profiel` as the generic cat card fallback label, not `Cat profile` / `Kattenprofiel`.
+- Align compact table action controls and status badges visually so labels such as `bewerken` and `automatisch` share comparable height, padding, radius, font size, and weight.
 
 ## Admin Language Selector
 Add a new Admin section:
@@ -123,6 +125,7 @@ These are proposed translations for review before implementation.
 | Active | Actief |
 | Inactive | Inactief |
 | Profile | Profiel |
+| Cat profile | Profiel |
 | Lifecycle events | Levensloopgebeurtenissen |
 | Photo | Foto |
 | Change photo | Foto wijzigen |
@@ -144,6 +147,8 @@ These are proposed translations for review before implementation.
 | disconnected | verbroken |
 | stale | verouderd |
 | backup v1 | back-up v1 |
+
+Styling note: status badges should feel like compact table controls rather than unrelated pills. They may keep semantic colors, but their sizing and shape should match row action controls.
 
 ### Dashboard and Metrics
 | English | Dutch |
@@ -224,6 +229,8 @@ These are proposed translations for review before implementation.
 - Visits table headers and action labels render in Dutch.
 - Edit visit form renders Dutch field labels, including `Kat`, `Gestart`, `Duur`, `Gewicht`, and `Betrouwbaarheid`.
 - Date formatting uses `nl-NL` when Dutch is active.
+- Cat summary cards show `Profiel` instead of `Kattenprofiel` when no breed/profile detail is available.
+- Visits row badges such as `automatisch` and row action controls such as `bewerken` are visually aligned in compact table-control sizing.
 - Existing page tests remain green with English as the default.
 
 ## Review Questions
