@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from starlette.middleware.gzip import GZipMiddleware
 
-from app.routers import cats, visits, cleaning_cycles, dashboard, display, diagnostics
+from app.routers import admin, cats, visits, cleaning_cycles, dashboard, display, diagnostics
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
@@ -85,6 +85,7 @@ app.include_router(cleaning_cycles.router)
 app.include_router(dashboard.router)
 app.include_router(display.router)
 app.include_router(diagnostics.router)
+app.include_router(admin.router)
 
 if UPDATE_MODE == "webhook":
     from app.routers.webhook import router as webhook_router

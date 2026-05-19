@@ -8,6 +8,18 @@ export function getApiErrorMessage(error) {
   return error?.response?.data?.detail || error?.message || 'The API request failed'
 }
 
+
+// --- Admin ---
+
+export const createBackup = () =>
+  api.get('/admin/backup', { responseType: 'blob' })
+
+export const validateRestoreArtifact = (archiveData) =>
+  api.post('/admin/restore/validate', { archive_data: archiveData }).then(r => r.data)
+
+export const restoreBackup = ({ archiveData, confirm }) =>
+  api.post('/admin/restore', { archive_data: archiveData, confirm }).then(r => r.data)
+
 // --- Dashboard ---
 
 export const getDashboard = ({ signal } = {}) =>

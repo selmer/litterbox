@@ -93,6 +93,34 @@ const ICON_PATHS = {
       <path d="M10 17h4" />
     </>
   ),
+  download: (
+    <>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M12 21V9" />
+      <path d="m7 14 5-5 5 5" />
+      <path d="M5 3h14" />
+    </>
+  ),
+  restore: (
+    <>
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <path d="M3 4v6h6" />
+      <path d="M12 8v5l3 2" />
+    </>
+  ),
+  archive: (
+    <>
+      <rect x="4" y="4" width="16" height="5" rx="1" />
+      <path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9" />
+      <path d="M10 13h4" />
+    </>
+  ),
 }
 
 export default function Icon({ name, size = 18, className = '', title }) {
