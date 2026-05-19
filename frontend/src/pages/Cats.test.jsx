@@ -52,9 +52,9 @@ describe('Cats page', () => {
       client.createCat.mockResolvedValue(newCat)
 
       renderCats()
-      await waitFor(() => screen.getByText('+ Add cat'))
+      await waitFor(() => screen.getByText('Add cat'))
 
-      fireEvent.click(screen.getByText('+ Add cat'))
+      fireEvent.click(screen.getByText('Add cat'))
       await userEvent.type(screen.getByPlaceholderText('e.g. Griezeltje'), 'Whisker')
       fireEvent.click(screen.getByText('Add cat'))
 
@@ -68,9 +68,9 @@ describe('Cats page', () => {
       client.createCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
-      await waitFor(() => screen.getByText('+ Add cat'))
+      await waitFor(() => screen.getByText('Add cat'))
 
-      fireEvent.click(screen.getByText('+ Add cat'))
+      fireEvent.click(screen.getByText('Add cat'))
       await userEvent.type(screen.getByPlaceholderText('e.g. Griezeltje'), 'Whisker')
       fireEvent.click(screen.getByText('Add cat'))
 

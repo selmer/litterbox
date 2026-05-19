@@ -57,7 +57,7 @@ describe('Dashboard', () => {
     await waitFor(() => expect(screen.getByText('Mochi')).toBeInTheDocument())
     expect(screen.getByText('No visits yet')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '+ Add visit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add visit' }))
     expect(screen.getByText('Manual visit for Mochi')).toBeInTheDocument()
   })
 
