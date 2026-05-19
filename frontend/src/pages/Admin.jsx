@@ -7,6 +7,7 @@ import {
 } from '../api/client'
 import Icon from '../components/Icon'
 import { useToast } from '../components/ToastContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 function fileToDataUrl(file) {
@@ -18,30 +19,30 @@ function fileToDataUrl(file) {
   })
 }
 
-function formatDateTime(value) {
+function formatDateTime(value, locale) {
   if (!value) return '-'
-  return new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'medium' })
+  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'medium' })
 }
 
 function formatTableName(name) {
   return name.replaceAll('_', ' ')
 }
 
-function ValidationSummary({ validation }) {
+function ValidationSummary({ validation, locale, t }) {
   const tableEntries = Object.entries(validation.tables || {}).sort(([a], [b]) => a.localeCompare(b))
   return (
     <div className="admin-validation">
       <div className="admin-validation__meta">
         <div>
-          <span>Created</span>
-          <strong>{formatDateTime(validation.metadata?.created_at)}</strong>
+          <span>{t('field.created')}</span>
+          <strong>{formatDateTime(validation.metadata?.created_at, locale)}</strong>
         </div>
         <div>
-          <span>Schema</span>
-          <strong>{validation.metadata?.schema_revision || 'unknown'}</strong>
+          <span>{t('field.schema')}</span>
+          <strong>{validation.metadata?.schema_revision || t('common.unknown')}</strong>
         </div>
         <div>
-          <span>Uploads</span>
+          <span>{t('field.uploads')}</span>
           <strong>{validation.uploads}</strong>
         </div>
       </div>
@@ -59,6 +60,7 @@ function ValidationSummary({ validation }) {
 
 export default function Admin() {
   const toast = useToast()
+  const { language, languages, locale, setLanguage, t } = useLanguage()
   const fileInputRef = useRef(null)
   const [backupLoading, setBackupLoading] = useState(false)
   const [restoreLoading, setRestoreLoading] = useState(false)
@@ -83,7 +85,7 @@ export default function Admin() {
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
-      toast('Backup download started', 'success')
+      toast(t('admin.toast.backupStarted'), 'success')
     } catch (error) {
       toast(getApiErrorMessage(error), 'error')
     } finally {
@@ -105,7 +107,7 @@ export default function Admin() {
       const result = await validateRestoreArtifact(dataUrl)
       setArchiveData(dataUrl)
       setValidation(result)
-      toast('Backup archive validated', 'success')
+      toast(t('admin.toast.archiveValidated'), 'success')
     } catch (error) {
       toast(getApiErrorMessage(error), 'error')
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -122,7 +124,7 @@ export default function Admin() {
       const result = await restoreBackup({ archiveData, confirm: true })
       setValidation({ ...validation, tables: result.tables, uploads: result.uploads })
       setConfirmRestore(false)
-      toast('Restore completed', 'success')
+      toast(t('admin.toast.restoreCompleted'), 'success')
     } catch (error) {
       toast(getApiErrorMessage(error), 'error')
     } finally {
@@ -133,25 +135,48 @@ export default function Admin() {
   return (
     <div>
       <PageHeader
-        title="Admin"
-        subtitle="Create portable backups and restore application data from a validated archive"
-        actions={<StatusBadge tone="accent">backup v1</StatusBadge>}
+        title={t('admin.title')}
+        subtitle={t('admin.subtitle')}
+        actions={<StatusBadge tone="accent">{t('status.backupV1')}</StatusBadge>}
       />
 
       <div className="admin-layout">
+
+        <section className="card admin-section">
+          <div className="admin-section__header">
+            <div className="admin-section__icon" aria-hidden="true">
+              <Icon name="activity" size={18} />
+            </div>
+            <div>
+              <h3>{t('admin.languageTitle')}</h3>
+              <p>{t('admin.languageDescription')}</p>
+            </div>
+          </div>
+          <select
+            className="form-input"
+            value={language}
+            onChange={event => setLanguage(event.target.value)}
+            aria-label={t('admin.languageTitle')}
+          >
+            {languages.map(item => (
+              <option key={item.code} value={item.code}>{item.label}</option>
+            ))}
+          </select>
+        </section>
+
         <section className="card admin-section">
           <div className="admin-section__header">
             <div className="admin-section__icon" aria-hidden="true">
               <Icon name="download" size={18} />
             </div>
             <div>
-              <h3>Create backup</h3>
-              <p>Database records and uploaded files are bundled into one zip archive.</p>
+              <h3>{t('admin.createBackup')}</h3>
+              <p>{t('admin.createBackupDescription')}</p>
             </div>
           </div>
           <button className="btn btn-primary" type="button" onClick={handleBackup} disabled={backupLoading}>
             <Icon name="download" size={16} />
-            {backupLoading ? 'Preparing…' : 'Download backup'}
+            {backupLoading ? t('common.preparing') : t('admin.downloadBackup')}
           </button>
         </section>
 
@@ -161,8 +186,8 @@ export default function Admin() {
               <Icon name="upload" size={18} />
             </div>
             <div>
-              <h3>Restore backup</h3>
-              <p>Upload a backup archive, review its contents, then confirm the restore.</p>
+              <h3>{t('admin.restoreBackup')}</h3>
+              <p>{t('admin.restoreBackupDescription')}</p>
             </div>
           </div>
 
@@ -175,12 +200,12 @@ export default function Admin() {
               disabled={restoreLoading}
             />
             <Icon name="upload" size={16} />
-            <span>{selectedFile ? selectedFile.name : 'Choose backup archive'}</span>
+            <span>{selectedFile ? selectedFile.name : t('admin.chooseBackupArchive')}</span>
           </label>
 
           {validation ? (
             <>
-              <ValidationSummary validation={validation} />
+              <ValidationSummary validation={validation} locale={locale} t={t} />
               <label className="admin-confirm">
                 <input
                   type="checkbox"
@@ -188,7 +213,7 @@ export default function Admin() {
                   onChange={event => setConfirmRestore(event.target.checked)}
                   disabled={restoreLoading}
                 />
-                <span>I understand this will replace the current database and uploads.</span>
+                <span>{t('admin.confirmRestore')}</span>
               </label>
               <button
                 className="btn btn-danger"
@@ -197,11 +222,11 @@ export default function Admin() {
                 disabled={!restoreReady || restoreLoading}
               >
                 <Icon name="restore" size={16} />
-                {restoreLoading ? 'Restoring…' : 'Restore backup'}
+                {restoreLoading ? t('common.restoring') : t('admin.restoreBackup')}
               </button>
             </>
           ) : (
-            <EmptyState icon={<Icon name="archive" />} message="No backup archive selected" compact />
+            <EmptyState icon={<Icon name="archive" />} message={t('admin.noBackupSelected')} compact />
           )}
         </section>
       </div>

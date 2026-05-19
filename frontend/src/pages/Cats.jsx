@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getCats, createCat, updateCat } from '../api/client'
 import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 function CatAvatar({ cat }) {
@@ -13,27 +14,27 @@ function CatAvatar({ cat }) {
   )
 }
 
-function ReferenceWeight({ weight }) {
-  if (weight == null) return <StatusBadge tone="muted">not set</StatusBadge>
+function ReferenceWeight({ weight, t }) {
+  if (weight == null) return <StatusBadge tone="muted">{t('common.notSet')}</StatusBadge>
   return <strong>{weight.toFixed(3)} kg</strong>
 }
 
 
-function formatBirthInfo(birthDate) {
-  if (!birthDate) return <StatusBadge tone="muted">not set</StatusBadge>
+function formatBirthInfo(birthDate, locale, t) {
+  if (!birthDate) return <StatusBadge tone="muted">{t('common.notSet')}</StatusBadge>
   const date = new Date(`${birthDate}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return <StatusBadge tone="muted">not set</StatusBadge>
+  if (Number.isNaN(date.getTime())) return <StatusBadge tone="muted">{t('common.notSet')}</StatusBadge>
   const now = new Date()
   let years = now.getFullYear() - date.getFullYear()
   const hadBirthdayThisYear =
     now.getMonth() > date.getMonth() ||
     (now.getMonth() === date.getMonth() && now.getDate() >= date.getDate())
   if (!hadBirthdayThisYear) years -= 1
-  const label = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  return <strong>{years >= 0 ? `${years}y · ${label}` : label}</strong>
+  const label = date.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })
+  return <strong>{years >= 0 ? `${t('common.yearsShort', { count: years })} · ${label}` : label}</strong>
 }
 
-function CatForm({ initial, onSave, onCancel }) {
+function CatForm({ initial, onSave, onCancel, t }) {
   const [name, setName] = useState(initial?.name || '')
   const [weight, setWeight] = useState(initial?.reference_weight_kg ?? '')
   const [birthDate, setBirthDate] = useState(initial?.birth_date || '')
@@ -57,7 +58,7 @@ function CatForm({ initial, onSave, onCancel }) {
     <form onSubmit={handleSubmit} className="cat-form cat-profile-form">
       <div className="cat-profile-form__grid">
         <div className="form-field">
-          <label className="form-label">Name</label>
+          <label className="form-label">{t('field.name')}</label>
           <input
             className="form-input"
             value={name}
@@ -67,7 +68,7 @@ function CatForm({ initial, onSave, onCancel }) {
           />
         </div>
         <div className="form-field">
-          <label className="form-label">Reference weight (kg)</label>
+          <label className="form-label">{t('field.referenceWeightKg')}</label>
           <input
             className="form-input"
             type="number"
@@ -80,7 +81,7 @@ function CatForm({ initial, onSave, onCancel }) {
           />
         </div>
         <div className="form-field">
-          <label className="form-label">Birthday</label>
+          <label className="form-label">{t('field.birthday')}</label>
           <input
             className="form-input"
             type="date"
@@ -90,15 +91,15 @@ function CatForm({ initial, onSave, onCancel }) {
         </div>
       </div>
       <p className="form-hint">
-        Used to automatically identify this cat from weight readings. Leave blank if unknown.
+        {t('cats.formHint')}
       </p>
       <div className="action-row">
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? 'Saving…' : (initial ? 'Save changes' : 'Add cat')}
+          {saving ? t('common.saving') : (initial ? t('common.saveChanges') : t('common.addCat'))}
         </button>
         {onCancel && (
           <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         )}
       </div>
@@ -106,18 +107,18 @@ function CatForm({ initial, onSave, onCancel }) {
   )
 }
 
-function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleActive }) {
+function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleActive, locale, t }) {
   if (editing) {
     return (
       <section className={`card cat-profile-card cat-profile-card--editing ${!cat.active ? 'cat-profile-card--inactive' : ''}`}>
         <div className="cat-profile-card__edit-header">
           <CatAvatar cat={cat} />
           <div>
-            <div className="card-label">Editing {cat.name}</div>
-            <p className="text-muted text-small">Update identity matching details.</p>
+            <div className="card-label">{t('cats.editing', { name: cat.name })}</div>
+            <p className="text-muted text-small">{t('cats.editDescription')}</p>
           </div>
         </div>
-        <CatForm initial={cat} onSave={onSave} onCancel={onCancelEdit} />
+        <CatForm initial={cat} onSave={onSave} onCancel={onCancelEdit} t={t} />
       </section>
     )
   }
@@ -131,32 +132,32 @@ function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleAct
             <h3>
               <Link to={`/cats/${cat.id}`} className="cat-profile__name-link">{cat.name}</Link>
             </h3>
-            {cat.active ? <StatusBadge tone="green">active</StatusBadge> : <StatusBadge tone="muted">inactive</StatusBadge>}
+            {cat.active ? <StatusBadge tone="green">{t('status.active')}</StatusBadge> : <StatusBadge tone="muted">{t('status.inactive')}</StatusBadge>}
           </div>
           <div className="cat-profile__meta-grid">
             <div className="cat-profile__meta-item">
-              <span>Reference weight</span>
-              <ReferenceWeight weight={cat.reference_weight_kg} />
+              <span>{t('field.referenceWeight')}</span>
+              <ReferenceWeight weight={cat.reference_weight_kg} t={t} />
             </div>
             <div className="cat-profile__meta-item">
-              <span>Birthday</span>
-              {formatBirthInfo(cat.birth_date)}
+              <span>{t('field.birthday')}</span>
+              {formatBirthInfo(cat.birth_date, locale, t)}
             </div>
             <div className="cat-profile__meta-item">
-              <span>Added</span>
-              <strong>{new Date(cat.created_at).toLocaleDateString('en-GB')}</strong>
+              <span>{t('field.added')}</span>
+              <strong>{new Date(cat.created_at).toLocaleDateString(locale)}</strong>
             </div>
           </div>
         </div>
         <div className="cat-profile__actions">
           <Link className="btn btn-secondary btn-sm" to={`/cats/${cat.id}`}>
-            View
+            {t('common.view')}
           </Link>
           <button className="btn btn-secondary btn-sm" onClick={onEdit}>
-            Edit
+            {t('common.editDisplay')}
           </button>
           <button className="btn btn-secondary btn-sm" onClick={onToggleActive}>
-            {cat.active ? 'Deactivate' : 'Reactivate'}
+            {cat.active ? t('common.deactivate') : t('common.reactivate')}
           </button>
         </div>
       </div>
@@ -170,6 +171,7 @@ export default function Cats() {
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
   const toast = useToast()
+  const { locale, t } = useLanguage()
 
   useEffect(() => {
     async function fetch() {
@@ -189,10 +191,10 @@ export default function Cats() {
       const cat = await createCat(data)
       setCats(prev => [...prev, cat])
       setAdding(false)
-      toast(`${cat.name} added`, 'success')
+      toast(t('cats.toast.added', { name: cat.name }), 'success')
     } catch (e) {
       console.error('Failed to create cat', e)
-      toast('Failed to add cat. Please try again.')
+      toast(t('cats.error.add'))
     }
   }
 
@@ -201,10 +203,10 @@ export default function Cats() {
       const cat = await updateCat(id, data)
       setCats(prev => prev.map(c => c.id === id ? cat : c))
       setEditing(null)
-      toast('Changes saved', 'success')
+      toast(t('cats.toast.changesSaved'), 'success')
     } catch (e) {
       console.error('Failed to update cat', e)
-      toast('Failed to save changes. Please try again.')
+      toast(t('cats.error.save'))
     }
   }
 
@@ -214,20 +216,20 @@ export default function Cats() {
       setCats(prev => prev.map(c => c.id === cat.id ? updated : c))
     } catch (e) {
       console.error('Failed to update cat', e)
-      toast(`Failed to ${cat.active ? 'deactivate' : 'reactivate'} cat. Please try again.`)
+      toast(t('cats.error.toggle', { action: cat.active ? t('common.deactivate').toLowerCase() : t('common.reactivate').toLowerCase() }))
     }
   }
 
-  if (loading) return <div className="loading">Loading…</div>
+  if (loading) return <div className="loading">{t('state.loading')}</div>
 
   return (
     <div>
       <PageHeader
-        title="Cats"
-        subtitle="Manage cats and their reference weights"
+        title={t('cats.title')}
+        subtitle={t('cats.subtitle')}
         actions={!adding && (
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
-            + Add cat
+            {t('common.addCat')}
           </button>
         )}
       />
@@ -239,11 +241,11 @@ export default function Cats() {
               <Icon name="cat" size={28} />
             </div>
             <div>
-              <div className="card-label">New cat</div>
-              <p className="text-muted text-small">Add a cat profile for weight-based identification.</p>
+              <div className="card-label">{t('cats.newCat')}</div>
+              <p className="text-muted text-small">{t('cats.newCatDescription')}</p>
             </div>
           </div>
-          <CatForm onSave={handleCreate} onCancel={() => setAdding(false)} />
+          <CatForm onSave={handleCreate} onCancel={() => setAdding(false)} t={t} />
         </section>
       )}
 
@@ -257,14 +259,16 @@ export default function Cats() {
             onCancelEdit={() => setEditing(null)}
             onSave={(data) => handleUpdate(cat.id, data)}
             onToggleActive={() => handleToggleActive(cat)}
+            locale={locale}
+            t={t}
           />
         ))}
 
         {cats.length === 0 && !adding && (
           <div className="card">
-            <EmptyState icon={<Icon name="cat" />} message="No cats yet. Add one to get started.">
+            <EmptyState icon={<Icon name="cat" />} message={t('cats.noCats')}>
               <button className="btn btn-primary" onClick={() => setAdding(true)}>
-                + Add cat
+                {t('common.addCat')}
               </button>
             </EmptyState>
           </div>

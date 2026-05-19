@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
 import { useToast } from '../components/ToastContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import { ModalShell, PageHeader } from '../components/ui'
 
 const PAGE_SIZE = 50
@@ -44,13 +45,14 @@ export default function Visits() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
   const toast = useToast()
+  const { locale, t } = useLanguage()
 
   useEffect(() => {
     getCats().then(setCats).catch(e => {
       console.error('Failed to load cats', e)
-      toast('Failed to load cats. Please try again.')
+      toast(t('visits.toast.catsFailed'))
     })
-  }, [toast])
+  }, [toast, t])
 
   useEffect(() => {
     let canceled = false
@@ -101,7 +103,7 @@ export default function Visits() {
       setPendingDelete(null)
     } catch (e) {
       console.error('Failed to delete visit', e)
-      toast('Failed to delete visit. Please try again.')
+      toast(t('visits.toast.deleteFailed'))
     }
   }
 
@@ -127,7 +129,7 @@ export default function Visits() {
     const duration = durationMin * 60 + durationSec
     const weight = parseFloat(editForm.weight_kg)
     if (!editForm.started_at || duration <= 0 || Number.isNaN(weight) || weight <= 0) {
-      setEditError('Please enter a valid date, duration and weight.')
+      setEditError(t('visits.error.invalidEdit'))
       return
     }
 
@@ -144,7 +146,7 @@ export default function Visits() {
       const updated = await updateVisit(editingVisit.id, payload)
       setVisits(prev => prev.map(v => v.id === updated.id ? updated : v))
       closeEdit()
-      toast('Visit updated', 'success')
+      toast(t('visits.toast.updated'), 'success')
     } catch (err) {
       setEditError(getApiErrorMessage(err))
     } finally {
@@ -153,19 +155,19 @@ export default function Visits() {
   }
 
 
-  if (initialLoading) return <div className="loading">Loading…</div>
+  if (initialLoading) return <div className="loading">{t('state.loading')}</div>
 
   return (
     <div>
-      <PageHeader title="Visits" subtitle="Full history of litterbox visits" />
+      <PageHeader title={t('visits.title')} subtitle={t('visits.subtitle')} />
 
       <div className="visits-toolbar">
-        <div className="filter-group" aria-label="Visit filters">
+        <div className="filter-group" aria-label={t('visits.filters')}>
           <button
             className={`filter-chip ${selectedCat === null ? 'active' : ''}`}
             onClick={() => selectFilter(null)}
           >
-            All
+            {t('visits.all')}
           </button>
           {cats.map(cat => (
             <button
@@ -180,7 +182,7 @@ export default function Visits() {
             className={`filter-chip filter-chip--warning ${selectedCat === 'unidentified' ? 'active' : ''}`}
             onClick={() => selectFilter('unidentified')}
           >
-            Unidentified
+            {t('visits.unidentified')}
           </button>
         </div>
       </div>
@@ -190,7 +192,7 @@ export default function Visits() {
           <div className="alert alert-yellow mb-4">
             {loadError}
             <button className="btn btn-secondary btn-sm alert__action" onClick={() => setReloadNonce(n => n + 1)}>
-              Retry
+              {t('common.retry')}
             </button>
           </div>
         )}
@@ -199,20 +201,20 @@ export default function Visits() {
           cats={cats}
           onEdit={handleEdit}
           onDelete={setPendingDelete}
-          emptyMessage={selectedCat === null ? 'No visits recorded yet' : 'No visits match this filter'}
+          emptyMessage={selectedCat === null ? t('visits.empty') : t('visits.emptyFilter')}
         />
       </div>
 
       {(page > 0 || hasMore) && (
         <div className="pagination pagination--visits">
           <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p - 1)} disabled={page === 0}>
-            Previous
+            {t('common.previous')}
           </button>
           <span className="pagination__label">
-            Page {page + 1} · {page * PAGE_SIZE + 1}-{page * PAGE_SIZE + visits.length}
+            {t('visits.pageRange', { page: page + 1, from: page * PAGE_SIZE + 1, to: page * PAGE_SIZE + visits.length })}
           </span>
           <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p + 1)} disabled={!hasMore}>
-            Next
+            {t('common.next')}
           </button>
         </div>
       )}
@@ -220,25 +222,25 @@ export default function Visits() {
 
       {editingVisit && editForm && (
         <ModalShell
-          title="Edit visit"
+          title={t('common.editVisit')}
           onClose={closeEdit}
-          description={`Visit #${editingVisit.id}`}
+          description={t('visits.editDescription', { id: editingVisit.id })}
         >
           <form onSubmit={confirmEdit} className="cat-form">
             <div className="form-field">
-              <label className="form-label" htmlFor="edit-visit-cat">Cat</label>
+              <label className="form-label" htmlFor="edit-visit-cat">{t('field.cat')}</label>
               <select
                 id="edit-visit-cat"
                 className="form-input"
                 value={editForm.cat_id}
                 onChange={e => setEditForm(f => ({ ...f, cat_id: e.target.value }))}
               >
-                <option value="">Unidentified / visitor</option>
+                <option value="">{t('visits.visitorOption')}</option>
                 {cats.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
             </div>
             <div className="form-field">
-              <label className="form-label" htmlFor="edit-visit-started-at">Date &amp; time</label>
+              <label className="form-label" htmlFor="edit-visit-started-at">{t('field.dateTime')}</label>
               <input
                 id="edit-visit-started-at"
                 type="datetime-local"
@@ -250,7 +252,7 @@ export default function Visits() {
             </div>
             <div className="form-row">
               <div className="form-field">
-                <label className="form-label" htmlFor="edit-visit-duration-min">Minutes</label>
+                <label className="form-label" htmlFor="edit-visit-duration-min">{t('field.minutes')}</label>
                 <input
                   id="edit-visit-duration-min"
                   type="number"
@@ -261,7 +263,7 @@ export default function Visits() {
                 />
               </div>
               <div className="form-field">
-                <label className="form-label" htmlFor="edit-visit-duration-sec">Seconds</label>
+                <label className="form-label" htmlFor="edit-visit-duration-sec">{t('field.seconds')}</label>
                 <input
                   id="edit-visit-duration-sec"
                   type="number"
@@ -275,7 +277,7 @@ export default function Visits() {
             </div>
             <div className="form-row">
               <div className="form-field">
-                <label className="form-label" htmlFor="edit-visit-weight">Weight (kg)</label>
+                <label className="form-label" htmlFor="edit-visit-weight">{t('field.weightKg')}</label>
                 <input
                   id="edit-visit-weight"
                   type="number"
@@ -288,26 +290,26 @@ export default function Visits() {
                 />
               </div>
               <div className="form-field">
-                <label className="form-label" htmlFor="edit-visit-confidence">Confidence</label>
+                <label className="form-label" htmlFor="edit-visit-confidence">{t('field.confidence')}</label>
                 <select
                   id="edit-visit-confidence"
                   className="form-input"
                   value={editForm.weight_confidence}
                   onChange={e => setEditForm(f => ({ ...f, weight_confidence: e.target.value }))}
                 >
-                  <option value="normal">Normal</option>
-                  <option value="suspect">Suspect</option>
-                  <option value="ignored">Ignored</option>
+                  <option value="normal">{t('status.normal')}</option>
+                  <option value="suspect">{t('status.suspect')}</option>
+                  <option value="ignored">{t('status.ignored')}</option>
                 </select>
               </div>
             </div>
             {editError && <div className="form-error">{editError}</div>}
             <div className="modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeEdit} disabled={savingEdit}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button type="submit" className="btn btn-primary" disabled={savingEdit}>
-                {savingEdit ? 'Saving…' : 'Save visit'}
+                {savingEdit ? t('common.saving') : t('common.saveVisit')}
               </button>
             </div>
           </form>
@@ -316,26 +318,26 @@ export default function Visits() {
 
       {pendingDelete && (
         <ModalShell
-          title="Delete visit"
+          title={t('common.deleteVisit')}
           onClose={() => setPendingDelete(null)}
-          description="Remove this visit from the history. This cannot be undone."
+          description={t('visits.deleteDescription')}
         >
           <div className="delete-visit-summary">
             <div>
-              <span>Started</span>
-              <strong>{new Date(pendingDelete.started_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+              <span>{t('field.started')}</span>
+              <strong>{new Date(pendingDelete.started_at).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })}</strong>
             </div>
             <div>
-              <span>Weight</span>
+              <span>{t('field.weight')}</span>
               <strong>{pendingDelete.weight_kg ? `${pendingDelete.weight_kg.toFixed(3)} kg` : '-'}</strong>
             </div>
           </div>
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={() => setPendingDelete(null)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button className="btn btn-secondary text-danger" onClick={confirmDelete}>
-              Delete visit
+              {t('common.deleteVisit')}
             </button>
           </div>
         </ModalShell>

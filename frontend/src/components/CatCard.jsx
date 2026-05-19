@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { nl } from 'date-fns/locale'
 import CatPhotoUpload from './CatPhotoUpload'
 import Icon, { CatAvatarIcon } from './Icon'
 import { uploadCatPhoto, deleteCatPhoto } from '../api/client'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function getCatId(cat) {
   return cat.cat_id || cat.id
@@ -33,6 +35,7 @@ function SummaryMetric({ icon, label, value, accent = false }) {
 export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhotoChange }) {
   const catId = getCatId(cat)
   const displayName = cat.cat_name || cat.name
+  const { language, t } = useLanguage()
   const [photo, setPhoto] = useState(cat.photo_url || null)
   const [showUpload, setShowUpload] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -69,12 +72,12 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
         </div>
         <div className="cat-card__body">
           <div className="cat-card__name">{cat.name}</div>
-          <div className="cat-card__placeholder-text">No visits yet</div>
+          <div className="cat-card__placeholder-text">{t('cats.noVisitsYet')}</div>
         </div>
         {onAddVisit && (
           <div className="cat-card__placeholder-actions">
             <button className="btn btn-secondary btn-sm" onClick={() => onAddVisit(cat)}>
-              + Add visit
+              {t('common.addVisit')}
             </button>
           </div>
         )}
@@ -83,14 +86,14 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
   }
 
   const lastVisitAgo = cat.last_visit_at
-    ? formatDistanceToNow(new Date(cat.last_visit_at), { addSuffix: true })
+    ? formatDistanceToNow(new Date(cat.last_visit_at), { addSuffix: true, locale: language === 'nl' ? nl : undefined })
     : null
   const weightKg = cat.last_visit_weight_kg || cat.reference_weight_kg
   const weightDeltaKg = cat.last_visit_weight_kg && cat.reference_weight_kg
     ? cat.last_visit_weight_kg - cat.reference_weight_kg
     : null
   const weightDeltaLabel = weightDeltaKg === null
-    ? (cat.last_visit_weight_kg ? 'latest' : 'reference')
+    ? (cat.last_visit_weight_kg ? t('cats.weightLatest') : t('cats.weightReference'))
     : `${weightDeltaKg >= 0 ? '+' : ''}${weightDeltaKg.toFixed(2)} kg`
 
   return (
@@ -100,7 +103,7 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
         <div
           className="cat-card__photo cat-card__photo--clickable"
           onClick={() => !uploading && setShowUpload(true)}
-          title="Click to change photo"
+          title={t('catCard.changePhoto')}
           role="button"
           tabIndex={0}
           onKeyDown={e => e.key === 'Enter' && !uploading && setShowUpload(true)}
@@ -110,7 +113,7 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
 
         <div className="cat-card__identity">
           <div className="cat-card__name">{displayName}</div>
-          <div className="cat-card__breed">{cat.breed || 'Cat profile'}</div>
+          <div className="cat-card__breed">{cat.breed || t('cats.profileFallback')}</div>
         </div>
 
         {weightKg && (
@@ -127,16 +130,16 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
       </div>
 
       <div className="summary-metrics">
-        <SummaryMetric icon={<Icon name="visits" size={16} />} label="Visits today" value={cat.visits_today} accent={cat.visits_today > 0} />
-        <SummaryMetric icon={<Icon name="timer" size={16} />} label="Time in box" value={formatDuration(cat.time_in_box_today_seconds)} />
-        <SummaryMetric icon={<Icon name="clock" size={16} />} label="Last visit" value={lastVisitAgo || '—'} />
-        <SummaryMetric icon={<Icon name="activity" size={16} />} label="Duration" value={formatDuration(cat.last_visit_duration_seconds)} />
+        <SummaryMetric icon={<Icon name="visits" size={16} />} label={t('catCard.visitsToday')} value={cat.visits_today} accent={cat.visits_today > 0} />
+        <SummaryMetric icon={<Icon name="timer" size={16} />} label={t('catCard.timeInBox')} value={formatDuration(cat.time_in_box_today_seconds)} />
+        <SummaryMetric icon={<Icon name="clock" size={16} />} label={t('catCard.lastVisit')} value={lastVisitAgo || '—'} />
+        <SummaryMetric icon={<Icon name="activity" size={16} />} label={t('catCard.duration')} value={formatDuration(cat.last_visit_duration_seconds)} />
       </div>
 
       {onAddVisit && (
         <div className="cat-card__actions">
           <button className="btn btn-primary btn-sm" onClick={() => onAddVisit(cat)}>
-            + Add visit
+            {t('common.addVisit')}
           </button>
         </div>
       )}

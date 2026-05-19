@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { ModalShell } from './ui'
+import { useLanguage } from '../i18n/LanguageContext'
 
 const MAX_DIMENSION = 1000
 const CANVAS_MAX = 320
@@ -42,6 +43,7 @@ function cropAndCompress(img, srcX, srcY, srcW, srcH) {
 }
 
 export default function CatPhotoUpload({ catName, onClose, onSave }) {
+  const { t } = useLanguage()
   const [stage, setStage] = useState('idle') // 'idle' | 'crop' | 'preview'
   const [preview, setPreview] = useState(null)
   const [error, setError] = useState(null)
@@ -159,7 +161,7 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
     if (!file) return
 
     if (!file.type.startsWith('image/') || !ACCEPTED_TYPES.includes(file.type)) {
-      setError('Please select a valid image file (JPEG, PNG, GIF, WebP, etc.)')
+      setError(t('photo.invalidFile'))
       e.target.value = ''
       return
     }
@@ -172,7 +174,7 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
       rectRef.current = null
       setStage('crop')
     } catch {
-      setError('Failed to process image. Please try a different file.')
+      setError(t('photo.processFailed'))
     } finally {
       setProcessing(false)
       e.target.value = ''
@@ -207,13 +209,14 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
   }
 
   return (
-    <ModalShell title="Cat photo" onClose={onClose} className={stage === 'crop' ? 'modal--crop' : ''}>
+    <ModalShell title={t('photo.title')} onClose={onClose} className={stage === 'crop' ? 'modal--crop' : ''}>
 
         {stage === 'idle' && (
           <>
             <p className="modal-description">
-              {catName ? `Upload a photo of ${catName}` : 'Upload a photo of your cat'}, or use the
-              default icon. Large images are automatically compressed to max {MAX_DIMENSION}×{MAX_DIMENSION}px.
+              {catName
+                ? t('photo.uploadNamed', { name: catName, size: MAX_DIMENSION })
+                : t('photo.uploadGeneric', { size: MAX_DIMENSION })}
             </p>
             <div className="modal-stack">
               <button
@@ -221,13 +224,13 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
                 onClick={() => inputRef.current?.click()}
                 disabled={processing}
               >
-                {processing ? 'Processing…' : 'Choose photo'}
+                {processing ? t('photo.processing') : t('photo.choose')}
               </button>
               <button className="btn btn-secondary w-full" onClick={() => onSave(null)}>
-                Use default icon
+                {t('photo.defaultIcon')}
               </button>
               <button className="btn btn-secondary w-full" onClick={onClose}>
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </>
@@ -236,7 +239,7 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
         {stage === 'crop' && (
           <>
             <p className="modal-description modal-description--tight">
-              Drag to select the area to keep. Leave unselected to use the full image.
+              {t('photo.cropHelp')}
             </p>
             <div className="photo-cropper">
               <canvas
@@ -254,17 +257,17 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
             <div className="modal-stack">
               <div className="modal-actions">
                 <button className="btn btn-secondary" onClick={resetCropSelection}>
-                  Reset
+                  {t('photo.reset')}
                 </button>
                 <button className="btn btn-primary modal-action-wide" onClick={applyCrop}>
-                  Apply crop
+                  {t('photo.applyCrop')}
                 </button>
               </div>
               <button
                 className="btn btn-secondary w-full"
                 onClick={() => { setStage('idle'); imgRef.current = null }}
               >
-                Back
+                {t('photo.back')}
               </button>
             </div>
           </>
@@ -273,30 +276,30 @@ export default function CatPhotoUpload({ catName, onClose, onSave }) {
         {stage === 'preview' && (
           <>
             <p className="modal-description">
-              Looking good! Save this photo or go back to adjust the crop.
+              {t('photo.previewHelp')}
             </p>
             <div className="modal-stack">
               <div className="photo-preview">
                 <img
                   src={preview}
-                  alt="Preview"
+                  alt={t('photo.previewAlt')}
                   className="photo-preview__image"
                 />
               </div>
               <button className="btn btn-primary w-full" onClick={() => onSave(preview)}>
-                Use this photo
+                {t('photo.useThis')}
               </button>
               <button className="btn btn-secondary w-full" onClick={() => setStage('crop')}>
-                Crop differently
+                {t('photo.cropDifferently')}
               </button>
               <button className="btn btn-secondary w-full" onClick={() => inputRef.current?.click()}>
-                Choose different photo
+                {t('photo.chooseDifferent')}
               </button>
               <button className="btn btn-secondary w-full" onClick={() => onSave(null)}>
-                Use default icon
+                {t('photo.defaultIcon')}
               </button>
               <button className="btn btn-secondary w-full" onClick={onClose}>
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </>

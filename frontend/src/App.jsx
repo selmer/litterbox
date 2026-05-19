@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import Icon from './components/Icon'
 import { ToastProvider } from './components/Toast'
+import { LanguageProvider, useLanguage } from './i18n/LanguageContext'
 import './index.css'
 import './App.css'
 
@@ -16,8 +17,9 @@ const LIGHT_THEME = 'light-professional'
 const DARK_THEME = 'dark-elegant'
 
 function Sidebar({ theme, onToggleTheme }) {
+  const { t } = useLanguage()
   const darkTheme = theme === DARK_THEME
-  const targetThemeLabel = darkTheme ? 'light professional' : 'dark elegant'
+  const targetThemeLabel = darkTheme ? t('theme.lightProfessional') : t('theme.darkElegant')
 
   return (
     <aside className="sidebar">
@@ -26,31 +28,31 @@ function Sidebar({ theme, onToggleTheme }) {
           <Icon name="cat" size={20} />
         </div>
         <div>
-          <h1>Cat health monitor</h1>
-          <p>litterbox insights</p>
+          <h1>{t('app.name')}</h1>
+          <p>{t('app.tagline')}</p>
         </div>
       </div>
 
       <nav className="sidebar-nav">
         <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Icon name="dashboard" className="nav-icon" />
-          Dashboard
+          {t('nav.dashboard')}
         </NavLink>
         <NavLink to="/visits" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Icon name="visits" className="nav-icon" />
-          Visits
+          {t('nav.visits')}
         </NavLink>
         <NavLink to="/cats" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Icon name="cat" className="nav-icon" />
-          Cats
+          {t('nav.cats')}
         </NavLink>
         <NavLink to="/diagnostics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Icon name="activity" className="nav-icon" />
-          Diagnostics
+          {t('nav.diagnostics')}
         </NavLink>
         <NavLink to="/admin" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Icon name="archive" className="nav-icon" />
-          Admin
+          {t('nav.admin')}
         </NavLink>
       </nav>
 
@@ -58,10 +60,10 @@ function Sidebar({ theme, onToggleTheme }) {
         <button
           className="btn btn-secondary btn-sm w-full theme-toggle"
           onClick={onToggleTheme}
-          aria-label={`Switch to ${targetThemeLabel} theme`}
+          aria-label={t('theme.switchTo', { theme: targetThemeLabel })}
         >
           <Icon name={darkTheme ? 'sun' : 'moon'} size={15} />
-          {darkTheme ? 'Light professional' : 'Dark elegant'}
+          {targetThemeLabel}
         </button>
       </div>
     </aside>
@@ -69,6 +71,7 @@ function Sidebar({ theme, onToggleTheme }) {
 }
 
 function AppShell() {
+  const { t } = useLanguage()
   const [theme, setTheme] = useState(() => {
     const storedTheme = localStorage.getItem('cat-health-monitor-theme') || localStorage.getItem('theme')
     return storedTheme === DARK_THEME || storedTheme === 'dark' ? DARK_THEME : LIGHT_THEME
@@ -80,17 +83,17 @@ function AppShell() {
   }, [theme])
 
   const darkTheme = theme === DARK_THEME
-  const targetThemeLabel = darkTheme ? 'light professional' : 'dark elegant'
+  const targetThemeLabel = darkTheme ? t('theme.lightProfessional') : t('theme.darkElegant')
   const toggleTheme = () => setTheme(current => current === DARK_THEME ? LIGHT_THEME : DARK_THEME)
 
   return (
     <div className="app-shell">
       <header className="mobile-header">
-        <span className="mobile-logo">Cat health monitor</span>
+        <span className="mobile-logo">{t('app.name')}</span>
         <button
           className="btn btn-secondary btn-sm mobile-theme-toggle"
           onClick={toggleTheme}
-          aria-label={`Switch to ${targetThemeLabel} theme`}
+          aria-label={t('theme.switchTo', { theme: targetThemeLabel })}
         >
           <Icon name={darkTheme ? 'sun' : 'moon'} size={15} />
         </button>
@@ -98,7 +101,7 @@ function AppShell() {
 
       <Sidebar theme={theme} onToggleTheme={toggleTheme} />
       <main className="main-content">
-        <Suspense fallback={<div className="loading">Loading…</div>}>
+        <Suspense fallback={<div className="loading">{t('state.loading')}</div>}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/visits" element={<Visits />} />
@@ -116,9 +119,11 @@ function AppShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <AppShell />
-      </ToastProvider>
+      <LanguageProvider>
+        <ToastProvider>
+          <AppShell />
+        </ToastProvider>
+      </LanguageProvider>
     </BrowserRouter>
   )
 }

@@ -14,6 +14,7 @@ import { getInitialRangeLabel, getRangeDates } from '../utils/chartRanges'
 import VisitsList from '../components/VisitsList'
 import PollerStatus from '../components/PollerStatus'
 import { useToast } from '../components/ToastContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import Icon from '../components/Icon'
 import { EmptyState, ModalShell, PageHeader } from '../components/ui'
 
@@ -45,6 +46,7 @@ export default function Dashboard() {
   const [submitError, setSubmitError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const toast = useToast()
+  const { locale, t } = useLanguage()
 
   const fetchDashboardData = useCallback(async ({ signal, initial = false } = {}) => {
     if (initial) setLoading(true)
@@ -122,7 +124,7 @@ export default function Dashboard() {
     const durationSec = parseInt(visitForm.duration_sec) || 0
     const duration = durationMin * 60 + durationSec
     if (!visitForm.date || isNaN(weight_g) || duration <= 0) {
-      setSubmitError('Please fill in all fields with valid values.')
+      setSubmitError(t('dashboard.error.invalidVisit'))
       return
     }
     setSubmitting(true)
@@ -137,27 +139,27 @@ export default function Dashboard() {
       })
       await fetchDashboardData()
       closeAddVisit()
-      toast('Visit saved', 'success')
+      toast(t('dashboard.toast.visitSaved'), 'success')
     } catch {
-      setSubmitError('Failed to save visit. Please try again.')
+      setSubmitError(t('dashboard.error.saveVisit'))
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (loading) return <div className="loading">Loading…</div>
+  if (loading) return <div className="loading">{t('state.loading')}</div>
   if (error) return <EmptyState icon={<Icon name="alert" />} message={error} />
 
   const activeCatIds = new Set(dashboard.cats.map(c => c.cat_id))
   const catsWithoutVisits = cats.filter(c => !activeCatIds.has(c.id) && c.active)
-  const pageDate = new Date().toLocaleDateString('en-GB', {
+  const pageDate = new Date().toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
 
   return (
     <div>
       <PageHeader
-        title="Dashboard"
+        title={t('dashboard.title')}
         subtitle={pageDate}
         actions={(
           <PollerStatus
@@ -172,7 +174,7 @@ export default function Dashboard() {
       {!dashboard.poller_healthy && (
         <div className="alert alert-red alert-with-icon mb-6">
           <Icon name="alert" size={16} />
-          <span>{dashboard.poller_last_error || 'Poller is disconnected. Dashboard data may be stale.'}</span>
+          <span>{dashboard.poller_last_error || t('dashboard.pollerDisconnected')}</span>
         </div>
       )}
 
@@ -186,8 +188,8 @@ export default function Dashboard() {
           ))}
           {cats.length === 0 && (
             <div className="card">
-              <EmptyState icon={<Icon name="cat" />} message="No cats yet">
-                <Link to="/cats" className="btn btn-primary">Add a cat</Link>
+              <EmptyState icon={<Icon name="cat" />} message={t('dashboard.noCats')}>
+                <Link to="/cats" className="btn btn-primary">{t('dashboard.addCatCta')}</Link>
               </EmptyState>
             </div>
           )}
@@ -204,17 +206,19 @@ export default function Dashboard() {
         <div className="alert alert-yellow alert-with-icon mb-6">
           <Icon name="alert" size={16} />
           <span>
-            {dashboard.unidentified_visits_today} unidentified visit
-            {dashboard.unidentified_visits_today > 1 ? 's' : ''} today —{' '}
-            <Link to="/visits">review in Visits</Link>
+            {t('dashboard.unidentifiedToday', {
+              count: dashboard.unidentified_visits_today,
+              plural: dashboard.unidentified_visits_today > 1 ? 's' : '',
+            })}
+            <Link to="/visits">{t('dashboard.reviewVisits')}</Link>
           </span>
         </div>
       )}
 
       <div>
         <div className="section-header">
-          <div className="card-label">Recent visits</div>
-          <Link to="/visits" className="section-link">view all →</Link>
+          <div className="card-label">{t('dashboard.recentVisits')}</div>
+          <Link to="/visits" className="section-link">{t('dashboard.viewAll')}</Link>
         </div>
         <VisitsList visits={recentVisits} cats={cats} showIds={false} />
       </div>
@@ -223,21 +227,23 @@ export default function Dashboard() {
         <div className="status-note status-note--icon">
           <Icon name="clean" size={15} />
           <span>
-            {dashboard.cleaning_cycles_today} cleaning cycle
-            {dashboard.cleaning_cycles_today > 1 ? 's' : ''} today
+            {t('dashboard.cleaningCyclesToday', {
+              count: dashboard.cleaning_cycles_today,
+              plural: dashboard.cleaning_cycles_today > 1 ? 's' : '',
+            })}
           </span>
         </div>
       )}
 
       {addingVisitForCat && (
         <ModalShell
-          title="Add visit"
-          description={`Manual visit for ${addingVisitForCat.cat_name || addingVisitForCat.name}`}
+          title={t('dashboard.addVisitTitle')}
+          description={t('dashboard.manualVisitFor', { name: addingVisitForCat.cat_name || addingVisitForCat.name })}
           onClose={closeAddVisit}
         >
           <form onSubmit={handleSubmitVisit} className="cat-form">
             <div className="form-field">
-              <label className="form-label">Date &amp; time</label>
+              <label className="form-label">{t('field.dateTime')}</label>
               <input
                 type="datetime-local"
                 className="form-input"
@@ -247,7 +253,7 @@ export default function Dashboard() {
               />
             </div>
             <div className="form-field">
-              <label className="form-label">Weight (g)</label>
+              <label className="form-label">{t('field.weightG')}</label>
               <input
                 type="number"
                 className="form-input"
@@ -260,7 +266,7 @@ export default function Dashboard() {
               />
             </div>
             <div className="form-field">
-              <label className="form-label">Duration</label>
+              <label className="form-label">{t('field.duration')}</label>
               <div className="form-row">
                 <input
                   type="number"
@@ -285,11 +291,11 @@ export default function Dashboard() {
             </div>
             {submitError && <p className="form-error">{submitError}</p>}
             <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
-              {submitting ? 'Saving…' : 'Save visit'}
+              {submitting ? t('common.saving') : t('common.saveVisit')}
             </button>
           </form>
           <button className="btn btn-secondary w-full mt-4" onClick={closeAddVisit}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </ModalShell>
       )}

@@ -9,6 +9,7 @@ import {
 } from '../api/client'
 import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 const EVENT_TYPES = [
@@ -21,8 +22,6 @@ const EVENT_TYPES = [
   ['other', 'Other'],
 ]
 
-const EVENT_LABELS = Object.fromEntries(EVENT_TYPES)
-
 function toDateInputValue(value) {
   if (!value) return ''
   const date = new Date(`${value}`.slice(0, 10) + 'T00:00:00')
@@ -33,13 +32,13 @@ function toDateInputValue(value) {
   return `${year}-${month}-${day}`
 }
 
-function formatEventDate(value) {
-  return formatBirthDate(`${value}`.slice(0, 10))
+function formatEventDate(value, locale, t) {
+  return formatBirthDate(`${value}`.slice(0, 10), locale, t)
 }
 
-function formatBirthDate(value) {
-  if (!value) return 'Not set'
-  return new Date(`${value}T00:00:00`).toLocaleDateString('en-GB', {
+function formatBirthDate(value, locale, t) {
+  if (!value) return t('common.notSet')
+  return new Date(`${value}T00:00:00`).toLocaleDateString(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -72,7 +71,7 @@ function CatAvatar({ cat }) {
   )
 }
 
-function EventForm({ initial, onSave, onCancel }) {
+function EventForm({ initial, onSave, onCancel, t }) {
   const [eventType, setEventType] = useState(initial?.event_type || 'vet_visit')
   const [occurredAt, setOccurredAt] = useState(toDateInputValue(initial?.occurred_at) || toDateInputValue(new Date()))
   const [title, setTitle] = useState(initial?.title || '')
@@ -108,13 +107,13 @@ function EventForm({ initial, onSave, onCancel }) {
     <form className="cat-event-form" onSubmit={handleSubmit}>
       <div className="cat-event-form__grid">
         <div className="form-field">
-          <label className="form-label" htmlFor={`${formId}-type`}>Type</label>
+          <label className="form-label" htmlFor={`${formId}-type`}>{t('field.type')}</label>
           <select id={`${formId}-type`} className="form-input" value={eventType} onChange={e => setEventType(e.target.value)}>
-            {EVENT_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {EVENT_TYPES.map(([value]) => <option key={value} value={value}>{t(`event.${value}`)}</option>)}
           </select>
         </div>
         <div className="form-field">
-          <label className="form-label" htmlFor={`${formId}-occurred-at`}>Date</label>
+          <label className="form-label" htmlFor={`${formId}-occurred-at`}>{t('field.date')}</label>
           <input
             id={`${formId}-occurred-at`}
             className="form-input"
@@ -125,18 +124,18 @@ function EventForm({ initial, onSave, onCancel }) {
           />
         </div>
         <div className="form-field cat-event-form__title">
-          <label className="form-label" htmlFor={`${formId}-title`}>Title</label>
+          <label className="form-label" htmlFor={`${formId}-title`}>{t('field.title')}</label>
           <input
             id={`${formId}-title`}
             className="form-input"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            placeholder="e.g. Annual checkup"
+            placeholder={t('catDetail.annualCheckupExample')}
             required
           />
         </div>
         <div className="form-field">
-          <label className="form-label" htmlFor={`${formId}-cost`}>Cost</label>
+          <label className="form-label" htmlFor={`${formId}-cost`}>{t('field.cost')}</label>
           <input
             id={`${formId}-cost`}
             className="form-input"
@@ -149,7 +148,7 @@ function EventForm({ initial, onSave, onCancel }) {
           />
         </div>
         <div className="form-field">
-          <label className="form-label" htmlFor={`${formId}-currency`}>Currency</label>
+          <label className="form-label" htmlFor={`${formId}-currency`}>{t('field.currency')}</label>
           <input
             id={`${formId}-currency`}
             className="form-input"
@@ -160,20 +159,20 @@ function EventForm({ initial, onSave, onCancel }) {
         </div>
       </div>
       <div className="form-field">
-        <label className="form-label" htmlFor={`${formId}-notes`}>Notes</label>
+        <label className="form-label" htmlFor={`${formId}-notes`}>{t('field.notes')}</label>
         <textarea
           id={`${formId}-notes`}
           className="form-input cat-event-form__notes"
           value={notes}
           onChange={e => setNotes(e.target.value)}
-          placeholder="Optional context"
+          placeholder={t('catDetail.optionalContext')}
         />
       </div>
       <div className="action-row">
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? 'Saving...' : (initial ? 'Save event' : 'Add event')}
+          {saving ? t('common.saving') : (initial ? t('catDetail.saveEvent') : t('catDetail.addEvent'))}
         </button>
-        {onCancel && <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>}
+        {onCancel && <button type="button" className="btn btn-secondary" onClick={onCancel}>{t('common.cancel')}</button>}
       </div>
     </form>
   )
@@ -187,6 +186,7 @@ export default function CatDetail() {
   const [error, setError] = useState(null)
   const [editingEvent, setEditingEvent] = useState(null)
   const toast = useToast()
+  const { locale, t } = useLanguage()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -203,7 +203,7 @@ export default function CatDetail() {
       } catch (e) {
         if (e.name !== 'CanceledError') {
           console.error('Failed to load cat detail', e)
-          setError('Failed to load cat details')
+          setError(t('catDetail.loadFailed'))
         }
       } finally {
         setLoading(false)
@@ -211,7 +211,7 @@ export default function CatDetail() {
     }
     fetchData()
     return () => controller.abort()
-  }, [catId])
+  }, [catId, t])
 
   const age = useMemo(() => calculateAge(cat?.birth_date), [cat?.birth_date])
   const timelineRows = useMemo(() => {
@@ -226,10 +226,10 @@ export default function CatDetail() {
     try {
       const created = await createCatEvent(catId, data)
       setEvents(prev => [created, ...prev].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at) || b.id - a.id))
-      toast('Event added', 'success')
+      toast(t('catDetail.eventAdded'), 'success')
     } catch (e) {
       console.error('Failed to add cat event', e)
-      toast('Failed to add event. Please try again.')
+      toast(t('catDetail.addFailed'))
     }
   }
 
@@ -238,10 +238,10 @@ export default function CatDetail() {
       const updated = await updateCatEvent(catId, editingEvent.id, data)
       setEvents(prev => prev.map(event => event.id === updated.id ? updated : event))
       setEditingEvent(null)
-      toast('Event updated', 'success')
+      toast(t('catDetail.eventUpdated'), 'success')
     } catch (e) {
       console.error('Failed to update cat event', e)
-      toast('Failed to update event. Please try again.')
+      toast(t('catDetail.updateFailed'))
     }
   }
 
@@ -249,19 +249,19 @@ export default function CatDetail() {
     try {
       await deleteCatEvent(catId, event.id)
       setEvents(prev => prev.filter(item => item.id !== event.id))
-      toast('Event deleted', 'success')
+      toast(t('catDetail.eventDeleted'), 'success')
     } catch (e) {
       console.error('Failed to delete cat event', e)
-      toast('Failed to delete event. Please try again.')
+      toast(t('catDetail.deleteFailed'))
     }
   }
 
-  if (loading) return <div className="loading">Loading...</div>
+  if (loading) return <div className="loading">{t('state.loading')}</div>
   if (error || !cat) {
     return (
       <div>
-        <PageHeader title="Cat" subtitle="Lifecycle events" actions={<Link className="btn btn-secondary" to="/cats">Back to cats</Link>} />
-        <div className="card"><EmptyState icon={<Icon name="cat" />} message={error || 'Cat not found'} /></div>
+        <PageHeader title={t('catDetail.catTitle')} subtitle={t('field.lifecycleEvents')} actions={<Link className="btn btn-secondary" to="/cats">{t('catDetail.back')}</Link>} />
+        <div className="card"><EmptyState icon={<Icon name="cat" />} message={error || t('catDetail.notFound')} /></div>
       </div>
     )
   }
@@ -270,8 +270,8 @@ export default function CatDetail() {
     <div>
       <PageHeader
         title={cat.name}
-        subtitle="Lifecycle events and profile context"
-        actions={<Link className="btn btn-secondary" to="/cats">Back to cats</Link>}
+        subtitle={t('catDetail.subtitle')}
+        actions={<Link className="btn btn-secondary" to="/cats">{t('catDetail.back')}</Link>}
       />
 
       <section className="card cat-detail-card mb-6">
@@ -279,20 +279,20 @@ export default function CatDetail() {
         <div className="cat-detail-card__main">
           <div className="cat-detail-card__title-row">
             <h2>{cat.name}</h2>
-            {cat.active ? <StatusBadge tone="green">active</StatusBadge> : <StatusBadge tone="muted">inactive</StatusBadge>}
+            {cat.active ? <StatusBadge tone="green">{t('status.active')}</StatusBadge> : <StatusBadge tone="muted">{t('status.inactive')}</StatusBadge>}
           </div>
           <div className="cat-profile__meta-grid">
             <div className="cat-profile__meta-item">
-              <span>Reference weight</span>
-              <strong>{cat.reference_weight_kg == null ? 'not set' : `${cat.reference_weight_kg.toFixed(3)} kg`}</strong>
+              <span>{t('field.referenceWeight')}</span>
+              <strong>{cat.reference_weight_kg == null ? t('common.notSet') : `${cat.reference_weight_kg.toFixed(3)} kg`}</strong>
             </div>
             <div className="cat-profile__meta-item">
-              <span>Birthday</span>
-              <strong>{formatBirthDate(cat.birth_date)}</strong>
+              <span>{t('field.birthday')}</span>
+              <strong>{formatBirthDate(cat.birth_date, locale, t)}</strong>
             </div>
             <div className="cat-profile__meta-item">
-              <span>Age</span>
-              <strong>{age == null ? 'not set' : `${age} years`}</strong>
+              <span>{t('catDetail.age')}</span>
+              <strong>{age == null ? t('common.notSet') : t('common.yearsShort', { count: age })}</strong>
             </div>
           </div>
         </div>
@@ -301,19 +301,19 @@ export default function CatDetail() {
       <section className="card cat-event-panel mb-6">
         <div className="section-heading-row">
           <div>
-            <h2>Events</h2>
-            <p className="text-muted text-small">Track vet visits, medication, diet changes, milestones, and notes.</p>
+            <h2>{t('catDetail.events')}</h2>
+            <p className="text-muted text-small">{t('catDetail.eventsDescription')}</p>
           </div>
         </div>
-        <EventForm onSave={handleCreateEvent} />
+        <EventForm onSave={handleCreateEvent} t={t} />
       </section>
 
       {editingEvent && (
         <section className="card cat-event-panel mb-6">
           <div className="section-heading-row">
-            <h2>Edit event</h2>
+            <h2>{t('catDetail.editEvent')}</h2>
           </div>
-          <EventForm initial={editingEvent} onSave={handleUpdateEvent} onCancel={() => setEditingEvent(null)} />
+          <EventForm initial={editingEvent} onSave={handleUpdateEvent} onCancel={() => setEditingEvent(null)} t={t} />
         </section>
       )}
 
@@ -321,12 +321,12 @@ export default function CatDetail() {
         <table className="table cat-event-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Title</th>
-              <th>Notes</th>
-              <th>Cost</th>
-              <th>Actions</th>
+              <th>{t('field.date')}</th>
+              <th>{t('field.type')}</th>
+              <th>{t('field.title')}</th>
+              <th>{t('field.notes')}</th>
+              <th>{t('field.cost')}</th>
+              <th>{t('field.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -334,27 +334,27 @@ export default function CatDetail() {
               if (row.kind === 'birthday') {
                 return (
                   <tr key="birthday" className="cat-event-row cat-event-row--birthday">
-                    <td data-label="Date">{formatBirthDate(cat.birth_date)}</td>
-                    <td data-label="Type"><StatusBadge tone="accent">Birthday</StatusBadge></td>
-                    <td data-label="Title">Born</td>
-                    <td data-label="Notes">Profile birthday</td>
-                    <td data-label="Cost">-</td>
-                    <td data-label="Actions">-</td>
+                    <td data-label={t('field.date')}>{formatBirthDate(cat.birth_date, locale, t)}</td>
+                    <td data-label={t('field.type')}><StatusBadge tone="accent">{t('catDetail.birthday')}</StatusBadge></td>
+                    <td data-label={t('field.title')}>{t('catDetail.born')}</td>
+                    <td data-label={t('field.notes')}>{t('catDetail.profileBirthday')}</td>
+                    <td data-label={t('field.cost')}>-</td>
+                    <td data-label={t('field.actions')}>-</td>
                   </tr>
                 )
               }
               const { event } = row
               return (
                 <tr key={event.id} className="cat-event-row">
-                  <td data-label="Date">{formatEventDate(event.occurred_at)}</td>
-                  <td data-label="Type"><StatusBadge tone="muted">{EVENT_LABELS[event.event_type] || event.event_type}</StatusBadge></td>
-                  <td data-label="Title" className="text-primary">{event.title}</td>
-                  <td data-label="Notes">{event.notes || '-'}</td>
-                  <td data-label="Cost">{formatCost(event)}</td>
-                  <td data-label="Actions">
+                  <td data-label={t('field.date')}>{formatEventDate(event.occurred_at, locale, t)}</td>
+                  <td data-label={t('field.type')}><StatusBadge tone="muted">{t(`event.${event.event_type}`)}</StatusBadge></td>
+                  <td data-label={t('field.title')} className="text-primary">{event.title}</td>
+                  <td data-label={t('field.notes')}>{event.notes || '-'}</td>
+                  <td data-label={t('field.cost')}>{formatCost(event)}</td>
+                  <td data-label={t('field.actions')}>
                     <div className="cat-event-actions">
-                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingEvent(event)}>Edit</button>
-                      <button className="btn btn-secondary btn-sm text-danger" onClick={() => handleDeleteEvent(event)}>Delete</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingEvent(event)}>{t('common.editDisplay')}</button>
+                      <button className="btn btn-secondary btn-sm text-danger" onClick={() => handleDeleteEvent(event)}>{t('common.delete')}</button>
                     </div>
                   </td>
                 </tr>
@@ -363,7 +363,7 @@ export default function CatDetail() {
             {timelineRows.length === 0 && (
               <tr>
                 <td colSpan="6">
-                  <EmptyState icon={<Icon name="cat" />} message="No lifecycle events yet" compact />
+                  <EmptyState icon={<Icon name="cat" />} message={t('catDetail.noEvents')} compact />
                 </td>
               </tr>
             )}

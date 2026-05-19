@@ -3,14 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage, getDiagnosticsSummary } from '../api/client'
 import Icon from '../components/Icon'
 import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function isCanceled(error) {
   return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
 }
 
-function formatDateTime(value) {
+function formatDateTime(value, locale) {
   if (!value) return '-'
-  return new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'medium' })
+  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'medium' })
 }
 
 function formatDuration(seconds) {
@@ -32,7 +33,7 @@ function JsonSnippet({ value }) {
   return <pre className="diagnostics-json">{JSON.stringify(value, null, 2)}</pre>
 }
 
-function CopyButton({ text }) {
+function CopyButton({ text, t }) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
@@ -44,12 +45,12 @@ function CopyButton({ text }) {
 
   return (
     <button className="btn btn-secondary btn-sm" onClick={copy} type="button">
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? t('diagnostics.copied') : t('common.copy')}
     </button>
   )
 }
 
-function EndpointRow({ endpoint }) {
+function EndpointRow({ endpoint, t }) {
   const command = `${endpoint.method} ${endpoint.path}`
   return (
     <div className="diagnostics-endpoint-row">
@@ -57,7 +58,7 @@ function EndpointRow({ endpoint }) {
         <span className="diagnostics-endpoint-row__label">{endpoint.label}</span>
         <code>{command}</code>
       </div>
-      <CopyButton text={endpoint.path} />
+      <CopyButton text={endpoint.path} t={t} />
     </div>
   )
 }
@@ -72,12 +73,12 @@ function StatCard({ label, value, children }) {
   )
 }
 
-function DiagnosticsEvent({ event, highlighted }) {
+function DiagnosticsEvent({ event, highlighted, locale }) {
   return (
     <tr className={highlighted ? 'diagnostics-row-highlight' : ''}>
       <td className="text-mono table-small">#{event.visit_id}</td>
       <td>{event.event_type}</td>
-      <td className="text-mono table-small">{formatDateTime(event.recorded_at)}</td>
+      <td className="text-mono table-small">{formatDateTime(event.recorded_at, locale)}</td>
       <td><JsonSnippet value={event.payload} /></td>
     </tr>
   )
@@ -88,6 +89,7 @@ export default function Diagnostics() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
+  const { locale, t } = useLanguage()
   const highlightedVisitId = searchParams.get('visit')
 
   useEffect(() => {
@@ -98,23 +100,23 @@ export default function Diagnostics() {
       try {
         setSummary(await getDiagnosticsSummary({ signal: controller.signal }))
       } catch (e) {
-        if (!isCanceled(e)) setError(getApiErrorMessage(e) || e?.message || 'Diagnostics summary unavailable')
+        if (!isCanceled(e)) setError(getApiErrorMessage(e) || e?.message || t('diagnostics.unavailable'))
       } finally {
         setLoading(false)
       }
     }
     load()
     return () => controller.abort()
-  }, [])
+  }, [t])
 
   const highlightedEvents = useMemo(() => {
     if (!summary || !highlightedVisitId) return []
     return summary.recent_diagnostics.filter(event => String(event.visit_id) === highlightedVisitId)
   }, [summary, highlightedVisitId])
 
-  if (loading) return <div className="loading">Loading…</div>
+  if (loading) return <div className="loading">{t('state.loading')}</div>
   if (error) return <EmptyState icon={<Icon name="alert" />} message={error} />
-  if (!summary) return <EmptyState icon={<Icon name="alert" />} message="Diagnostics summary unavailable" />
+  if (!summary) return <EmptyState icon={<Icon name="alert" />} message={t('diagnostics.unavailable')} />
 
   const pollerTone = summary.poller.healthy ? 'green' : 'yellow'
   const display = summary.display
@@ -122,8 +124,8 @@ export default function Diagnostics() {
   return (
     <div>
       <PageHeader
-        title="Diagnostics"
-        subtitle="Operational state for polling, visits, Tuya reconciliation and the e-paper display"
+        title={t('diagnostics.title')}
+        subtitle={t('diagnostics.subtitle')}
         actions={<StatusBadge tone={pollerTone}>{summary.poller.mode}</StatusBadge>}
       />
 
@@ -131,54 +133,54 @@ export default function Diagnostics() {
         <div className="alert alert-yellow alert-with-icon mb-6">
           <Icon name="activity" size={16} />
           <span>
-            Showing recent diagnostics for visit <strong>#{highlightedVisitId}</strong>.{' '}
-            {highlightedEvents.length === 0 ? 'No recent events are in the summary window.' : `${highlightedEvents.length} event(s) highlighted below.`}
+            {t('diagnostics.showingVisit')} <strong>#{highlightedVisitId}</strong>.{' '}
+            {highlightedEvents.length === 0 ? t('diagnostics.noRecentEvents') : t('diagnostics.eventsHighlighted', { count: highlightedEvents.length })}
           </span>
         </div>
       )}
 
       <div className="diagnostics-grid mb-6">
-        <StatCard label="Poller" value={summary.poller.healthy ? 'Healthy' : 'Attention'}>
-          <p>Last success: {formatDateTime(summary.poller.last_successful_at)}</p>
-          <p>Last attempt: {formatDateTime(summary.poller.last_attempted_at)}</p>
+        <StatCard label={t('diagnostics.poller')} value={summary.poller.healthy ? t('diagnostics.healthy') : t('diagnostics.attention')}>
+          <p>{t('diagnostics.lastSuccess')}: {formatDateTime(summary.poller.last_successful_at, locale)}</p>
+          <p>{t('diagnostics.lastAttempt')}: {formatDateTime(summary.poller.last_attempted_at, locale)}</p>
           {summary.poller.last_error && <p className="text-danger">{summary.poller.last_error}</p>}
         </StatCard>
-        <StatCard label="Open visits" value={summary.open_visits.count}>
-          <p>Oldest age: {formatDuration(summary.open_visits.oldest_age_seconds)}</p>
+        <StatCard label={t('diagnostics.openVisits')} value={summary.open_visits.count}>
+          <p>{t('diagnostics.oldestAge')}: {formatDuration(summary.open_visits.oldest_age_seconds)}</p>
         </StatCard>
-        <StatCard label="Report-log attempts" value={summary.reconciliation.reconciliation_attempts}>
-          <p>Fetched: {summary.reconciliation.report_logs_fetched}</p>
-          <p>Pending retries: {summary.reconciliation.pending_retries}</p>
+        <StatCard label={t('diagnostics.reportLogAttempts')} value={summary.reconciliation.reconciliation_attempts}>
+          <p>{t('diagnostics.fetched')}: {summary.reconciliation.report_logs_fetched}</p>
+          <p>{t('diagnostics.pendingRetries')}: {summary.reconciliation.pending_retries}</p>
         </StatCard>
-        <StatCard label="Display preview" value={display.status.healthy ? 'Healthy' : 'Attention'}>
-          <p>Alert: {display.alert || '-'}</p>
-          <p>Generated: {formatDateTime(display.generated_at)}</p>
+        <StatCard label={t('diagnostics.displayPreview')} value={display.status.healthy ? t('diagnostics.healthy') : t('diagnostics.attention')}>
+          <p>{t('diagnostics.alert')}: {display.alert || '-'}</p>
+          <p>{t('diagnostics.generated')}: {formatDateTime(display.generated_at, locale)}</p>
         </StatCard>
       </div>
 
       <div className="diagnostics-layout">
         <section className="card card--flush diagnostics-section">
           <div className="diagnostics-section__header">
-            <h3>Open visits</h3>
+            <h3>{t('diagnostics.openVisits')}</h3>
           </div>
           {summary.open_visits.visits.length === 0 ? (
-            <EmptyState icon={<Icon name="visits" />} message="No open visits" compact />
+            <EmptyState icon={<Icon name="visits" />} message={t('diagnostics.noOpenVisits')} compact />
           ) : (
             <table className="table diagnostics-table">
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Started</th>
-                  <th>Age</th>
-                  <th>Weight</th>
-                  <th>Source</th>
+                  <th>{t('field.started')}</th>
+                  <th>{t('field.duration')}</th>
+                  <th>{t('field.weight')}</th>
+                  <th>{t('field.source')}</th>
                 </tr>
               </thead>
               <tbody>
                 {summary.open_visits.visits.map(visit => (
                   <tr key={visit.id}>
                     <td><Link to={`/diagnostics?visit=${visit.id}`} className="text-mono">#{visit.id}</Link></td>
-                    <td className="text-mono table-small">{formatDateTime(visit.started_at)}</td>
+                    <td className="text-mono table-small">{formatDateTime(visit.started_at, locale)}</td>
                     <td>{formatDuration(visit.age_seconds)}</td>
                     <td>{formatWeight(visit.weight_kg)}</td>
                     <td>{visit.duration_source}</td>
@@ -191,14 +193,14 @@ export default function Diagnostics() {
 
         <section className="card diagnostics-section diagnostics-display-preview">
           <div className="diagnostics-section__header diagnostics-section__header--plain">
-            <h3>Display summary</h3>
+            <h3>{t('diagnostics.displaySummary')}</h3>
             <code>/display/summary</code>
           </div>
           <div className="diagnostics-display-grid">
-            <div><span>Status</span><strong>{display.status.label}</strong></div>
-            <div><span>Latest visit</span><strong>{display.latest_visit?.cat_name || '-'}</strong></div>
-            <div><span>Visits today</span><strong>{display.today.visits}</strong></div>
-            <div><span>Unidentified</span><strong>{display.today.unidentified_visits}</strong></div>
+            <div><span>{t('diagnostics.status')}</span><strong>{display.status.label}</strong></div>
+            <div><span>{t('diagnostics.latestVisit')}</span><strong>{display.latest_visit?.cat_name || '-'}</strong></div>
+            <div><span>{t('catCard.visitsToday')}</span><strong>{display.today.visits}</strong></div>
+            <div><span>{t('diagnostics.unidentified')}</span><strong>{display.today.unidentified_visits}</strong></div>
           </div>
           <JsonSnippet value={{ alert: display.alert, cats: display.cats }} />
         </section>
@@ -206,19 +208,19 @@ export default function Diagnostics() {
 
       <section className="card card--flush diagnostics-section mt-6">
         <div className="diagnostics-section__header">
-          <h3>Recent visit diagnostics</h3>
+          <h3>{t('diagnostics.recentVisitDiagnostics')}</h3>
           <code>/visits/{'{visit_id}'}/diagnostics</code>
         </div>
         {summary.recent_diagnostics.length === 0 ? (
-          <EmptyState icon={<Icon name="activity" />} message="No visit diagnostics recorded yet" compact />
+          <EmptyState icon={<Icon name="activity" />} message={t('diagnostics.none')} compact />
         ) : (
           <table className="table diagnostics-table diagnostics-events-table">
             <thead>
               <tr>
-                <th>Visit</th>
-                <th>Event</th>
-                <th>Recorded</th>
-                <th>Payload</th>
+                <th>{t('diagnostics.visit')}</th>
+                <th>{t('diagnostics.event')}</th>
+                <th>{t('diagnostics.recorded')}</th>
+                <th>{t('diagnostics.payload')}</th>
               </tr>
             </thead>
             <tbody>
@@ -227,6 +229,7 @@ export default function Diagnostics() {
                   key={event.id}
                   event={event}
                   highlighted={highlightedVisitId && String(event.visit_id) === highlightedVisitId}
+                  locale={locale}
                 />
               ))}
             </tbody>
@@ -236,10 +239,10 @@ export default function Diagnostics() {
 
       <section className="card diagnostics-section mt-6">
         <div className="diagnostics-section__header diagnostics-section__header--plain">
-          <h3>Useful endpoints</h3>
+          <h3>{t('diagnostics.usefulEndpoints')}</h3>
         </div>
         <div className="diagnostics-endpoint-list">
-          {summary.endpoints.map(endpoint => <EndpointRow key={`${endpoint.method}-${endpoint.path}`} endpoint={endpoint} />)}
+          {summary.endpoints.map(endpoint => <EndpointRow key={`${endpoint.method}-${endpoint.path}`} endpoint={endpoint} t={t} />)}
         </div>
       </section>
     </div>

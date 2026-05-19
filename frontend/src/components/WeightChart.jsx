@@ -4,9 +4,11 @@ import {
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 import { format } from 'date-fns'
+import { enGB, nl } from 'date-fns/locale'
 import Icon from './Icon'
 import { EmptyState } from './ui'
 import { CHART_RANGE_STORAGE_KEY, getInitialRangeLabel, RANGES } from '../utils/chartRanges'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function getTickCount(rangeLabel) {
   return { '1W': 4, '1M': 5, '3M': 6, '1Y': 7, All: 6 }[rangeLabel] || 6
@@ -16,13 +18,13 @@ function getMinTickGap(rangeLabel) {
   return rangeLabel === '1W' ? 28 : 42
 }
 
-function formatDateTick(timestamp, rangeLabel) {
+function formatDateTick(timestamp, rangeLabel, dateLocale) {
   const date = new Date(timestamp)
-  if (rangeLabel === '1W') return format(date, 'EEE')
-  if (rangeLabel === '1M') return format(date, 'dd MMM')
-  if (rangeLabel === '3M') return format(date, 'MMM d')
-  if (rangeLabel === '1Y') return format(date, 'MMM yy')
-  return format(date, 'yyyy')
+  if (rangeLabel === '1W') return format(date, 'EEE', { locale: dateLocale })
+  if (rangeLabel === '1M') return format(date, 'dd MMM', { locale: dateLocale })
+  if (rangeLabel === '3M') return format(date, 'MMM d', { locale: dateLocale })
+  if (rangeLabel === '1Y') return format(date, 'MMM yy', { locale: dateLocale })
+  return format(date, 'yyyy', { locale: dateLocale })
 }
 
 function formatKg(value) {
@@ -34,18 +36,18 @@ function formatKg(value) {
 // One colour per cat — accent for first, then a softer second
 const CAT_COLORS = ['var(--chart-line)', 'var(--success)', '#38BDF8', '#F59E0B']
 
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, t, dateLocale }) {
   const rows = payload?.filter(entry => Number.isFinite(Number(entry.value))) || []
   if (!active || rows.length === 0) return null
   return (
     <div className="chart-tooltip">
-      <div className="chart-tooltip__date">{format(new Date(label), 'dd MMM yyyy, HH:mm')}</div>
+      <div className="chart-tooltip__date">{format(new Date(label), 'dd MMM yyyy, HH:mm', { locale: dateLocale })}</div>
       {rows.map((entry) => (
         <div key={entry.name} className="chart-tooltip__row">
           <span style={{ color: entry.color }}>{entry.name}</span>
           <span>
             {Number(entry.value).toFixed(3)} kg
-            {entry.payload?.[`${entry.name}VisitId`] && ` · Visit #${entry.payload[`${entry.name}VisitId`]}`}
+            {entry.payload?.[`${entry.name}VisitId`] && ` · ${t('chart.visitId', { id: entry.payload[`${entry.name}VisitId`] })}`}
           </span>
         </div>
       ))}
@@ -54,6 +56,8 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function WeightChart({ weightHistory, onRangeChange, weightLoading = false }) {
+  const { language, t } = useLanguage()
+  const dateLocale = language === 'nl' ? nl : enGB
   const [activeRange, setActiveRange] = useState(getInitialRangeLabel)
 
   function handleRange(range) {
@@ -74,7 +78,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
         const pointKey = `${date.toISOString()}-${point.visit_id}`
         byPoint[pointKey] = {
           ...(byPoint[pointKey] || {}),
-          date: format(date, 'dd MMM yyyy, HH:mm'),
+          date: format(date, 'dd MMM yyyy, HH:mm', { locale: dateLocale }),
           timestamp: date.getTime(),
           [catData.cat_name]: point.weight_kg,
           [`${catData.cat_name}VisitId`]: point.visit_id,
@@ -83,14 +87,14 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
     })
 
     return Object.values(byPoint).sort((a, b) => a.timestamp - b.timestamp)
-  }, [weightHistory])
+  }, [weightHistory, dateLocale])
 
   const catNames = weightHistory?.map(c => c.cat_name) || []
 
   return (
     <div className="card weight-chart-card">
       <div className="flex-between mb-4">
-        <div className="card-label">Weight over time</div>
+        <div className="card-label">{t('chart.weightOverTime')}</div>
         <div className="chart-range-controls">
           {RANGES.map(range => (
             <button
@@ -106,7 +110,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
       </div>
 
       {chartData.length === 0 ? (
-        <EmptyState icon={<Icon name="chart" />} message="No weight data yet for this period" compact />
+        <EmptyState icon={<Icon name="chart" />} message={t('chart.noWeightData')} compact />
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chartData} margin={{ top: 4, right: 10, bottom: 0, left: -8 }}>
@@ -121,7 +125,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
               tickCount={getTickCount(activeRange)}
               minTickGap={getMinTickGap(activeRange)}
               interval="preserveStartEnd"
-              tickFormatter={(value) => formatDateTick(value, activeRange)}
+              tickFormatter={(value) => formatDateTick(value, activeRange, dateLocale)}
             />
             <YAxis
               domain={['auto', 'auto']}
@@ -130,7 +134,7 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
               axisLine={false}
               tickFormatter={formatKg}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip t={t} dateLocale={dateLocale} />} />
             {catNames.length > 1 && (
               <Legend
                 wrapperStyle={{ fontSize: '11px', color: 'var(--text-muted)' }}
