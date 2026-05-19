@@ -195,7 +195,14 @@
 
 /* ===================== CHART ===================== */
 .weight-chart-card {
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
+}
+
+.weight-chart-card__body {
+  flex: 1;
+  min-height: 220px;
 }
 
 [data-theme="dark-elegant"] .weight-chart-card {

@@ -76,3 +76,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 041 | [Visits Row Action Menu Cleanup](specs/archive/041-2026-05-19-visits-row-action-menu-cleanup.md) | P2 |
 | 042 | [Dutch Localization and Language Setting](specs/042-2026-05-19-dutch-localization-and-language-setting.md) | P1 |
 | 043 | [Cat Deactivation Action De-emphasis](specs/043-2026-05-19-cat-deactivation-action-de-emphasis.md) | P2 |
+| 044 | [Dashboard Weight Chart Height Alignment](specs/044-2026-05-19-dashboard-weight-chart-height-alignment.md) | P2 |
