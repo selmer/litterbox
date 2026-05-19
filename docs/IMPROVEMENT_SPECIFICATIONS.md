@@ -75,3 +75,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 040 | [E-Paper Two-Cat Label Overlap Polish](specs/archive/040-2026-05-18-epaper-two-cat-label-overlap-polish.md) | P1 |
 | 041 | [Visits Row Action Menu Cleanup](specs/archive/041-2026-05-19-visits-row-action-menu-cleanup.md) | P2 |
 | 042 | [Dutch Localization and Language Setting](specs/042-2026-05-19-dutch-localization-and-language-setting.md) | P1 |
+| 043 | [Cat Deactivation Action De-emphasis](specs/043-2026-05-19-cat-deactivation-action-de-emphasis.md) | P2 |

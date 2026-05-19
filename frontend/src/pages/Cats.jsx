@@ -156,9 +156,16 @@ function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleAct
           <button className="btn btn-secondary btn-sm" onClick={onEdit}>
             {t('common.editDisplay')}
           </button>
-          <button className="btn btn-secondary btn-sm" onClick={onToggleActive}>
-            {cat.active ? t('common.deactivate') : t('common.reactivate')}
-          </button>
+          <details className="cat-profile__more">
+            <summary className="btn btn-secondary btn-sm cat-profile__more-trigger">
+              {t('common.more')}
+            </summary>
+            <div className="cat-profile__more-menu">
+              <button className="cat-profile__more-item" onClick={onToggleActive}>
+                {cat.active ? t('common.deactivate') : t('common.reactivate')}
+              </button>
+            </div>
+          </details>
         </div>
       </div>
     </section>

@@ -117,14 +117,15 @@ describe('Cats page', () => {
   })
 
   describe('handleToggleActive', () => {
-    it('toggles the active state on success', async () => {
+    it('keeps deactivate in the secondary More menu and toggles active state on success', async () => {
       const deactivated = { ...mockCats[0], active: false }
       client.updateCat.mockResolvedValue(deactivated)
 
       renderCats()
-      await waitFor(() => screen.getByText('Deactivate'))
+      await waitFor(() => screen.getAllByRole('button', { name: 'Edit' })[0])
 
-      fireEvent.click(screen.getByText('Deactivate'))
+      fireEvent.click(screen.getAllByText('More')[0])
+      fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }))
 
       await waitFor(() =>
         expect(client.updateCat).toHaveBeenCalledWith(1, { active: false })
@@ -135,22 +136,24 @@ describe('Cats page', () => {
       client.updateCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
-      await waitFor(() => screen.getByText('Deactivate'))
+      await waitFor(() => screen.getAllByText('More')[0])
 
-      fireEvent.click(screen.getByText('Deactivate'))
+      fireEvent.click(screen.getAllByText('More')[0])
+      fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }))
 
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('Failed to deactivate cat')
       )
     })
 
-    it('shows an error toast when reactivate fails', async () => {
+    it('keeps reactivate in the secondary More menu and shows an error toast when reactivate fails', async () => {
       client.updateCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
-      await waitFor(() => screen.getByText('Reactivate'))
+      await waitFor(() => screen.getAllByText('More')[1])
 
-      fireEvent.click(screen.getByText('Reactivate'))
+      fireEvent.click(screen.getAllByText('More')[1])
+      fireEvent.click(screen.getByRole('button', { name: 'Reactivate' }))
 
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('Failed to reactivate cat')

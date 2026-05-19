@@ -731,6 +731,61 @@
   gap: var(--space-2);
 }
 
+.cat-profile__more {
+  position: relative;
+  display: flex;
+}
+
+.cat-profile__more-trigger {
+  min-height: 30px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cat-profile__more-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.cat-profile__more-menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  min-width: 148px;
+  padding: var(--space-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--card-background);
+  box-shadow: var(--shadow-md);
+}
+
+.cat-profile__more:not([open]) .cat-profile__more-menu {
+  display: none;
+}
+
+.cat-profile__more-item {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cat-profile__more-item:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
 .cat-profile-card__edit-header {
   display: flex;
   align-items: center;
@@ -759,8 +814,12 @@
     width: 100%;
   }
 
-  .cat-profile__actions .btn {
+  .cat-profile__actions > .btn {
     flex: 1;
+  }
+
+  .cat-profile__more {
+    flex: 0 0 auto;
   }
 
   .cat-profile__meta-grid,
