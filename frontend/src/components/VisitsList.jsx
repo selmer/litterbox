@@ -31,28 +31,33 @@ function VisitActions({ visit, onEdit, onReassign, onDelete, showDiagnosticsLink
   if (!onEdit && !onReassign && !onDelete && !showDiagnosticsLink) return null
 
   return (
-    <div className="visit-actions">
-      {onEdit && (
-        <button className="btn btn-secondary btn-sm" onClick={() => onEdit(visit)}>
-          edit
-        </button>
-      )}
-      {showDiagnosticsLink && (
-        <a className="btn btn-secondary btn-sm" href={`/diagnostics?visit=${visit.id}`}>
-          diagnostics
-        </a>
-      )}
-      {onReassign && (
-        <button className="btn btn-secondary btn-sm" onClick={() => onReassign(visit)}>
-          reassign
-        </button>
-      )}
-      {onDelete && (
-        <button className="btn btn-secondary btn-sm text-danger" onClick={() => onDelete(visit)}>
-          delete
-        </button>
-      )}
-    </div>
+    <details className="visit-actions">
+      <summary className="btn btn-secondary btn-sm visit-actions__trigger">
+        edit
+      </summary>
+      <div className="visit-actions__menu">
+        {onEdit && (
+          <button className="visit-actions__item" onClick={() => onEdit(visit)}>
+            Edit visit
+          </button>
+        )}
+        {showDiagnosticsLink && (
+          <a className="visit-actions__item" href={`/diagnostics?visit=${visit.id}`}>
+            diagnostics
+          </a>
+        )}
+        {onReassign && (
+          <button className="visit-actions__item" onClick={() => onReassign(visit)}>
+            Reassign
+          </button>
+        )}
+        {onDelete && (
+          <button className="visit-actions__item text-danger" onClick={() => onDelete(visit)}>
+            Delete
+          </button>
+        )}
+      </div>
+    </details>
   )
 }
 

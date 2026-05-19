@@ -73,3 +73,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 038 | [OpenAPI and Swagger Documentation](specs/archive/038-2026-05-18-openapi-and-swagger-documentation.md) | P2 |
 | 039 | [Backup and Restore](specs/039-2026-05-18-backup-and-restore.md) | P1 |
 | 040 | [E-Paper Two-Cat Label Overlap Polish](specs/archive/040-2026-05-18-epaper-two-cat-label-overlap-polish.md) | P1 |
+| 041 | [Visits Row Action Menu Cleanup](specs/archive/041-2026-05-19-visits-row-action-menu-cleanup.md) | P2 |

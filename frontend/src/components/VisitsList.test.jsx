@@ -58,18 +58,16 @@ describe('VisitsList', () => {
     expect(screen.getAllByRole('link', { name: 'diagnostics' })[0]).toHaveAttribute('href', '/diagnostics?visit=1')
   })
 
-  it('groups row actions for each visit without inline delete confirmation', () => {
+  it('keeps row actions in an edit menu without inline delete confirmation', () => {
+    const onEdit = vi.fn()
     const onReassign = vi.fn()
     const onDelete = vi.fn()
-    render(<VisitsList visits={[visits[0]]} cats={cats} onReassign={onReassign} onDelete={onDelete} />)
+    render(<VisitsList visits={[visits[0]]} cats={cats} onEdit={onEdit} onReassign={onReassign} onDelete={onDelete} />)
 
-    const actionButtons = screen.getAllByRole('button')
-    expect(actionButtons.map(button => button.textContent.trim())).toEqual([
-      'reassign',
-      'delete',
-      'reassign',
-      'delete',
-    ])
+    expect(screen.getAllByText('edit')).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Edit visit' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Reassign' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2)
     expect(screen.queryByText('Yes, delete')).toBeNull()
   })
 

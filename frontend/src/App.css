@@ -828,6 +828,10 @@
   border-color: rgba(245, 158, 11, 0.24);
 }
 
+.visits-table-card {
+  overflow: visible;
+}
+
 .visits-table {
   table-layout: fixed;
 }
@@ -853,10 +857,59 @@
 }
 
 .visit-actions {
+  position: relative;
   display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2);
+}
+
+.visit-actions__trigger {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.visit-actions__trigger::-webkit-details-marker {
+  display: none;
+}
+
+.visit-actions__menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  min-width: 136px;
+  padding: var(--space-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--card-background);
+  box-shadow: var(--shadow-md);
+}
+
+.visit-actions:not([open]) .visit-actions__menu {
+  display: none;
+}
+
+.visit-actions__item {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.visit-actions__item:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .visit-card-list {
