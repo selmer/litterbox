@@ -60,13 +60,12 @@ describe('VisitsList', () => {
 
   it('keeps row actions in an edit menu without inline delete confirmation', () => {
     const onEdit = vi.fn()
-    const onReassign = vi.fn()
     const onDelete = vi.fn()
-    render(<VisitsList visits={[visits[0]]} cats={cats} onEdit={onEdit} onReassign={onReassign} onDelete={onDelete} />)
+    render(<VisitsList visits={[visits[0]]} cats={cats} onEdit={onEdit} onDelete={onDelete} />)
 
     expect(screen.getAllByText('edit')).toHaveLength(2)
     expect(screen.getAllByRole('button', { name: 'Edit visit' })).toHaveLength(2)
-    expect(screen.getAllByRole('button', { name: 'Reassign' })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Reassign' })).toBeNull()
     expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2)
     expect(screen.queryByText('Yes, delete')).toBeNull()
   })

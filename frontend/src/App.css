@@ -981,8 +981,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.delete-visit-summary,
-.reassign-summary {
+.delete-visit-summary {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-2);
@@ -993,35 +992,23 @@
   background: color-mix(in srgb, var(--bg-subtle) 42%, transparent);
 }
 
-.delete-visit-summary div,
-.reassign-summary div {
+.delete-visit-summary div {
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-.delete-visit-summary span,
-.reassign-summary span {
+.delete-visit-summary span {
   color: var(--text-muted);
   font-size: 12px;
 }
 
-.delete-visit-summary strong,
-.reassign-summary strong {
+.delete-visit-summary strong {
   color: var(--text-primary);
   font-size: 12px;
   text-align: right;
 }
 
-.reassign-options {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.reassign-option--visitor {
-  color: var(--text-muted);
-}
 
 .pagination--visits {
   gap: var(--space-3);

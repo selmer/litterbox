@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
-import Icon from '../components/Icon'
 import { useToast } from '../components/ToastContext'
 import { ModalShell, PageHeader } from '../components/ui'
 
@@ -43,7 +42,6 @@ export default function Visits() {
   const [editForm, setEditForm] = useState(null)
   const [editError, setEditError] = useState(null)
   const [savingEdit, setSavingEdit] = useState(false)
-  const [reassigning, setReassigning] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
   const toast = useToast()
 
@@ -154,22 +152,6 @@ export default function Visits() {
     }
   }
 
-  async function handleReassign(visit) {
-    setReassigning(visit)
-  }
-
-  async function confirmReassign(catId) {
-    if (!reassigning) return
-    try {
-      const updated = await updateVisit(reassigning.id, { cat_id: catId })
-      setVisits(prev => prev.map(v => v.id === updated.id ? updated : v))
-    } catch (e) {
-      console.error('Failed to reassign visit', e)
-      toast('Failed to reassign visit. Please try again.')
-    } finally {
-      setReassigning(null)
-    }
-  }
 
   if (initialLoading) return <div className="loading">Loading…</div>
 
@@ -216,7 +198,6 @@ export default function Visits() {
           visits={visits}
           cats={cats}
           onEdit={handleEdit}
-          onReassign={handleReassign}
           onDelete={setPendingDelete}
           emptyMessage={selectedCat === null ? 'No visits recorded yet' : 'No visits match this filter'}
         />
@@ -357,58 +338,6 @@ export default function Visits() {
               Delete visit
             </button>
           </div>
-        </ModalShell>
-      )}
-
-      {reassigning && (
-        <ModalShell
-          title="Reassign visit"
-          onClose={() => setReassigning(null)}
-          description="Choose the cat that most likely used the litterbox for this visit."
-        >
-          <div className="reassign-summary">
-            <div>
-              <span>Started</span>
-              <strong>{new Date(reassigning.started_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
-            </div>
-            <div>
-              <span>Weight</span>
-              <strong>{reassigning.weight_kg ? `${reassigning.weight_kg.toFixed(3)} kg` : '-'}</strong>
-            </div>
-            <div>
-              <span>Current</span>
-              <strong>
-                {reassigning.cat_id
-                  ? cats.find(c => c.id === reassigning.cat_id)?.name ?? `Cat #${reassigning.cat_id}`
-                  : 'unidentified'
-                }
-              </strong>
-            </div>
-          </div>
-          <div className="reassign-options">
-            {cats.map(cat => (
-              <button
-                key={cat.id}
-                className={`btn w-full btn-align-start ${cat.id === reassigning.cat_id ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => confirmReassign(cat.id)}
-              >
-                <Icon name="cat" size={15} />
-                {cat.name}
-                {cat.reference_weight_kg && (
-                  <span className="button-meta">ref: {cat.reference_weight_kg.toFixed(2)} kg</span>
-                )}
-              </button>
-            ))}
-            <button
-              className="btn btn-secondary w-full btn-align-start reassign-option--visitor"
-              onClick={() => confirmReassign(null)}
-            >
-              Mark as visitor cat
-            </button>
-          </div>
-          <button className="btn btn-secondary w-full mt-4" onClick={() => setReassigning(null)}>
-            Cancel
-          </button>
         </ModalShell>
       )}
     </div>

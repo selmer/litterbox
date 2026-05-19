@@ -27,8 +27,8 @@ function getCatName(visit, catMap) {
   return catMap[visit.cat_id]?.name || `Cat #${visit.cat_id}`
 }
 
-function VisitActions({ visit, onEdit, onReassign, onDelete, showDiagnosticsLink }) {
-  if (!onEdit && !onReassign && !onDelete && !showDiagnosticsLink) return null
+function VisitActions({ visit, onEdit, onDelete, showDiagnosticsLink }) {
+  if (!onEdit && !onDelete && !showDiagnosticsLink) return null
 
   return (
     <details className="visit-actions">
@@ -46,11 +46,6 @@ function VisitActions({ visit, onEdit, onReassign, onDelete, showDiagnosticsLink
             diagnostics
           </a>
         )}
-        {onReassign && (
-          <button className="visit-actions__item" onClick={() => onReassign(visit)}>
-            Reassign
-          </button>
-        )}
         {onDelete && (
           <button className="visit-actions__item text-danger" onClick={() => onDelete(visit)}>
             Delete
@@ -61,7 +56,7 @@ function VisitActions({ visit, onEdit, onReassign, onDelete, showDiagnosticsLink
   )
 }
 
-function VisitMobileCard({ visit, catMap, onEdit, onReassign, onDelete, showId = true, showDiagnosticsLink = false }) {
+function VisitMobileCard({ visit, catMap, onEdit, onDelete, showId = true, showDiagnosticsLink = false }) {
   const catName = getCatName(visit, catMap)
 
   return (
@@ -93,12 +88,12 @@ function VisitMobileCard({ visit, catMap, onEdit, onReassign, onDelete, showId =
           </dd>
         </div>
       </dl>
-      <VisitActions visit={visit} onEdit={onEdit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLink} />
+      <VisitActions visit={visit} onEdit={onEdit} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLink} />
     </article>
   )
 }
 
-export default function VisitsList({ visits, cats = [], onEdit, onReassign, onDelete, emptyMessage = 'No visits recorded yet', showIds = true, showDiagnosticsLinks = false }) {
+export default function VisitsList({ visits, cats = [], onEdit, onDelete, emptyMessage = 'No visits recorded yet', showIds = true, showDiagnosticsLinks = false }) {
   const catMap = Object.fromEntries(cats.map(c => [c.id, c]))
 
   if (!visits?.length) {
@@ -116,7 +111,7 @@ export default function VisitsList({ visits, cats = [], onEdit, onReassign, onDe
             <col className="visits-table__duration-col" />
             <col className="visits-table__weight-col" />
             <col className="visits-table__source-col" />
-            {(onEdit || onReassign || onDelete || showDiagnosticsLinks) && <col className="visits-table__actions-col" />}
+            {(onEdit || onDelete || showDiagnosticsLinks) && <col className="visits-table__actions-col" />}
           </colgroup>
           <thead>
             <tr>
@@ -126,7 +121,7 @@ export default function VisitsList({ visits, cats = [], onEdit, onReassign, onDe
               <th>Duration</th>
               <th>Weight</th>
               <th>Source</th>
-              {(onEdit || onReassign || onDelete || showDiagnosticsLinks) && <th>Actions</th>}
+              {(onEdit || onDelete || showDiagnosticsLinks) && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -147,9 +142,9 @@ export default function VisitsList({ visits, cats = [], onEdit, onReassign, onDe
                 <td>
                   <IdentificationBadge identifiedBy={visit.identified_by} catId={visit.cat_id} />
                 </td>
-                {(onEdit || onReassign || onDelete || showDiagnosticsLinks) && (
+                {(onEdit || onDelete || showDiagnosticsLinks) && (
                   <td>
-                    <VisitActions visit={visit} onEdit={onEdit} onReassign={onReassign} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLinks} />
+                    <VisitActions visit={visit} onEdit={onEdit} onDelete={onDelete} showDiagnosticsLink={showDiagnosticsLinks} />
                   </td>
                 )}
               </tr>
@@ -165,7 +160,6 @@ export default function VisitsList({ visits, cats = [], onEdit, onReassign, onDe
             visit={visit}
             catMap={catMap}
             onEdit={onEdit}
-            onReassign={onReassign}
             onDelete={onDelete}
             showId={showIds}
             showDiagnosticsLink={showDiagnosticsLinks}

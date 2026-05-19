@@ -6,14 +6,13 @@ import * as client from '../api/client'
 
 vi.mock('../api/client')
 vi.mock('../components/VisitsList', () => ({
-  default: ({ visits, onDelete, onEdit, onReassign }) => (
+  default: ({ visits, onDelete, onEdit }) => (
     <ul>
       {visits.map(v => (
         <li key={v.id}>
           Visit {v.id}
           <button onClick={() => onEdit(v)}>Edit {v.id}</button>
           <button onClick={() => onDelete(v)}>Delete {v.id}</button>
-          <button onClick={() => onReassign(v)}>Reassign {v.id}</button>
         </li>
       ))}
     </ul>
@@ -44,11 +43,6 @@ function renderVisits() {
       <Visits />
     </ToastProvider>
   )
-}
-
-function getModalCatButton(name) {
-  const buttons = screen.getAllByRole('button', { name: new RegExp(name) })
-  return buttons[buttons.length - 1]
 }
 
 describe('Visits page', () => {
@@ -113,52 +107,6 @@ describe('Visits page', () => {
       )
       // Visit should still be in the list
       expect(screen.getByText('Visit 1')).toBeInTheDocument()
-    })
-  })
-
-  describe('confirmReassign', () => {
-    it('updates the visit in the list on successful reassign', async () => {
-      const updatedVisit = { ...mockVisits[1], cat_id: 10, id: 2 }
-      client.updateVisit.mockResolvedValue(updatedVisit)
-      renderVisits()
-      await waitFor(() => screen.getByText('Reassign 2'))
-
-      fireEvent.click(screen.getByText('Reassign 2'))
-      // Reassign modal should appear with cat button
-      await waitFor(() => expect(getModalCatButton('Mochi')).toBeInTheDocument())
-      fireEvent.click(getModalCatButton('Mochi'))
-
-      await waitFor(() =>
-        expect(client.updateVisit).toHaveBeenCalledWith(2, { cat_id: 10 })
-      )
-    })
-
-    it('shows an error toast when reassign fails', async () => {
-      client.updateVisit.mockRejectedValue(new Error('Network error'))
-      renderVisits()
-      await waitFor(() => screen.getByText('Reassign 2'))
-
-      fireEvent.click(screen.getByText('Reassign 2'))
-      await waitFor(() => expect(getModalCatButton('Mochi')).toBeInTheDocument())
-      fireEvent.click(getModalCatButton('Mochi'))
-
-      await waitFor(() =>
-        expect(screen.getByRole('alert')).toHaveTextContent('Failed to reassign visit')
-      )
-    })
-
-    it('closes the reassign modal even when reassign fails', async () => {
-      client.updateVisit.mockRejectedValue(new Error('Network error'))
-      renderVisits()
-      await waitFor(() => screen.getByText('Reassign 2'))
-
-      fireEvent.click(screen.getByText('Reassign 2'))
-      await waitFor(() => screen.getByText('Reassign visit'))
-      fireEvent.click(getModalCatButton('Mochi'))
-
-      await waitFor(() =>
-        expect(screen.queryByText('Reassign visit')).toBeNull()
-      )
     })
   })
 
