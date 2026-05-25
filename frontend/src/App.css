@@ -201,10 +201,8 @@
 }
 
 .weight-chart-card__body {
-  flex: 1 1 260px;
-  height: 260px;
+  flex: 1;
   min-height: 220px;
-  min-width: 0;
 }
 
 [data-theme="dark-elegant"] .weight-chart-card {

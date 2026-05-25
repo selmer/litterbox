@@ -13,6 +13,13 @@ const mockCats = [
   { id: 2, name: 'Biscuit', active: false, reference_weight_kg: null, birth_date: null, created_at: '2024-02-01T00:00:00Z' },
 ]
 
+let consoleErrorSpy
+
+function silenceConsoleError() {
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  return consoleErrorSpy
+}
+
 function renderCats() {
   return render(
     <MemoryRouter>
@@ -31,6 +38,8 @@ describe('Cats page', () => {
   })
 
   afterEach(() => {
+    consoleErrorSpy?.mockRestore()
+    consoleErrorSpy = null
     vi.useRealTimers()
   })
 
@@ -65,6 +74,7 @@ describe('Cats page', () => {
     })
 
     it('shows an error toast when create fails', async () => {
+      const consoleError = silenceConsoleError()
       client.createCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
@@ -79,6 +89,7 @@ describe('Cats page', () => {
       )
       // Form should still be visible (not closed on error)
       expect(screen.getByPlaceholderText('e.g. Griezeltje')).toBeInTheDocument()
+      expect(consoleError).toHaveBeenCalledWith('Failed to create cat', expect.any(Error))
     })
   })
 
@@ -102,6 +113,7 @@ describe('Cats page', () => {
     })
 
     it('shows an error toast when update fails', async () => {
+      const consoleError = silenceConsoleError()
       client.updateCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
@@ -113,6 +125,7 @@ describe('Cats page', () => {
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('Failed to save changes')
       )
+      expect(consoleError).toHaveBeenCalledWith('Failed to update cat', expect.any(Error))
     })
   })
 
@@ -133,6 +146,7 @@ describe('Cats page', () => {
     })
 
     it('shows an error toast when deactivate fails', async () => {
+      const consoleError = silenceConsoleError()
       client.updateCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
@@ -144,9 +158,11 @@ describe('Cats page', () => {
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('Failed to deactivate cat')
       )
+      expect(consoleError).toHaveBeenCalledWith('Failed to update cat', expect.any(Error))
     })
 
     it('keeps reactivate in the secondary More menu and shows an error toast when reactivate fails', async () => {
+      const consoleError = silenceConsoleError()
       client.updateCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
@@ -158,6 +174,7 @@ describe('Cats page', () => {
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('Failed to reactivate cat')
       )
+      expect(consoleError).toHaveBeenCalledWith('Failed to update cat', expect.any(Error))
     })
   })
 })
