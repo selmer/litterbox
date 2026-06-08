@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Cat, CleaningCycle, Visit
 from app.durations import trusted_duration_expr, trusted_duration_seconds
+from app.timezones import as_utc, local_day_start_utc
 from app.schemas import (
     DisplayCatSummary,
     DisplayChart,
@@ -35,14 +36,8 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _as_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
-
-
 def _format_time_ago(value: datetime, now: datetime) -> str:
-    seconds = max(0, int((now - _as_utc(value)).total_seconds()))
+    seconds = max(0, int((now - as_utc(value)).total_seconds()))
     if seconds < 60:
         return "just now"
     minutes = seconds // 60
@@ -67,7 +62,7 @@ def _poller_status(now: datetime) -> DisplayStatus:
     else:
         healthy = (
             last_poll is not None
-            and (now - _as_utc(last_poll)).total_seconds() < dashboard_state.POLLER_HEALTHY_THRESHOLD_SECONDS
+            and (now - as_utc(last_poll)).total_seconds() < dashboard_state.POLLER_HEALTHY_THRESHOLD_SECONDS
         )
         label = "Polling"
 
@@ -85,10 +80,6 @@ def _poller_status(now: datetime) -> DisplayStatus:
         last_successful_at=last_poll,
         message=message,
     )
-
-
-def _today_start(now: datetime) -> datetime:
-    return now.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def _today_summary(db: Session, today_start: datetime) -> DisplayToday:
@@ -175,7 +166,7 @@ def _nearest_historical_weight(
     for visit in visits:
         if latest_visit_id is not None and visit.id == latest_visit_id:
             continue
-        distance = abs(_as_utc(visit.started_at) - target)
+        distance = abs(as_utc(visit.started_at) - target)
         if distance > tolerance:
             continue
         if best_distance is None or distance < best_distance:
@@ -312,7 +303,7 @@ def _weight_chart(db: Session, latest_visit_cat_id: int | None, now: datetime) -
 
     points = [
         DisplayChartPoint(
-            date=_as_utc(visit.started_at).date().isoformat(),
+            date=as_utc(visit.started_at).date().isoformat(),
             weight_kg=visit.weight_kg,
         )
         for visit in visits
@@ -340,7 +331,7 @@ def _alert(status: DisplayStatus, latest_visit: DisplayLatestVisit | None, today
 @router.get("/summary", response_model=DisplaySummaryOut)
 def get_display_summary(db: Session = Depends(get_db)):
     now = _utc_now()
-    today_start = _today_start(now)
+    today_start = local_day_start_utc(now)
     status = _poller_status(now)
     latest_visit, latest_visit_cat_id = _latest_visit(db, now)
     today = _today_summary(db, today_start)

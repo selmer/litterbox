@@ -71,9 +71,10 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 036 | [Trusted Duration and Adaptive Visit Polling](specs/archive/036-2026-05-18-trusted-duration-and-adaptive-visit-polling.md) | P0 |
 | 037 | [Visits ID Visibility Cleanup](specs/archive/037-2026-05-18-visits-id-visibility-cleanup.md) | P2 |
 | 038 | [OpenAPI and Swagger Documentation](specs/archive/038-2026-05-18-openapi-and-swagger-documentation.md) | P2 |
-| 039 | [Backup and Restore](specs/039-2026-05-18-backup-and-restore.md) | P1 |
+| 039 | [Backup and Restore](specs/archive/039-2026-05-18-backup-and-restore.md) | P1 |
 | 040 | [E-Paper Two-Cat Label Overlap Polish](specs/archive/040-2026-05-18-epaper-two-cat-label-overlap-polish.md) | P1 |
 | 041 | [Visits Row Action Menu Cleanup](specs/archive/041-2026-05-19-visits-row-action-menu-cleanup.md) | P2 |
-| 042 | [Dutch Localization and Language Setting](specs/042-2026-05-19-dutch-localization-and-language-setting.md) | P1 |
-| 043 | [Cat Deactivation Action De-emphasis](specs/043-2026-05-19-cat-deactivation-action-de-emphasis.md) | P2 |
-| 044 | [Dashboard Weight Chart Height Alignment](specs/044-2026-05-19-dashboard-weight-chart-height-alignment.md) | P2 |
+| 042 | [Dutch Localization and Language Setting](specs/archive/042-2026-05-19-dutch-localization-and-language-setting.md) | P1 |
+| 043 | [Cat Deactivation Action De-emphasis](specs/archive/043-2026-05-19-cat-deactivation-action-de-emphasis.md) | P2 |
+| 044 | [Dashboard Weight Chart Height Alignment](specs/archive/044-2026-05-19-dashboard-weight-chart-height-alignment.md) | P2 |
+| 045 | [Local Day Boundary for Today Metrics](specs/archive/045-2026-06-08-local-day-boundary-for-today-metrics.md) | P1 |

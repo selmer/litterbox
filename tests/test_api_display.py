@@ -5,6 +5,7 @@ import pytest
 
 from app.models import Cat, CleaningCycle, Visit
 import app.routers.dashboard as dashboard_state
+import app.routers.display as display_router
 
 
 @pytest.fixture(autouse=True)
@@ -336,3 +337,55 @@ def test_display_summary_excludes_ignored_weights_from_cat_summaries_and_chart(c
     data = response.json()
     assert data["cats"][0]["latest_weight_kg"] == 3.8
     assert [point["weight_kg"] for point in data["chart"]["points"]] == [3.72, 3.8]
+
+
+def test_display_summary_today_uses_local_day_boundary(client, db_session, monkeypatch):
+    _mark_poller_healthy()
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    monkeypatch.setattr(
+        display_router,
+        "_utc_now",
+        lambda: datetime(2026, 6, 8, 12, 0, tzinfo=timezone.utc),
+    )
+    db_session.add_all([
+        Visit(
+            cat_id=cat.id,
+            identified_by="auto",
+            started_at=datetime(2026, 6, 7, 21, 30, tzinfo=timezone.utc),
+            duration_seconds=60,
+            duration_source="manual",
+            duration_is_estimated=False,
+            weight_kg=3.7,
+        ),
+        Visit(
+            cat_id=cat.id,
+            identified_by="auto",
+            started_at=datetime(2026, 6, 7, 22, 30, tzinfo=timezone.utc),
+            duration_seconds=120,
+            duration_source="manual",
+            duration_is_estimated=False,
+            weight_kg=3.8,
+        ),
+        Visit(
+            cat_id=None,
+            started_at=datetime(2026, 6, 7, 22, 45, tzinfo=timezone.utc),
+            ended_at=datetime(2026, 6, 7, 22, 50, tzinfo=timezone.utc),
+        ),
+        CleaningCycle(started_at=datetime(2026, 6, 7, 22, 40, tzinfo=timezone.utc)),
+        CleaningCycle(started_at=datetime(2026, 6, 7, 21, 40, tzinfo=timezone.utc)),
+    ])
+    db_session.commit()
+
+    response = client.get("/display/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["today"]["visits"] == 2
+    assert data["today"]["time_in_box_seconds"] == 120
+    assert data["today"]["cleaning_cycles"] == 1
+    assert data["today"]["unidentified_visits"] == 1
+    assert data["cats"][0]["visits_today"] == 1
+

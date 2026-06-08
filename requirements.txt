@@ -26,6 +26,7 @@ SQLAlchemy==2.0.47
 starlette==0.52.1
 python-dotenv>=1.0
 tinytuya==1.17.6
+tzdata>=2025.2
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.6.3

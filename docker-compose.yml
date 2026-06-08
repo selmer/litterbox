@@ -11,6 +11,7 @@ services:
       - TUYA_API_SECRET=${TUYA_API_SECRET}
       - TUYA_API_REGION=${TUYA_API_REGION}
       - SNAPSHOT_INTERVAL_SECONDS=300
+      - APP_TIMEZONE=${APP_TIMEZONE:-Europe/Amsterdam}
     depends_on:
       db:
         condition: service_healthy

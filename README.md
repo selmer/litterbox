@@ -120,6 +120,7 @@ NAS_USER=selmer
 NAS_HOST=192.168.68.115
 NAS_PATH=/volume2/docker/litterbox
 ALLOW_DIRTY_DEPLOY=false
+APP_TIMEZONE=Europe/Amsterdam
 ```
 
 The script refuses to deploy with local uncommitted changes unless `ALLOW_DIRTY_DEPLOY=true` is set.

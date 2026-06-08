@@ -2,6 +2,7 @@
 from datetime import datetime, timezone, timedelta
 
 from app.models import Cat, Visit, CleaningCycle
+from app.timezones import local_day_start_utc
 
 
 def test_dashboard_empty(client):
@@ -46,7 +47,7 @@ def test_dashboard_counts_visits_today(client, db_session):
     db_session.commit()
 
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = local_day_start_utc(now)
 
     visit_today = Visit(cat_id=cat.id, started_at=today_start + timedelta(hours=1))
     visit_yesterday = Visit(
@@ -62,9 +63,40 @@ def test_dashboard_counts_visits_today(client, db_session):
     assert cat_data["visits_today"] == 1
 
 
+def test_dashboard_today_uses_local_day_boundary(client, db_session, monkeypatch):
+    cat = Cat(name="Plurk", reference_weight_kg=3.8)
+    db_session.add(cat)
+    db_session.commit()
+
+    db_session.add_all([
+        Visit(cat_id=cat.id, started_at=datetime(2026, 6, 7, 21, 30, tzinfo=timezone.utc)),
+        Visit(cat_id=cat.id, started_at=datetime(2026, 6, 7, 22, 30, tzinfo=timezone.utc)),
+        Visit(cat_id=None, started_at=datetime(2026, 6, 7, 22, 45, tzinfo=timezone.utc), ended_at=datetime(2026, 6, 7, 22, 50, tzinfo=timezone.utc)),
+        CleaningCycle(started_at=datetime(2026, 6, 7, 22, 40, tzinfo=timezone.utc)),
+        CleaningCycle(started_at=datetime(2026, 6, 7, 21, 40, tzinfo=timezone.utc)),
+    ])
+    db_session.commit()
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            value = datetime(2026, 6, 8, 12, 0, tzinfo=timezone.utc)
+            return value if tz is None else value.astimezone(tz)
+
+    monkeypatch.setattr("app.routers.dashboard.datetime", FixedDateTime)
+
+    response = client.get("/dashboard")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["cats"][0]["visits_today"] == 1
+    assert data["unidentified_visits_today"] == 1
+    assert data["cleaning_cycles_today"] == 1
+
+
 def test_dashboard_counts_cleaning_cycles_today(client, db_session):
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = local_day_start_utc(now)
 
     db_session.add(CleaningCycle(started_at=today_start + timedelta(hours=1)))
     db_session.add(CleaningCycle(started_at=today_start - timedelta(hours=1)))
@@ -77,7 +109,7 @@ def test_dashboard_counts_cleaning_cycles_today(client, db_session):
 
 def test_dashboard_counts_unidentified_visits_today(client, db_session):
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = local_day_start_utc(now)
 
     # Completed visit with no cat assigned
     db_session.add(
@@ -100,7 +132,7 @@ def test_dashboard_time_in_box_today(client, db_session):
     db_session.commit()
 
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = local_day_start_utc(now)
 
     db_session.add(
         Visit(
@@ -134,7 +166,7 @@ def test_dashboard_ignores_hard_timeout_duration(client, db_session):
     db_session.commit()
 
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = local_day_start_utc(now)
     db_session.add_all([
         Visit(
             cat_id=cat.id,
@@ -169,7 +201,7 @@ def test_dashboard_ignores_legacy_unknown_timeout_duration(client, db_session):
     db_session.commit()
 
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = local_day_start_utc(now)
     db_session.add_all([
         Visit(
             cat_id=cat.id,

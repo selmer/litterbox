@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Cat, CleaningCycle, Visit
 from app.durations import trusted_duration_expr
+from app.timezones import local_day_start_utc
 from app.schemas import CatDashboard, DashboardOut
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -33,7 +34,7 @@ def get_dashboard(db: Session = Depends(get_db)):
         poll_error = last_poll_error
 
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = local_day_start_utc(now)
 
     trusted_duration = trusted_duration_expr()
 
