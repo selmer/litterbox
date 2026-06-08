@@ -47,10 +47,6 @@ function Sidebar({ theme, onToggleTheme }) {
           <Icon name="cat" className="nav-icon" />
           {t('nav.cats')}
         </NavLink>
-        <NavLink to="/diagnostics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <Icon name="activity" className="nav-icon" />
-          {t('nav.diagnostics')}
-        </NavLink>
         <NavLink to="/admin" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <Icon name="archive" className="nav-icon" />
           {t('nav.admin')}

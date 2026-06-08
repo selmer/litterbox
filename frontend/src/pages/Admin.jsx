@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   createBackup,
   getApiErrorMessage,
@@ -162,6 +163,22 @@ export default function Admin() {
               <option key={item.code} value={item.code}>{item.label}</option>
             ))}
           </select>
+        </section>
+
+        <section className="card admin-section">
+          <div className="admin-section__header">
+            <div className="admin-section__icon" aria-hidden="true">
+              <Icon name="activity" size={18} />
+            </div>
+            <div>
+              <h3>{t('admin.operationalTools')}</h3>
+              <p>{t('admin.operationalToolsDescription')}</p>
+            </div>
+          </div>
+          <Link className="btn btn-secondary" to="/diagnostics">
+            <Icon name="activity" size={16} />
+            {t('nav.diagnostics')}
+          </Link>
         </section>
 
         <section className="card admin-section">
