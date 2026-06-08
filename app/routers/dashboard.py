@@ -23,6 +23,8 @@ _poll_lock = threading.Lock()
 last_successful_poll_at: datetime = None
 last_poll_attempted_at: datetime = None
 last_poll_error: str = None
+device_faults: list[str] = []
+device_fault_code: int | None = None
 update_mode: str = "polling"   # set to "webhook" by main.py lifespan
 
 
@@ -32,6 +34,8 @@ def get_dashboard(db: Session = Depends(get_db)):
         last_poll = last_successful_poll_at
         last_attempt = last_poll_attempted_at
         poll_error = last_poll_error
+        faults = list(device_faults)
+        fault_code = device_fault_code
 
     now = datetime.now(timezone.utc)
     today_start = local_day_start_utc(now)
@@ -133,6 +137,8 @@ def get_dashboard(db: Session = Depends(get_db)):
         cats=cat_dashboards,
         unidentified_visits_today=unidentified_today,
         cleaning_cycles_today=cleaning_cycles_today,
+        device_faults=faults,
+        device_fault_code=fault_code,
         poller_healthy=poller_healthy,
         poller_last_successful_at=last_poll,
         poller_last_attempted_at=last_attempt,

@@ -9,6 +9,7 @@ import tinytuya
 
 from app.cat_identifier import IDENTIFICATION_THRESHOLD_KG, identify_cat, update_reference_weight
 from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visit, VisitDiagnostic
+from app.device_faults import decode_device_faults
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ DP_CAT_WEIGHT = "cat_weight"
 DP_CLEANING_CYCLE = "smart_clean"
 DP_EXCRETION_TIMES = "excretion_times_day"
 DP_EXCRETION_TIME = "excretion_time_day"
+DP_FAULT = "fault"
 REPORT_LOG_LOOKBACK_BUFFER_SECONDS = 30
 REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS = 60
 REPORT_LOG_CODES = ",".join([DP_EXCRETION_TIMES, DP_EXCRETION_TIME, DP_CAT_WEIGHT])
@@ -212,6 +214,7 @@ class LitterboxPoller:
                     },
                     now,
                 )
+            self._update_device_fault_state(dps)
             self._handle_changes(dps, now)
             self._check_visit_timeout(now)
             self._maybe_snapshot(dps, now)
@@ -243,6 +246,7 @@ class LitterboxPoller:
                 self.current_cleaning_cycle = db.get(CleaningCycle, self.current_cleaning_cycle_id) if self.current_cleaning_cycle_id else None
 
                 now = datetime.now(timezone.utc)
+                self._update_device_fault_state(current_dps)
                 self._handle_changes(current_dps, now)
                 self._check_visit_timeout(now)
 
@@ -368,6 +372,14 @@ class LitterboxPoller:
                 recorded_at=recorded_at,
             ))
         db.commit()
+
+
+    def _update_device_fault_state(self, dps: dict):
+        fault_code, faults = decode_device_faults(dps.get(DP_FAULT))
+        import app.routers.dashboard as dashboard_state
+        with dashboard_state._poll_lock:
+            dashboard_state.device_fault_code = fault_code
+            dashboard_state.device_faults = faults
 
     def _summarize_dps(self, dps: dict) -> dict:
         return {

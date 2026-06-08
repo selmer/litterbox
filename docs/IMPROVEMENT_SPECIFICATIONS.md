@@ -79,3 +79,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 044 | [Dashboard Weight Chart Height Alignment](specs/archive/044-2026-05-19-dashboard-weight-chart-height-alignment.md) | P2 |
 | 045 | [Local Day Boundary for Today Metrics](specs/archive/045-2026-06-08-local-day-boundary-for-today-metrics.md) | P1 |
 | 046 | [Diagnostics Under Admin Navigation](specs/archive/046-2026-06-08-diagnostics-under-admin-navigation.md) | P2 |
+| 047 | [Device Fault Dashboard Banner](specs/archive/047-2026-06-08-device-fault-dashboard-banner.md) | P1 |

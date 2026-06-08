@@ -20,6 +20,14 @@ import { EmptyState, ModalShell, PageHeader } from '../components/ui'
 
 const REFRESH_INTERVAL_MS = 15000
 
+
+function formatDeviceFaultLabel(fault, t) {
+  if (fault?.startsWith('unknown_fault_code_')) {
+    return t('dashboard.deviceFaultUnknown', { code: fault.replace('unknown_fault_code_', '') })
+  }
+  return t(`deviceFault.${fault}`)
+}
+
 function isCanceled(error) {
   return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
 }
@@ -155,6 +163,8 @@ export default function Dashboard() {
   const pageDate = new Date().toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
+  const deviceFaults = dashboard.device_faults || []
+  const deviceFaultLabels = deviceFaults.map(fault => formatDeviceFaultLabel(fault, t)).join(', ')
 
   return (
     <div>
@@ -175,6 +185,17 @@ export default function Dashboard() {
         <div className="alert alert-red alert-with-icon mb-6">
           <Icon name="alert" size={16} />
           <span>{dashboard.poller_last_error || t('dashboard.pollerDisconnected')}</span>
+        </div>
+      )}
+
+      {deviceFaults.length > 0 && (
+        <div className="alert alert-red alert-with-icon mb-6">
+          <Icon name="alert" size={16} />
+          <span>
+            {t(deviceFaults.length === 1 ? 'dashboard.deviceFault' : 'dashboard.deviceFaults', { faults: deviceFaultLabels })}
+            {' '}
+            <Link to="/diagnostics">{t('dashboard.viewDiagnostics')}</Link>
+          </span>
         </div>
       )}
 

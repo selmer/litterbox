@@ -1,8 +1,24 @@
 """Tests for the /dashboard API endpoint."""
 from datetime import datetime, timezone, timedelta
 
+import pytest
+
 from app.models import Cat, Visit, CleaningCycle
+import app.routers.dashboard as dashboard_state
 from app.timezones import local_day_start_utc
+
+
+def reset_dashboard_fault_state():
+    with dashboard_state._poll_lock:
+        dashboard_state.device_fault_code = None
+        dashboard_state.device_faults = []
+
+
+@pytest.fixture(autouse=True)
+def clean_dashboard_fault_state():
+    reset_dashboard_fault_state()
+    yield
+    reset_dashboard_fault_state()
 
 
 def test_dashboard_empty(client):
@@ -16,6 +32,8 @@ def test_dashboard_empty(client):
     assert data["poller_last_successful_at"] is None
     assert data["poller_last_attempted_at"] is None
     assert data["poller_last_error"] is None
+    assert data["device_faults"] == []
+    assert data["device_fault_code"] is None
     assert "generated_at" in data
 
 
@@ -247,3 +265,55 @@ def test_dashboard_latest_visit_is_deterministic_on_timestamp_tie(client, db_ses
     assert len(cats) == 1
     assert cats[0]["last_visit_weight_kg"] == 4.2
     assert cats[0]["last_visit_duration_seconds"] == 40
+
+
+def test_dashboard_reports_no_device_faults_when_fault_code_is_zero(client):
+    with dashboard_state._poll_lock:
+        dashboard_state.device_fault_code = 0
+        dashboard_state.device_faults = []
+
+    response = client.get("/dashboard")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["device_fault_code"] == 0
+    assert data["device_faults"] == []
+
+
+def test_dashboard_reports_known_device_fault(client):
+    with dashboard_state._poll_lock:
+        dashboard_state.device_fault_code = 1
+        dashboard_state.device_faults = ["motor_fault"]
+
+    response = client.get("/dashboard")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["device_fault_code"] == 1
+    assert data["device_faults"] == ["motor_fault"]
+
+
+def test_dashboard_reports_combined_device_faults(client):
+    with dashboard_state._poll_lock:
+        dashboard_state.device_fault_code = 3
+        dashboard_state.device_faults = ["motor_fault", "program_fault"]
+
+    response = client.get("/dashboard")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["device_fault_code"] == 3
+    assert data["device_faults"] == ["motor_fault", "program_fault"]
+
+
+def test_dashboard_reports_unknown_device_fault_bits(client):
+    with dashboard_state._poll_lock:
+        dashboard_state.device_fault_code = 8
+        dashboard_state.device_faults = ["unknown_fault_code_8"]
+
+    response = client.get("/dashboard")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["device_fault_code"] == 8
+    assert data["device_faults"] == ["unknown_fault_code_8"]

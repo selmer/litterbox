@@ -236,6 +236,8 @@ class DashboardOut(BaseModel):
     cats: list[CatDashboard]
     unidentified_visits_today: int
     cleaning_cycles_today: int
+    device_faults: list[str] = Field(default_factory=list)
+    device_fault_code: Optional[int] = None
     poller_healthy: bool
     poller_last_successful_at: Optional[datetime] = None
     poller_last_attempted_at: Optional[datetime] = None

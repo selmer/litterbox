@@ -15,6 +15,8 @@ const dashboardBase = {
   cats: [],
   unidentified_visits_today: 0,
   cleaning_cycles_today: 0,
+  device_faults: [],
+  device_fault_code: null,
 }
 
 function renderDashboard() {
@@ -59,6 +61,55 @@ describe('Dashboard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add visit' }))
     expect(screen.getByText('Manual visit for Mochi')).toBeInTheDocument()
+  })
+
+  it('does not show a device fault banner when there are no faults', async () => {
+    renderDashboard()
+
+    await waitFor(() => expect(screen.getByText('No cats yet')).toBeInTheDocument())
+    expect(screen.queryByText(/Device fault/)).not.toBeInTheDocument()
+  })
+
+  it('shows a device fault banner with a diagnostics link', async () => {
+    client.getDashboard.mockResolvedValue({
+      ...dashboardBase,
+      device_faults: ['motor_fault'],
+      device_fault_code: 1,
+    })
+
+    renderDashboard()
+
+    await waitFor(() => expect(screen.getByText(/Device fault: Motor fault/)).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'View diagnostics' })).toHaveAttribute('href', '/diagnostics')
+  })
+
+  it('shows multiple device faults readably', async () => {
+    client.getDashboard.mockResolvedValue({
+      ...dashboardBase,
+      device_faults: ['motor_fault', 'g_sensor_fault', 'unknown_fault_code_8'],
+      device_fault_code: 13,
+    })
+
+    renderDashboard()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Device faults: Motor fault, G-sensor fault, Unknown fault code 8/)).toBeInTheDocument()
+    })
+  })
+
+  it('shows poller offline and device fault banners together', async () => {
+    client.getDashboard.mockResolvedValue({
+      ...dashboardBase,
+      poller_healthy: false,
+      poller_last_error: 'Tuya offline',
+      device_faults: ['program_fault'],
+      device_fault_code: 2,
+    })
+
+    renderDashboard()
+
+    await waitFor(() => expect(screen.getByText('Tuya offline')).toBeInTheDocument())
+    expect(screen.getByText(/Device fault: Program fault/)).toBeInTheDocument()
   })
 
   it('surfaces an unhealthy poller without replacing the dashboard', async () => {
