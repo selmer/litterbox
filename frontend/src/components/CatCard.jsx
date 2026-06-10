@@ -136,6 +136,18 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
         <SummaryMetric icon={<Icon name="activity" size={16} />} label={t('catCard.duration')} value={formatDuration(cat.last_visit_duration_seconds)} />
       </div>
 
+      {cat.health_signal && (
+        <div className={'cat-card__signal cat-card__signal--' + cat.health_signal.severity}>
+          <Icon name="activity" size={15} />
+          <div>
+            <div className="cat-card__signal-message">{cat.health_signal.message}</div>
+            {cat.health_signal.detail && (
+              <div className="cat-card__signal-detail">{cat.health_signal.detail}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {onAddVisit && (
         <div className="cat-card__actions">
           <button className="btn btn-primary btn-sm" onClick={() => onAddVisit(cat)}>

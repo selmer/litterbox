@@ -192,6 +192,84 @@
   align-self: center;
 }
 
+/* ===================== HEALTH SIGNALS ===================== */
+.health-signals {
+  width: 100%;
+}
+
+.health-signals__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+
+.health-signal,
+.cat-card__signal {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--card-background);
+  color: var(--text-primary);
+}
+
+.health-signal {
+  padding: var(--space-3) var(--space-4);
+}
+
+.health-signal .app-icon,
+.cat-card__signal .app-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.health-signal__body {
+  min-width: 0;
+}
+
+.health-signal__message,
+.cat-card__signal-message {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.health-signal__message span {
+  color: var(--text-secondary);
+}
+
+.health-signal__detail,
+.cat-card__signal-detail {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.health-signal--watch,
+.cat-card__signal--watch {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.health-signal--attention,
+.cat-card__signal--attention {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+.health-signal--info,
+.cat-card__signal--info {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.cat-card__signal {
+  width: calc(100% - (var(--space-6) * 2));
+  margin: var(--space-4) var(--space-6) 0;
+  padding: var(--space-3);
+}
+
 
 /* ===================== CHART ===================== */
 .weight-chart-card {

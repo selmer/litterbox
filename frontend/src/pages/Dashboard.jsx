@@ -164,6 +164,7 @@ export default function Dashboard() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
   const deviceFaults = dashboard.device_faults || []
+  const healthSignals = dashboard.health_signals || []
   const deviceFaultLabels = deviceFaults.map(fault => formatDeviceFaultLabel(fault, t)).join(', ')
 
   return (
@@ -197,6 +198,28 @@ export default function Dashboard() {
             <Link to="/diagnostics">{t('dashboard.viewDiagnostics')}</Link>
           </span>
         </div>
+      )}
+
+      {healthSignals.length > 0 && (
+        <section className="health-signals mb-6" aria-label={t('dashboard.healthSignals')}>
+          <div className="section-header">
+            <div className="card-label">{t('dashboard.healthSignals')}</div>
+          </div>
+          <div className="health-signals__list">
+            {healthSignals.slice(0, 4).map(signal => (
+              <div key={signal.id} className={'health-signal health-signal--' + signal.severity}>
+                <Icon name="activity" size={16} />
+                <div className="health-signal__body">
+                  <div className="health-signal__message">
+                    {signal.cat_name && <span>{signal.cat_name}: </span>}
+                    {signal.message}
+                  </div>
+                  {signal.detail && <div className="health-signal__detail">{signal.detail}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       <div className="dashboard-grid mb-6">

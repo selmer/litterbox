@@ -15,6 +15,7 @@ const dashboardBase = {
   cats: [],
   unidentified_visits_today: 0,
   cleaning_cycles_today: 0,
+  health_signals: [],
   device_faults: [],
   device_fault_code: null,
 }
@@ -124,4 +125,44 @@ describe('Dashboard', () => {
     await waitFor(() => expect(screen.getByText('Tuya offline')).toBeInTheDocument())
     expect(screen.getByText('Recent visits')).toBeInTheDocument()
   })
+
+  it("shows health signals on the dashboard and cat card", async () => {
+    const signal = {
+      id: "cat:1:weight_1m:down",
+      type: "weight_down",
+      severity: "watch",
+      cat_id: 1,
+      cat_name: "Mochi",
+      message: "Weight is down compared with 1 month ago.",
+      detail: "4.700 kg now vs 5.000 kg around 1 month ago.",
+      metadata: {},
+    }
+    client.getDashboard.mockResolvedValue({
+      ...dashboardBase,
+      health_signals: [signal],
+      cats: [{
+        cat_id: 1,
+        cat_name: "Mochi",
+        reference_weight_kg: 5.0,
+        photo_url: null,
+        visits_today: 1,
+        time_in_box_today_seconds: 120,
+        last_visit_at: "2026-05-17T07:30:00Z",
+        last_visit_weight_kg: 4.7,
+        last_visit_duration_seconds: 120,
+        health_signal: signal,
+      }],
+    })
+    client.getCats.mockResolvedValue([
+      { id: 1, name: "Mochi", active: true, reference_weight_kg: 5.0, created_at: "2026-01-01T00:00:00Z" },
+    ])
+
+    renderDashboard()
+
+    await waitFor(() => expect(screen.getByText("Health signals")).toBeInTheDocument())
+    expect(screen.getByText(/Mochi:/)).toBeInTheDocument()
+    expect(screen.getAllByText("Weight is down compared with 1 month ago.")).toHaveLength(2)
+    expect(screen.getAllByText("4.700 kg now vs 5.000 kg around 1 month ago.")).toHaveLength(2)
+  })
+
 })

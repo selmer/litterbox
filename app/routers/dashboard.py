@@ -10,6 +10,7 @@ from app.models import Cat, CleaningCycle, Visit
 from app.durations import trusted_duration_expr
 from app.timezones import local_day_start_utc
 from app.schemas import CatDashboard, DashboardOut
+from app.health_signals import PollerHealthContext, compute_health_signals, most_relevant_signal
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -133,10 +134,24 @@ def get_dashboard(db: Session = Depends(get_db)):
             and (now - last_poll).total_seconds() < POLLER_HEALTHY_THRESHOLD_SECONDS
         )
 
+    health_signals = compute_health_signals(
+        db,
+        [cat for cat, *_ in rows],
+        now,
+        PollerHealthContext(
+            healthy=poller_healthy,
+            last_successful_at=last_poll,
+            last_error=poll_error,
+        ),
+    )
+    for cat_dashboard in cat_dashboards:
+        cat_dashboard.health_signal = most_relevant_signal(health_signals, cat_dashboard.cat_id)
+
     return DashboardOut(
         cats=cat_dashboards,
         unidentified_visits_today=unidentified_today,
         cleaning_cycles_today=cleaning_cycles_today,
+        health_signals=health_signals,
         device_faults=faults,
         device_fault_code=fault_code,
         poller_healthy=poller_healthy,

@@ -12,6 +12,7 @@ DurationSource = Literal["status_dp", "report_log_counter", "report_log_duration
 WeightConfidence = Literal["normal", "suspect", "ignored"]
 WeightConfidenceReason = Literal["manual", "outlier_delta", "operator_ignored", "operator_restored"]
 CatEventType = Literal["vet_visit", "medication", "diet_change", "grooming", "health_note", "milestone", "other"]
+HealthSignalSeverity = Literal["info", "watch", "attention"]
 
 
 # --- Cat schemas ---
@@ -220,6 +221,17 @@ class CleaningCycleOut(BaseModel):
 
 # --- Dashboard schemas ---
 
+class HealthSignal(BaseModel):
+    id: str
+    type: str
+    severity: HealthSignalSeverity
+    message: str
+    detail: Optional[str] = None
+    cat_id: Optional[int] = None
+    cat_name: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class CatDashboard(BaseModel):
     cat_id: int
     cat_name: str
@@ -230,12 +242,14 @@ class CatDashboard(BaseModel):
     last_visit_at: Optional[datetime]
     last_visit_weight_kg: Optional[float]
     last_visit_duration_seconds: Optional[int]
+    health_signal: Optional[HealthSignal] = None
 
 
 class DashboardOut(BaseModel):
     cats: list[CatDashboard]
     unidentified_visits_today: int
     cleaning_cycles_today: int
+    health_signals: list[HealthSignal] = Field(default_factory=list)
     device_faults: list[str] = Field(default_factory=list)
     device_fault_code: Optional[int] = None
     poller_healthy: bool

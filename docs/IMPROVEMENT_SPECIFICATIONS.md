@@ -63,7 +63,7 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 028 | [E-Paper Weight Comparison Display](specs/archive/028-2026-05-17-epaper-weight-comparison-display.md) | P1 |
 | 029 | [Visit Correction Workflow](specs/archive/029-2026-05-17-visit-correction-workflow.md) | P0 |
 | 030 | [Weight Trend Confidence](specs/archive/030-2026-05-17-weight-trend-confidence.md) | P0 |
-| 031 | [Cat Health Signals](specs/031-2026-05-17-cat-health-signals.md) | P1 |
+| 031 | [Cat Health Signals](specs/archive/031-2026-05-17-cat-health-signals.md) | P1 |
 | 032 | [Device and Data Diagnostics Screen](specs/archive/032-2026-05-17-device-and-data-diagnostics-screen.md) | P1 |
 | 033 | [E-Paper Display Profiles](specs/033-2026-05-17-epaper-display-profiles.md) | P2 |
 | 034 | [Early Cat Identification and Match Diagnostics](specs/archive/034-2026-05-18-early-cat-identification-and-match-diagnostics.md) | P1 |

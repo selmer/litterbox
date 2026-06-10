@@ -99,8 +99,10 @@ FastAPI provides built-in API documentation endpoints:
 ### Dashboard
 
 - `GET /dashboard`
-  - Returns aggregated dashboard data for active cats, unidentified visits, cleaning cycles, and poller health.
+  - Returns aggregated dashboard data for active cats, unidentified visits, cleaning cycles, poller health, and non-diagnostic `health_signals`.
   - Includes `poller_last_successful_at`, `poller_last_attempted_at`, and `poller_last_error` diagnostics.
+  - Health signals are computed live from existing visit data. Weight signals compare latest non-ignored weight with measurements around 1 month and 3 months ago, using 5% as `watch` and 10% as `attention`. Visit-frequency signals compare the last 7 days with the previous 21 days normalized weekly, require at least 6 baseline visits and 2 visits/week baseline, and use 40% as `watch` and 70% as `attention`. Repeated unidentified visits signal after 3 completed unidentified visits in 7 days, with `attention` at 6. Sparse data stays quiet.
+  - Signal copy must remain gentle and non-diagnostic; each signal includes metadata such as comparison window, current value, and baseline value.
   - In `webhook` mode, `poller_healthy` is always `true`.
 
 ### Display
