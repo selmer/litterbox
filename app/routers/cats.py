@@ -3,11 +3,12 @@ import binascii
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.frontend import frontend_index_response, wants_frontend_document
 from app.models import Cat, CatEvent
 from app.schemas import CatCreate, CatEventCreate, CatEventOut, CatEventUpdate, CatOut, CatUpdate
 
@@ -75,7 +76,12 @@ def create_cat(cat: CatCreate, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=list[CatOut])
-def list_cats(include_inactive: bool = False, db: Session = Depends(get_db)):
+def list_cats(request: Request, include_inactive: bool = False, db: Session = Depends(get_db)):
+    if wants_frontend_document(request):
+        response = frontend_index_response()
+        if response is not None:
+            return response
+
     query = db.query(Cat)
     if not include_inactive:
         query = query.filter(Cat.active == True)
@@ -141,7 +147,12 @@ def delete_cat_event(cat_id: int, event_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{cat_id}", response_model=CatOut)
-def get_cat(cat_id: int, db: Session = Depends(get_db)):
+def get_cat(cat_id: int, request: Request, db: Session = Depends(get_db)):
+    if wants_frontend_document(request):
+        response = frontend_index_response()
+        if response is not None:
+            return response
+
     cat = db.query(Cat).filter(Cat.id == cat_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Cat not found")

@@ -66,6 +66,59 @@ def test_list_cats_empty(client):
     assert response.json() == []
 
 
+def test_cats_route_serves_frontend_for_browser_navigation(client, tmp_path, monkeypatch):
+    index = tmp_path / "index.html"
+    index.write_text("<html><body>litterbox app</body></html>")
+    monkeypatch.setattr("app.frontend.FRONTEND_DIST", tmp_path)
+
+    response = client.get("/cats", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "litterbox app" in response.text
+
+
+def test_cat_detail_route_serves_frontend_for_browser_navigation(client, tmp_path, monkeypatch):
+    cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+    index = tmp_path / "index.html"
+    index.write_text("<html><body>litterbox app</body></html>")
+    monkeypatch.setattr("app.frontend.FRONTEND_DIST", tmp_path)
+
+    response = client.get(f"/cats/{cat_id}", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "litterbox app" in response.text
+
+
+def test_cat_detail_route_still_returns_json_for_api_clients(client, tmp_path, monkeypatch):
+    cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+    index = tmp_path / "index.html"
+    index.write_text("<html><body>litterbox app</body></html>")
+    monkeypatch.setattr("app.frontend.FRONTEND_DIST", tmp_path)
+
+    response = client.get(f"/cats/{cat_id}", headers={"Accept": "application/json"})
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Plurk"
+
+
+def test_cat_events_route_still_returns_json_for_browser_accept_header(client, tmp_path, monkeypatch):
+    cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+    client.post(
+        f"/cats/{cat_id}/events",
+        json={"event_type": "other", "occurred_at": "2026-05-18", "title": "Checkup"},
+    )
+    index = tmp_path / "index.html"
+    index.write_text("<html><body>litterbox app</body></html>")
+    monkeypatch.setattr("app.frontend.FRONTEND_DIST", tmp_path)
+
+    response = client.get(f"/cats/{cat_id}/events", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert response.json()[0]["title"] == "Checkup"
+
+
 def test_get_cat(client):
     create_resp = client.post("/cats", json={"name": "Luna", "reference_weight_kg": 4.0})
     cat_id = create_resp.json()["id"]
