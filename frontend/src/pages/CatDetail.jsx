@@ -79,22 +79,26 @@ function EventForm({ initial, onSave, onCancel, cats = [], currentCatId, t }) {
   const [notes, setNotes] = useState(initial?.notes || '')
   const [costAmount, setCostAmount] = useState(initial?.cost_amount ?? '')
   const initialCatIds = initial?.cat_ids?.length ? initial.cat_ids : [Number(currentCatId)]
-  const [selectedCatIds, setSelectedCatIds] = useState(() => new Set(initialCatIds.map(Number)))
+  const normalizedInitialCatIds = Array.from(new Set([...initialCatIds.map(Number), Number(currentCatId)])).sort((a, b) => a - b)
+  const [selectedCatIds, setSelectedCatIds] = useState(normalizedInitialCatIds)
   const [costCurrency, setCostCurrency] = useState(initial?.cost_currency || 'EUR')
   const [saving, setSaving] = useState(false)
   const formId = initial ? `cat-event-edit-${initial.id}` : 'cat-event-new'
 
+  function isCatSelected(catId) {
+    return selectedCatIds.includes(Number(catId))
+  }
+
   function toggleCat(catId) {
-    if (Number(catId) === Number(currentCatId)) return
+    const normalizedCatId = Number(catId)
+    const normalizedCurrentCatId = Number(currentCatId)
+    if (normalizedCatId === normalizedCurrentCatId) return
     setSelectedCatIds(current => {
-      const next = new Set(current)
-      if (next.has(catId)) {
-        next.delete(catId)
-      } else {
-        next.add(catId)
-      }
-      next.add(Number(currentCatId))
-      return next
+      const withoutCurrent = current.filter(id => id !== normalizedCurrentCatId)
+      const next = withoutCurrent.includes(normalizedCatId)
+        ? withoutCurrent.filter(id => id !== normalizedCatId)
+        : [...withoutCurrent, normalizedCatId]
+      return [normalizedCurrentCatId, ...next].sort((a, b) => a - b)
     })
   }
 
@@ -104,7 +108,7 @@ function EventForm({ initial, onSave, onCancel, cats = [], currentCatId, t }) {
     try {
       await onSave({
         event_type: eventType,
-        cat_ids: Array.from(selectedCatIds).sort((a, b) => a - b),
+        cat_ids: selectedCatIds,
         occurred_at: occurredAt,
         title,
         notes: notes || null,
@@ -197,7 +201,7 @@ function EventForm({ initial, onSave, onCancel, cats = [], currentCatId, t }) {
                 <label key={option.id} className="cat-event-form__cat-option">
                   <input
                     type="checkbox"
-                    checked={selectedCatIds.has(optionId)}
+                    checked={isCatSelected(optionId)}
                     disabled={isCurrent}
                     onChange={() => toggleCat(optionId)}
                   />

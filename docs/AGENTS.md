@@ -14,6 +14,7 @@ This repository contains a FastAPI backend and a Vite/React frontend for a Tuya-
 - `cd frontend && npm run dev`: start Vite.
 - `cd frontend && npm run build`: build `frontend/dist/`.
 - `cd frontend && npm run lint && npm test`: run ESLint and Vitest.
+- If `node`/`npm` are not on PATH for the agent shell, use the local nvm install explicitly: `cd frontend && PATH=/home/selmer/.nvm/versions/node/v24.15.0/bin:$PATH npm run lint` and `cd frontend && PATH=/home/selmer/.nvm/versions/node/v24.15.0/bin:$PATH npm test -- --run`.
 - `docker compose up --build -d`: run the app and Postgres.
 
 ## Coding Style & Naming Conventions

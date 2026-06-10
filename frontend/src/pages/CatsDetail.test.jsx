@@ -125,6 +125,7 @@ describe('CatDetail page', () => {
     renderCatDetail()
     await waitFor(() => screen.getByText('Annual checkup'))
 
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-18' } })
     await userEvent.type(screen.getByPlaceholderText('e.g. Annual checkup'), 'Shared vaccination')
     const miezCheckbox = screen.getByLabelText('Miez')
     await userEvent.click(miezCheckbox)
@@ -135,6 +136,19 @@ describe('CatDetail page', () => {
       title: 'Shared vaccination',
       cat_ids: [1, 2],
     })))
+  })
+
+  it('shows shared context for events linked to another cat', async () => {
+    client.getCatEvents.mockResolvedValue([
+      {
+        ...mockEvents[0],
+        cat_ids: [1, 2],
+        cat_names: ['Miez', 'Plurk'],
+      },
+    ])
+
+    renderCatDetail()
+
     await waitFor(() => expect(screen.getByText('Shared with Miez')).toBeInTheDocument())
   })
 
