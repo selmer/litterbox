@@ -1,6 +1,8 @@
 """Tests for the /cats API endpoints."""
 from datetime import date, timedelta
 
+from app.models import CatEvent, CatEventCat
+
 
 TINY_GIF_DATA_URL = "data:image/gif;base64,R0lGODlhAQABAAAAACw="
 
@@ -236,6 +238,8 @@ def test_create_cat_event(client):
     assert response.status_code == 201
     data = response.json()
     assert data["cat_id"] == cat_id
+    assert data["cat_ids"] == [cat_id]
+    assert data["cat_names"] == ["Plurk"]
     assert data["event_type"] == "vet_visit"
     assert data["occurred_at"] == occurred_at
     assert data["title"] == "Annual checkup"
@@ -245,6 +249,96 @@ def test_create_cat_event(client):
     assert "created_at" in data
     assert "updated_at" in data
 
+
+
+def test_create_shared_cat_event_links_one_event_to_multiple_cats(client, db_session):
+    plurk_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+    miez_id = client.post("/cats", json={"name": "Miez"}).json()["id"]
+
+    response = client.post(
+        f"/cats/{plurk_id}/events",
+        json={
+            "event_type": "vet_visit",
+            "cat_ids": [plurk_id, miez_id],
+            "occurred_at": "2026-06-10",
+            "title": "Shared checkup",
+        },
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["cat_id"] == plurk_id
+    assert data["cat_ids"] == [miez_id, plurk_id]
+    assert data["cat_names"] == ["Miez", "Plurk"]
+    assert db_session.query(CatEvent).count() == 1
+    assert db_session.query(CatEventCat).count() == 2
+
+    plurk_events = client.get(f"/cats/{plurk_id}/events").json()
+    miez_events = client.get(f"/cats/{miez_id}/events").json()
+    assert [event["title"] for event in plurk_events] == ["Shared checkup"]
+    assert [event["title"] for event in miez_events] == ["Shared checkup"]
+
+
+def test_update_shared_cat_event_from_other_linked_cat_updates_single_event(client, db_session):
+    plurk_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+    miez_id = client.post("/cats", json={"name": "Miez"}).json()["id"]
+    event = client.post(
+        f"/cats/{plurk_id}/events",
+        json={
+            "event_type": "other",
+            "cat_ids": [plurk_id, miez_id],
+            "occurred_at": "2026-06-10",
+            "title": "Shared note",
+        },
+    ).json()
+
+    response = client.patch(
+        f"/cats/{miez_id}/events/{event['id']}",
+        json={"title": "Updated together", "notes": "Both cats"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Updated together"
+    assert db_session.query(CatEvent).count() == 1
+    assert client.get(f"/cats/{plurk_id}/events").json()[0]["notes"] == "Both cats"
+
+
+def test_update_shared_cat_event_selection_changes_linked_cats(client, db_session):
+    plurk_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+    miez_id = client.post("/cats", json={"name": "Miez"}).json()["id"]
+    event = client.post(
+        f"/cats/{plurk_id}/events",
+        json={
+            "event_type": "other",
+            "cat_ids": [plurk_id, miez_id],
+            "occurred_at": "2026-06-10",
+            "title": "Shared note",
+        },
+    ).json()
+
+    response = client.patch(f"/cats/{plurk_id}/events/{event['id']}", json={"cat_ids": [plurk_id]})
+
+    assert response.status_code == 200
+    assert response.json()["cat_ids"] == [plurk_id]
+    assert db_session.query(CatEvent).count() == 1
+    assert db_session.query(CatEventCat).count() == 1
+    assert client.get(f"/cats/{miez_id}/events").json() == []
+
+
+def test_shared_cat_event_rejects_invalid_cat_selection(client):
+    plurk_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+
+    missing_current = client.post(
+        f"/cats/{plurk_id}/events",
+        json={"event_type": "other", "cat_ids": [9999], "occurred_at": "2026-06-10", "title": "Nope"},
+    )
+    empty = client.post(
+        f"/cats/{plurk_id}/events",
+        json={"event_type": "other", "cat_ids": [], "occurred_at": "2026-06-10", "title": "Nope"},
+    )
+
+    assert missing_current.status_code == 400
+    assert empty.status_code == 422
 
 def test_list_cat_events_sorts_newest_first(client):
     cat_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
@@ -295,6 +389,27 @@ def test_delete_cat_event(client):
     assert response.status_code == 204
     assert client.get(f"/cats/{cat_id}/events").json() == []
 
+
+
+def test_delete_shared_cat_event_deletes_event_globally(client, db_session):
+    plurk_id = client.post("/cats", json={"name": "Plurk"}).json()["id"]
+    miez_id = client.post("/cats", json={"name": "Miez"}).json()["id"]
+    event = client.post(
+        f"/cats/{plurk_id}/events",
+        json={
+            "event_type": "other",
+            "cat_ids": [plurk_id, miez_id],
+            "occurred_at": "2026-06-10",
+            "title": "Shared note",
+        },
+    ).json()
+
+    response = client.delete(f"/cats/{miez_id}/events/{event['id']}")
+
+    assert response.status_code == 204
+    assert db_session.query(CatEvent).count() == 0
+    assert db_session.query(CatEventCat).count() == 0
+    assert client.get(f"/cats/{plurk_id}/events").json() == []
 
 def test_cat_events_reject_missing_cat(client):
     response = client.get("/cats/9999/events")

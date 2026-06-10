@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float,
-    ForeignKey, Index, Integer, String, JSON, Numeric, TypeDecorator
+    ForeignKey, Index, Integer, String, JSON, Numeric, TypeDecorator, UniqueConstraint
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -38,6 +38,19 @@ class Cat(Base):
 
     visits = relationship("Visit", back_populates="cat")
     events = relationship("CatEvent", back_populates="cat", cascade="all, delete-orphan")
+    shared_events = relationship("CatEvent", secondary="cat_event_cats", back_populates="cats")
+
+
+class CatEventCat(Base):
+    __tablename__ = "cat_event_cats"
+    __table_args__ = (
+        UniqueConstraint("event_id", "cat_id", name="uq_cat_event_cats_event_id_cat_id"),
+        Index("ix_cat_event_cats_cat_id_event_id", "cat_id", "event_id"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    event_id = Column(Integer, ForeignKey("cat_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    cat_id = Column(Integer, ForeignKey("cats.id", ondelete="CASCADE"), nullable=False, index=True)
 
 
 class CatEvent(Base):
@@ -63,6 +76,7 @@ class CatEvent(Base):
     )
 
     cat = relationship("Cat", back_populates="events")
+    cats = relationship("Cat", secondary="cat_event_cats", back_populates="shared_events")
 
 
 class Visit(Base):

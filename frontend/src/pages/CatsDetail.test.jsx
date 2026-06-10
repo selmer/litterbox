@@ -18,10 +18,25 @@ const mockCat = {
   created_at: '2024-01-01T00:00:00Z',
 }
 
+const mockCats = [
+  mockCat,
+  {
+    id: 2,
+    name: 'Miez',
+    active: true,
+    reference_weight_kg: 4.2,
+    birth_date: null,
+    photo_url: null,
+    created_at: '2024-01-02T00:00:00Z',
+  },
+]
+
 const mockEvents = [
   {
     id: 10,
     cat_id: 1,
+    cat_ids: [1],
+    cat_names: ['Plurk'],
     event_type: 'vet_visit',
     occurred_at: '2026-05-18',
     title: 'Annual checkup',
@@ -50,6 +65,7 @@ describe('CatDetail page', () => {
     vi.clearAllMocks()
     client.getCat.mockResolvedValue(mockCat)
     client.getCatEvents.mockResolvedValue(mockEvents)
+    client.getCats.mockResolvedValue(mockCats)
   })
 
   it('loads cat profile and events', async () => {
@@ -72,6 +88,8 @@ describe('CatDetail page', () => {
       occurred_at: '2026-05-18',
       notes: null,
       cost_amount: '12',
+      cat_ids: [1],
+      cat_names: ['Plurk'],
     }
     client.createCatEvent.mockResolvedValue(created)
     renderCatDetail()
@@ -89,8 +107,33 @@ describe('CatDetail page', () => {
       occurred_at: '2026-05-18',
       cost_amount: '12',
       cost_currency: 'EUR',
+      cat_ids: [1],
     })))
     await waitFor(() => expect(screen.getByText('Started medication')).toBeInTheDocument())
+  })
+
+
+  it('creates a shared event for another selected cat', async () => {
+    const created = {
+      ...mockEvents[0],
+      id: 12,
+      title: 'Shared vaccination',
+      cat_ids: [1, 2],
+      cat_names: ['Miez', 'Plurk'],
+    }
+    client.createCatEvent.mockResolvedValue(created)
+    renderCatDetail()
+    await waitFor(() => screen.getByText('Annual checkup'))
+
+    await userEvent.type(screen.getByPlaceholderText('e.g. Annual checkup'), 'Shared vaccination')
+    fireEvent.click(screen.getByLabelText('Miez'))
+    fireEvent.click(screen.getByRole('button', { name: 'Add event' }))
+
+    await waitFor(() => expect(client.createCatEvent).toHaveBeenCalledWith('1', expect.objectContaining({
+      title: 'Shared vaccination',
+      cat_ids: [1, 2],
+    })))
+    await waitFor(() => expect(screen.getByText('Shared with Miez')).toBeInTheDocument())
   })
 
   it('deletes an event', async () => {

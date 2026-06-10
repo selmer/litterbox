@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -95,47 +96,99 @@ def _get_cat_or_404(cat_id: int, db: Session) -> Cat:
     return cat
 
 
+def _ordered_unique_cat_ids(cat_ids: list[int]) -> list[int]:
+    result = []
+    for cat_id in cat_ids:
+        if cat_id not in result:
+            result.append(cat_id)
+    return result
+
+
+def _selected_cats_or_400(path_cat_id: int, requested_cat_ids: list[int] | None, db: Session) -> list[Cat]:
+    cat_ids = _ordered_unique_cat_ids(requested_cat_ids or [path_cat_id])
+    if path_cat_id not in cat_ids:
+        raise HTTPException(status_code=400, detail="Selected cats must include the current cat")
+
+    cats = db.query(Cat).filter(Cat.id.in_(cat_ids)).all()
+    cats_by_id = {cat.id: cat for cat in cats}
+    missing = [cat_id for cat_id in cat_ids if cat_id not in cats_by_id]
+    if missing:
+        raise HTTPException(status_code=400, detail="Selected cat not found")
+    return [cats_by_id[cat_id] for cat_id in cat_ids]
+
+
+def _event_cat_ids(event: CatEvent) -> list[int]:
+    cat_ids = [cat.id for cat in event.cats]
+    if not cat_ids and event.cat_id is not None:
+        cat_ids = [event.cat_id]
+    return cat_ids
+
+
 def _get_cat_event_or_404(cat_id: int, event_id: int, db: Session) -> CatEvent:
-    event = (
-        db.query(CatEvent)
-        .filter(CatEvent.cat_id == cat_id, CatEvent.id == event_id)
-        .first()
-    )
-    if not event:
+    event = db.query(CatEvent).filter(CatEvent.id == event_id).first()
+    if not event or cat_id not in _event_cat_ids(event):
         raise HTTPException(status_code=404, detail="Cat event not found")
     return event
+
+
+def cat_event_to_out(event: CatEvent) -> CatEventOut:
+    linked_cats = list(event.cats)
+    if not linked_cats and event.cat is not None:
+        linked_cats = [event.cat]
+    linked_cats.sort(key=lambda cat: (cat.name.lower(), cat.id))
+    return CatEventOut(
+        id=event.id,
+        cat_id=event.cat_id,
+        cat_ids=[cat.id for cat in linked_cats],
+        cat_names=[cat.name for cat in linked_cats],
+        event_type=event.event_type,
+        occurred_at=event.occurred_at,
+        title=event.title,
+        notes=event.notes,
+        cost_amount=event.cost_amount,
+        cost_currency=event.cost_currency,
+        created_at=event.created_at,
+        updated_at=event.updated_at,
+    )
 
 
 @router.get("/{cat_id}/events", response_model=list[CatEventOut])
 def list_cat_events(cat_id: int, db: Session = Depends(get_db)):
     _get_cat_or_404(cat_id, db)
-    return (
+    events = (
         db.query(CatEvent)
-        .filter(CatEvent.cat_id == cat_id)
+        .filter(or_(CatEvent.cat_id == cat_id, CatEvent.cats.any(Cat.id == cat_id)))
         .order_by(CatEvent.occurred_at.desc(), CatEvent.id.desc())
         .all()
     )
+    return [cat_event_to_out(event) for event in events]
 
 
 @router.post("/{cat_id}/events", response_model=CatEventOut, status_code=201)
 def create_cat_event(cat_id: int, event_data: CatEventCreate, db: Session = Depends(get_db)):
     _get_cat_or_404(cat_id, db)
-    event = CatEvent(cat_id=cat_id, **event_data.model_dump())
+    selected_cats = _selected_cats_or_400(cat_id, event_data.cat_ids, db)
+    event = CatEvent(cat_id=cat_id, **event_data.model_dump(exclude={"cat_ids"}))
+    event.cats = selected_cats
     db.add(event)
     db.commit()
     db.refresh(event)
-    return event
+    return cat_event_to_out(event)
 
 
 @router.patch("/{cat_id}/events/{event_id}", response_model=CatEventOut)
 def update_cat_event(cat_id: int, event_id: int, update: CatEventUpdate, db: Session = Depends(get_db)):
     _get_cat_or_404(cat_id, db)
     event = _get_cat_event_or_404(cat_id, event_id, db)
-    for field, value in update.model_dump(exclude_unset=True).items():
+    payload = update.model_dump(exclude_unset=True)
+    selected_cat_ids = payload.pop("cat_ids", None)
+    if selected_cat_ids is not None:
+        event.cats = _selected_cats_or_400(cat_id, selected_cat_ids, db)
+    for field, value in payload.items():
         setattr(event, field, value)
     db.commit()
     db.refresh(event)
-    return event
+    return cat_event_to_out(event)
 
 
 @router.delete("/{cat_id}/events/{event_id}", status_code=204)

@@ -64,11 +64,19 @@ class CatOut(BaseModel):
 
 class CatEventCreate(BaseModel):
     event_type: CatEventType
+    cat_ids: Optional[list[int]] = None
     occurred_at: date
     title: str = Field(min_length=1, max_length=120)
     notes: Optional[str] = Field(default=None, max_length=2000)
     cost_amount: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     cost_currency: str = Field(default="EUR", min_length=3, max_length=3)
+
+    @field_validator("cat_ids")
+    @classmethod
+    def cat_ids_must_not_be_empty(cls, value: Optional[list[int]]) -> Optional[list[int]]:
+        if value is not None and len(value) == 0:
+            raise ValueError("At least one cat must be selected")
+        return value
 
     @field_validator("title")
     @classmethod
@@ -94,11 +102,19 @@ class CatEventCreate(BaseModel):
 
 class CatEventUpdate(BaseModel):
     event_type: Optional[CatEventType] = None
+    cat_ids: Optional[list[int]] = None
     occurred_at: Optional[date] = None
     title: Optional[str] = Field(default=None, min_length=1, max_length=120)
     notes: Optional[str] = Field(default=None, max_length=2000)
     cost_amount: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     cost_currency: Optional[str] = Field(default=None, min_length=3, max_length=3)
+
+    @field_validator("cat_ids")
+    @classmethod
+    def cat_ids_must_not_be_empty(cls, value: Optional[list[int]]) -> Optional[list[int]]:
+        if value is not None and len(value) == 0:
+            raise ValueError("At least one cat must be selected")
+        return value
 
     @field_validator("title")
     @classmethod
@@ -131,6 +147,8 @@ class CatEventOut(BaseModel):
 
     id: int
     cat_id: int
+    cat_ids: list[int] = Field(default_factory=list)
+    cat_names: list[str] = Field(default_factory=list)
     event_type: CatEventType
     occurred_at: date
     title: str

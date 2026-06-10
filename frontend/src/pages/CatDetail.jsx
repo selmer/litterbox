@@ -5,6 +5,7 @@ import {
   deleteCatEvent,
   getCat,
   getCatEvents,
+  getCats,
   updateCatEvent,
 } from '../api/client'
 import Icon, { CatAvatarIcon } from '../components/Icon'
@@ -71,15 +72,31 @@ function CatAvatar({ cat }) {
   )
 }
 
-function EventForm({ initial, onSave, onCancel, t }) {
+function EventForm({ initial, onSave, onCancel, cats = [], currentCatId, t }) {
   const [eventType, setEventType] = useState(initial?.event_type || 'vet_visit')
   const [occurredAt, setOccurredAt] = useState(toDateInputValue(initial?.occurred_at) || toDateInputValue(new Date()))
   const [title, setTitle] = useState(initial?.title || '')
   const [notes, setNotes] = useState(initial?.notes || '')
   const [costAmount, setCostAmount] = useState(initial?.cost_amount ?? '')
+  const initialCatIds = initial?.cat_ids?.length ? initial.cat_ids : [Number(currentCatId)]
+  const [selectedCatIds, setSelectedCatIds] = useState(() => new Set(initialCatIds.map(Number)))
   const [costCurrency, setCostCurrency] = useState(initial?.cost_currency || 'EUR')
   const [saving, setSaving] = useState(false)
   const formId = initial ? `cat-event-edit-${initial.id}` : 'cat-event-new'
+
+  function toggleCat(catId) {
+    if (Number(catId) === Number(currentCatId)) return
+    setSelectedCatIds(current => {
+      const next = new Set(current)
+      if (next.has(catId)) {
+        next.delete(catId)
+      } else {
+        next.add(catId)
+      }
+      next.add(Number(currentCatId))
+      return next
+    })
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -87,6 +104,7 @@ function EventForm({ initial, onSave, onCancel, t }) {
     try {
       await onSave({
         event_type: eventType,
+        cat_ids: Array.from(selectedCatIds),
         occurred_at: occurredAt,
         title,
         notes: notes || null,
@@ -168,6 +186,28 @@ function EventForm({ initial, onSave, onCancel, t }) {
           placeholder={t('catDetail.optionalContext')}
         />
       </div>
+      {cats.length > 0 && (
+        <fieldset className="cat-event-form__cats">
+          <legend className="form-label">{t('catDetail.appliesTo')}</legend>
+          <div className="cat-event-form__cat-options">
+            {cats.map(option => {
+              const optionId = Number(option.id)
+              const isCurrent = optionId === Number(currentCatId)
+              return (
+                <label key={option.id} className="cat-event-form__cat-option">
+                  <input
+                    type="checkbox"
+                    checked={selectedCatIds.has(optionId)}
+                    disabled={isCurrent}
+                    onChange={() => toggleCat(optionId)}
+                  />
+                  <span>{option.name}</span>
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
+      )}
       <div className="action-row">
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? t('common.saving') : (initial ? t('catDetail.saveEvent') : t('catDetail.addEvent'))}
@@ -182,6 +222,7 @@ export default function CatDetail() {
   const { catId } = useParams()
   const [cat, setCat] = useState(null)
   const [events, setEvents] = useState([])
+  const [cats, setCats] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [editingEvent, setEditingEvent] = useState(null)
@@ -194,12 +235,14 @@ export default function CatDetail() {
       setLoading(true)
       setError(null)
       try {
-        const [catData, eventData] = await Promise.all([
+        const [catData, eventData, catsData] = await Promise.all([
           getCat(catId),
           getCatEvents(catId, { signal: controller.signal }),
+          getCats(true, { signal: controller.signal }),
         ])
         setCat(catData)
         setEvents(eventData)
+        setCats(catsData)
       } catch (e) {
         if (e.name !== 'CanceledError') {
           console.error('Failed to load cat detail', e)
@@ -246,6 +289,10 @@ export default function CatDetail() {
   }
 
   async function handleDeleteEvent(event) {
+    const isShared = (event.cat_ids || []).length > 1
+    if (isShared && !window.confirm(t('catDetail.deleteSharedConfirm'))) {
+      return
+    }
     try {
       await deleteCatEvent(catId, event.id)
       setEvents(prev => prev.filter(item => item.id !== event.id))
@@ -305,7 +352,7 @@ export default function CatDetail() {
             <p className="text-muted text-small">{t('catDetail.eventsDescription')}</p>
           </div>
         </div>
-        <EventForm onSave={handleCreateEvent} t={t} />
+        <EventForm onSave={handleCreateEvent} cats={cats} currentCatId={catId} t={t} />
       </section>
 
       {editingEvent && (
@@ -313,7 +360,7 @@ export default function CatDetail() {
           <div className="section-heading-row">
             <h2>{t('catDetail.editEvent')}</h2>
           </div>
-          <EventForm initial={editingEvent} onSave={handleUpdateEvent} onCancel={() => setEditingEvent(null)} t={t} />
+          <EventForm initial={editingEvent} onSave={handleUpdateEvent} onCancel={() => setEditingEvent(null)} cats={cats} currentCatId={catId} t={t} />
         </section>
       )}
 
@@ -348,7 +395,14 @@ export default function CatDetail() {
                 <tr key={event.id} className="cat-event-row">
                   <td data-label={t('field.date')}>{formatEventDate(event.occurred_at, locale, t)}</td>
                   <td data-label={t('field.type')}><StatusBadge tone="muted">{t(`event.${event.event_type}`)}</StatusBadge></td>
-                  <td data-label={t('field.title')} className="text-primary">{event.title}</td>
+                  <td data-label={t('field.title')} className="text-primary">
+                    <div>{event.title}</div>
+                    {(event.cat_names || []).length > 1 && (
+                      <div className="cat-event-shared-label">
+                        {t('catDetail.sharedWith', { names: event.cat_names.filter(name => name !== cat.name).join(', ') || t('catDetail.multipleCats') })}
+                      </div>
+                    )}
+                  </td>
                   <td data-label={t('field.notes')}>{event.notes || '-'}</td>
                   <td data-label={t('field.cost')}>{formatCost(event)}</td>
                   <td data-label={t('field.actions')}>
