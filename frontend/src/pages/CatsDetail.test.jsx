@@ -126,8 +126,10 @@ describe('CatDetail page', () => {
     await waitFor(() => screen.getByText('Annual checkup'))
 
     await userEvent.type(screen.getByPlaceholderText('e.g. Annual checkup'), 'Shared vaccination')
-    fireEvent.click(screen.getByLabelText('Miez'))
-    fireEvent.click(screen.getByRole('button', { name: 'Add event' }))
+    const miezCheckbox = screen.getByLabelText('Miez')
+    await userEvent.click(miezCheckbox)
+    await waitFor(() => expect(miezCheckbox).toBeChecked())
+    await userEvent.click(screen.getByRole('button', { name: 'Add event' }))
 
     await waitFor(() => expect(client.createCatEvent).toHaveBeenCalledWith('1', expect.objectContaining({
       title: 'Shared vaccination',

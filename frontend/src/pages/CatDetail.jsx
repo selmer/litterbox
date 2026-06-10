@@ -104,7 +104,7 @@ function EventForm({ initial, onSave, onCancel, cats = [], currentCatId, t }) {
     try {
       await onSave({
         event_type: eventType,
-        cat_ids: Array.from(selectedCatIds),
+        cat_ids: Array.from(selectedCatIds).sort((a, b) => a - b),
         occurred_at: occurredAt,
         title,
         notes: notes || null,
