@@ -2,10 +2,11 @@ from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.frontend import frontend_index_response, wants_frontend_document
 from app.durations import trusted_duration_seconds
 from app.timezones import app_timezone, as_utc
 from app.models import Cat, Visit, VisitDiagnostic
@@ -117,6 +118,7 @@ def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=list[VisitOut])
 def list_visits(
+    request: Request,
     limit: int = Query(default=50, le=500),
     offset: int = Query(default=0, ge=0),
     cat_id: Optional[int] = Query(default=None, gt=0),
@@ -125,6 +127,11 @@ def list_visits(
     to_date: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),
 ):
+    if wants_frontend_document(request):
+        response = frontend_index_response()
+        if response is not None:
+            return response
+
     if from_date and to_date and from_date > to_date:
         raise HTTPException(status_code=400, detail="from_date must be before to_date")
     query = db.query(Visit).order_by(Visit.started_at.desc())

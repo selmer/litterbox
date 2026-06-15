@@ -77,6 +77,54 @@ def test_list_visits(client):
     assert len(response.json()) == 2
 
 
+def test_visits_route_serves_frontend_for_browser_navigation(client, tmp_path, monkeypatch):
+    index = tmp_path / "index.html"
+    index.write_text("<html><body>litterbox app</body></html>")
+    monkeypatch.setattr("app.frontend.FRONTEND_DIST", tmp_path)
+
+    response = client.get("/visits", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "litterbox app" in response.text
+
+
+def test_visits_route_still_returns_json_for_api_clients(client, tmp_path, monkeypatch):
+    cat_id = _make_cat(client)
+    _make_visit(client, cat_id)
+    index = tmp_path / "index.html"
+    index.write_text("<html><body>litterbox app</body></html>")
+    monkeypatch.setattr("app.frontend.FRONTEND_DIST", tmp_path)
+
+    response = client.get("/visits", headers={"Accept": "application/json"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert len(response.json()) == 1
+
+
+def test_visit_summary_still_returns_json_for_browser_accept_header(client, tmp_path, monkeypatch):
+    cat_id = _make_cat(client)
+    _make_visit(client, cat_id, started_at="2024-01-01T10:00:00+00:00")
+    index = tmp_path / "index.html"
+    index.write_text("<html><body>litterbox app</body></html>")
+    monkeypatch.setattr("app.frontend.FRONTEND_DIST", tmp_path)
+
+    response = client.get(
+        "/visits/summary",
+        headers={"Accept": "text/html"},
+        params={
+            "bucket": "day",
+            "from_date": "2024-01-01T00:00:00+00:00",
+            "to_date": "2024-01-02T00:00:00+00:00",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json()[0]["visit_count"] == 1
+
+
 def test_list_visits_filter_by_cat(client):
     cat1 = _make_cat(client, name="Luna")
     cat2 = _make_cat(client, name="Mochi", weight=6.0)
