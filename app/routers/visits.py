@@ -91,6 +91,28 @@ def _bucket_days(start: datetime, end: datetime) -> float:
     return max(seconds / 86400, 1)
 
 
+def _average_denominator_days(
+    bucket_start: datetime,
+    bucket_end: datetime,
+    bucket: VisitSummaryBucket,
+    now: datetime,
+) -> float:
+    if bucket == "day":
+        return 1
+
+    local_start = bucket_start.astimezone(app_timezone())
+    local_now = as_utc(now).astimezone(app_timezone())
+    current_bucket_start = _bucket_start(local_now, bucket)
+    if local_start.date() != current_bucket_start.date():
+        return _bucket_days(bucket_start, bucket_end)
+
+    if bucket == "week":
+        return local_now.date().toordinal() - local_start.date().toordinal() + 1
+    if bucket == "month":
+        return local_now.day
+    return _bucket_days(bucket_start, bucket_end)
+
+
 @router.post("", response_model=VisitOut, status_code=201)
 def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
     """Creates a manual visit entry."""
@@ -160,6 +182,7 @@ def visit_summary(
     if from_date and to_date and from_date > to_date:
         raise HTTPException(status_code=400, detail="from_date must be before to_date")
 
+    now = datetime.now(timezone.utc)
     default_from, default_to = _default_summary_range(bucket)
     range_start = as_utc(from_date) if from_date else default_from
     range_end = as_utc(to_date) if to_date else default_to
@@ -224,7 +247,7 @@ def visit_summary(
             visit_count=len(visits),
             identified_visit_count=sum(1 for v in visits if v.cat_id is not None),
             unidentified_visit_count=sum(1 for v in visits if v.cat_id is None),
-            average_visits_per_day=round(len(visits) / _bucket_days(bucket_start, bucket_end), 2),
+            average_visits_per_day=round(len(visits) / _average_denominator_days(bucket_start, bucket_end, bucket, now), 2),
             average_duration_seconds=_average_int(durations),
             latest_visit_at=latest_visit_at,
             cats=cat_summaries,

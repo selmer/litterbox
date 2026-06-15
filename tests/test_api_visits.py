@@ -2,6 +2,7 @@
 from datetime import datetime, timezone, timedelta
 
 from app.models import Visit, VisitDiagnostic
+from app.routers.visits import _average_denominator_days, _bucket_end, _bucket_start
 
 
 def _make_cat(client, name="Luna", weight=4.0):
@@ -551,6 +552,42 @@ def test_create_visit_accepts_confidence_state(client):
     assert response.status_code == 201
     assert response.json()["weight_confidence"] == "suspect"
     assert response.json()["weight_confidence_reason"] == "manual"
+
+
+def test_visit_summary_current_week_average_uses_elapsed_days():
+    now = datetime(2024, 1, 3, 12, 0, tzinfo=timezone.utc)
+    bucket_start = _bucket_start(now, "week")
+    bucket_end = _bucket_end(bucket_start, "week")
+
+    assert _average_denominator_days(bucket_start, bucket_end, "week", now) == 3
+    assert round(1 / _average_denominator_days(bucket_start, bucket_end, "week", now), 2) == 0.33
+
+
+def test_visit_summary_completed_week_average_uses_full_week():
+    now = datetime(2024, 1, 10, 12, 0, tzinfo=timezone.utc)
+    bucket_start = _bucket_start(datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc), "week")
+    bucket_end = _bucket_end(bucket_start, "week")
+
+    assert _average_denominator_days(bucket_start, bucket_end, "week", now) == 7
+    assert round(1 / _average_denominator_days(bucket_start, bucket_end, "week", now), 2) == 0.14
+
+
+def test_visit_summary_current_month_average_uses_elapsed_days():
+    now = datetime(2024, 1, 10, 12, 0, tzinfo=timezone.utc)
+    bucket_start = _bucket_start(now, "month")
+    bucket_end = _bucket_end(bucket_start, "month")
+
+    assert _average_denominator_days(bucket_start, bucket_end, "month", now) == 10
+    assert round(5 / _average_denominator_days(bucket_start, bucket_end, "month", now), 2) == 0.5
+
+
+def test_visit_summary_completed_month_average_uses_full_month():
+    now = datetime(2024, 2, 10, 12, 0, tzinfo=timezone.utc)
+    bucket_start = _bucket_start(datetime(2024, 1, 15, 12, 0, tzinfo=timezone.utc), "month")
+    bucket_end = _bucket_end(bucket_start, "month")
+
+    assert _average_denominator_days(bucket_start, bucket_end, "month", now) == 31
+    assert round(31 / _average_denominator_days(bucket_start, bucket_end, "month", now), 2) == 1.0
 
 
 def test_visit_summary_groups_by_local_day_and_cat(client):
