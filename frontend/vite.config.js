@@ -7,10 +7,12 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-charts': ['recharts'],
-          'vendor-utils': ['axios', 'date-fns'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom)[\\/]/.test(id)) return 'vendor-react'
+          if (/[\\/]node_modules[\\/]recharts[\\/]/.test(id)) return 'vendor-charts'
+          if (/[\\/]node_modules[\\/](axios|date-fns)[\\/]/.test(id)) return 'vendor-utils'
+          return undefined
         },
       },
     },

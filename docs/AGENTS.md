@@ -19,6 +19,7 @@ This repository contains a FastAPI backend and a Vite/React frontend for a Tuya-
 - If `node`/`npm` are not on PATH for the agent shell, use the local nvm install explicitly: `cd frontend && PATH=/home/selmer/.nvm/versions/node/v24.15.0/bin:$PATH npm run lint` and `cd frontend && PATH=/home/selmer/.nvm/versions/node/v24.15.0/bin:$PATH npm test -- --run`.
 - When running a single frontend test from inside `frontend/`, pass paths relative to that directory, for example `npm test -- --run src/pages/Visits.test.jsx`.
 - The npm warning `Unknown global config "tmp"` is currently non-blocking; continue unless the command exits nonzero for another reason.
+- For `npm audit` vulnerability warnings, the agent may make targeted dependency/configuration updates and run the relevant checks. Do not run `npm audit fix --force` or accept major breaking upgrades blindly; prefer a focused package upgrade plus build/test/lint verification, and ask the user if the safe fix is unclear.
 - If a required verification command fails because dependencies or tools are missing, ask the user for help installing or exposing them before treating the verification as skipped.
 - `docker compose up --build -d`: run the app and Postgres.
 
