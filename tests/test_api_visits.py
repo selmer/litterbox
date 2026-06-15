@@ -503,3 +503,120 @@ def test_create_visit_accepts_confidence_state(client):
     assert response.status_code == 201
     assert response.json()["weight_confidence"] == "suspect"
     assert response.json()["weight_confidence_reason"] == "manual"
+
+
+def test_visit_summary_groups_by_local_day_and_cat(client):
+    cat_id = _make_cat(client, name="Luna")
+    _make_visit(client, cat_id, started_at="2024-01-01T10:00:00+00:00", duration_seconds=60, weight_kg=4.0)
+    _make_visit(client, cat_id, started_at="2024-01-01T12:00:00+00:00", duration_seconds=120, weight_kg=4.2)
+
+    response = client.get(
+        "/visits/summary",
+        params={
+            "bucket": "day",
+            "from_date": "2024-01-01T00:00:00+00:00",
+            "to_date": "2024-01-02T00:00:00+00:00",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["bucket"] == "day"
+    assert data[0]["visit_count"] == 2
+    assert data[0]["identified_visit_count"] == 2
+    assert data[0]["unidentified_visit_count"] == 0
+    assert data[0]["average_duration_seconds"] == 90
+    assert data[0]["cats"][0]["cat_id"] == cat_id
+    assert data[0]["cats"][0]["visit_count"] == 2
+    assert data[0]["cats"][0]["average_weight_kg"] == 4.1
+
+
+def test_visit_summary_groups_by_week_and_month(client):
+    cat_id = _make_cat(client, name="Luna")
+    _make_visit(client, cat_id, started_at="2024-01-01T10:00:00+00:00")
+    _make_visit(client, cat_id, started_at="2024-01-03T10:00:00+00:00")
+    _make_visit(client, cat_id, started_at="2024-02-01T10:00:00+00:00")
+
+    weekly = client.get(
+        "/visits/summary",
+        params={
+            "bucket": "week",
+            "from_date": "2024-01-01T00:00:00+00:00",
+            "to_date": "2024-02-02T00:00:00+00:00",
+        },
+    )
+    assert weekly.status_code == 200
+    assert [bucket["visit_count"] for bucket in weekly.json()] == [1, 2]
+    assert weekly.json()[0]["average_visits_per_day"] == 0.14
+
+    monthly = client.get(
+        "/visits/summary",
+        params={
+            "bucket": "month",
+            "from_date": "2024-01-01T00:00:00+00:00",
+            "to_date": "2024-02-02T00:00:00+00:00",
+        },
+    )
+    assert monthly.status_code == 200
+    assert [bucket["visit_count"] for bucket in monthly.json()] == [1, 2]
+
+
+def test_visit_summary_filters_unidentified_and_excludes_ignored_weights(client):
+    cat_id = _make_cat(client, name="Luna")
+    identified = _make_visit(client, cat_id, started_at="2024-01-01T10:00:00+00:00", weight_kg=4.0)
+    ignored = _make_visit(client, cat_id, started_at="2024-01-01T11:00:00+00:00", weight_kg=9.9)
+    unidentified = _make_visit(client, cat_id, started_at="2024-01-01T12:00:00+00:00", weight_kg=4.3)
+    client.patch(f"/visits/{ignored['id']}", json={"weight_confidence": "ignored"})
+    client.patch(f"/visits/{unidentified['id']}", json={"cat_id": None})
+
+    all_response = client.get(
+        "/visits/summary",
+        params={
+            "bucket": "day",
+            "from_date": "2024-01-01T00:00:00+00:00",
+            "to_date": "2024-01-02T00:00:00+00:00",
+        },
+    )
+    assert all_response.status_code == 200
+    day = all_response.json()[0]
+    assert day["visit_count"] == 3
+    assert day["unidentified_visit_count"] == 1
+    luna = next(cat for cat in day["cats"] if cat["cat_id"] == cat_id)
+    assert luna["average_weight_kg"] == identified["weight_kg"]
+
+    unidentified_response = client.get(
+        "/visits/summary",
+        params={
+            "bucket": "day",
+            "unidentified": "true",
+            "from_date": "2024-01-01T00:00:00+00:00",
+            "to_date": "2024-01-02T00:00:00+00:00",
+        },
+    )
+    assert unidentified_response.status_code == 200
+    assert unidentified_response.json()[0]["visit_count"] == 1
+    assert unidentified_response.json()[0]["cats"][0]["cat_id"] is None
+
+
+def test_visit_summary_paginates_buckets(client):
+    cat_id = _make_cat(client, name="Luna")
+    _make_visit(client, cat_id, started_at="2024-01-01T10:00:00+00:00")
+    _make_visit(client, cat_id, started_at="2024-01-02T10:00:00+00:00")
+    _make_visit(client, cat_id, started_at="2024-01-03T10:00:00+00:00")
+
+    response = client.get(
+        "/visits/summary",
+        params={
+            "bucket": "day",
+            "limit": 1,
+            "offset": 1,
+            "from_date": "2024-01-01T00:00:00+00:00",
+            "to_date": "2024-01-04T00:00:00+00:00",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["bucket_start"].startswith("2024-01-02")

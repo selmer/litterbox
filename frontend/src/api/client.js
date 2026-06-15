@@ -58,8 +58,32 @@ export const deleteCatEvent = (catId, eventId) =>
 
 // --- Visits ---
 
-export const getVisits = ({ limit = 50, offset = 0, catId, unidentified, signal } = {}) =>
-  api.get('/visits', { params: { limit, offset, cat_id: catId, unidentified }, signal }).then(r => r.data)
+export const getVisits = ({ limit = 50, offset = 0, catId, unidentified, fromDate, toDate, signal } = {}) =>
+  api.get('/visits', {
+    params: {
+      limit,
+      offset,
+      cat_id: catId,
+      unidentified,
+      from_date: fromDate?.toISOString(),
+      to_date: toDate?.toISOString(),
+    },
+    signal,
+  }).then(r => r.data)
+
+export const getVisitSummary = ({ bucket = 'day', limit = 50, offset = 0, catId, unidentified, fromDate, toDate, signal } = {}) =>
+  api.get('/visits/summary', {
+    params: {
+      bucket,
+      limit,
+      offset,
+      cat_id: catId,
+      unidentified,
+      from_date: fromDate?.toISOString(),
+      to_date: toDate?.toISOString(),
+    },
+    signal,
+  }).then(r => r.data)
 
 export const createVisit = (data) =>
   api.post('/visits', data).then(r => r.data)

@@ -81,3 +81,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 046 | [Diagnostics Under Admin Navigation](specs/archive/046-2026-06-08-diagnostics-under-admin-navigation.md) | P2 |
 | 047 | [Device Fault Dashboard Banner](specs/archive/047-2026-06-08-device-fault-dashboard-banner.md) | P1 |
 | 048 | [Shared Cat Lifecycle Events](specs/archive/048-2026-06-10-shared-cat-lifecycle-events.md) | P1 |
+| 049 | [Visits Aggregate History View](specs/049-2026-06-15-visits-aggregate-history-view.md) | P1 |

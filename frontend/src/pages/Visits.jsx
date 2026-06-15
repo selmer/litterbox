@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { getApiErrorMessage, getVisits, getCats, updateVisit, deleteVisit } from '../api/client'
+import { getApiErrorMessage, getVisits, getVisitSummary, getCats, updateVisit, deleteVisit } from '../api/client'
 import VisitsList from '../components/VisitsList'
 import { useToast } from '../components/ToastContext'
 import { useLanguage } from '../i18n/useLanguage'
 import { ModalShell, PageHeader } from '../components/ui'
 
 const PAGE_SIZE = 50
+const SUMMARY_MODES = ['day', 'week', 'month']
 
 function isCanceled(error) {
   return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
@@ -29,12 +30,124 @@ function visitToEditForm(visit) {
   }
 }
 
+function formatDuration(seconds) {
+  if (!seconds) return '-'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  if (m === 0) return `${s}s`
+  return `${m}m ${s}s`
+}
+
+function formatBucketLabel(summary, mode, locale, t) {
+  const start = new Date(summary.bucket_start)
+  if (mode === 'day') {
+    const today = new Date()
+    const yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
+    if (start.toDateString() === today.toDateString()) return t('visits.today')
+    if (start.toDateString() === yesterday.toDateString()) return t('visits.yesterday')
+    return start.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+  if (mode === 'week') {
+    return t('visits.weekOf', { date: start.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) })
+  }
+  return start.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+}
+
+function SummaryList({ summaries, mode, locale, t, onViewDetails, emptyMessage }) {
+  if (!summaries?.length) {
+    return <div className="empty-state empty-state--compact">{emptyMessage}</div>
+  }
+
+  return (
+    <>
+      <div className="card card--flush visits-summary-table-card">
+        <table className="table visits-summary-table">
+          <thead>
+            <tr>
+              <th>{t('field.date')}</th>
+              <th>{t('visits.total')}</th>
+              <th>{t('visits.byCat')}</th>
+              <th>{t('visits.average')}</th>
+              <th>{t('catCard.lastVisit')}</th>
+              <th>{t('field.actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {summaries.map(summary => (
+              <tr key={summary.bucket_start}>
+                <td className="text-primary">{formatBucketLabel(summary, mode, locale, t)}</td>
+                <td>
+                  <strong>{summary.visit_count}</strong>
+                  {summary.unidentified_visit_count > 0 && (
+                    <span className="summary-warning">{t('visits.unidentifiedCount', { count: summary.unidentified_visit_count })}</span>
+                  )}
+                </td>
+                <td>
+                  <div className="summary-cat-list">
+                    {summary.cats.map(cat => (
+                      <span className="summary-cat-pill" key={`${summary.bucket_start}-${cat.cat_id ?? 'unknown'}`}>
+                        {cat.cat_name || t('visits.unknownCat')}: {cat.visit_count}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="table-small">
+                  {mode === 'day'
+                    ? formatDuration(summary.average_duration_seconds)
+                    : t('visits.averagePerDay', { count: summary.average_visits_per_day })}
+                </td>
+                <td className="text-mono table-small">
+                  {summary.latest_visit_at ? new Date(summary.latest_visit_at).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) : '-'}
+                </td>
+                <td>
+                  <button className="btn btn-secondary btn-sm" onClick={() => onViewDetails(summary)}>
+                    {t('visits.viewDetails')}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="visit-summary-card-list" aria-label={t('visits.summaryListLabel')}>
+        {summaries.map(summary => (
+          <article className="visit-summary-card" key={summary.bucket_start}>
+            <div className="visit-summary-card__header">
+              <strong>{formatBucketLabel(summary, mode, locale, t)}</strong>
+              <span>{summary.visit_count}</span>
+            </div>
+            <div className="summary-cat-list">
+              {summary.cats.map(cat => (
+                <span className="summary-cat-pill" key={`${summary.bucket_start}-${cat.cat_id ?? 'unknown'}`}>
+                  {cat.cat_name || t('visits.unknownCat')}: {cat.visit_count}
+                </span>
+              ))}
+            </div>
+            <div className="visit-summary-card__meta">
+              {summary.unidentified_visit_count > 0 && <span>{t('visits.unidentifiedCount', { count: summary.unidentified_visit_count })}</span>}
+              <span>{mode === 'day' ? formatDuration(summary.average_duration_seconds) : t('visits.averagePerDay', { count: summary.average_visits_per_day })}</span>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => onViewDetails(summary)}>
+              {t('visits.viewDetails')}
+            </button>
+          </article>
+        ))}
+      </div>
+    </>
+  )
+}
+
 export default function Visits() {
   const [visits, setVisits] = useState([])
+  const [summaries, setSummaries] = useState([])
   const [cats, setCats] = useState([])
   const [initialLoading, setInitialLoading] = useState(true)
   const [fetching, setFetching] = useState(false)
   const [selectedCat, setSelectedCat] = useState(null)
+  const [mode, setMode] = useState('day')
+  const [detailRange, setDetailRange] = useState(null)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [loadError, setLoadError] = useState(null)
@@ -46,6 +159,8 @@ export default function Visits() {
   const [pendingDelete, setPendingDelete] = useState(null)
   const toast = useToast()
   const { locale, t } = useLanguage()
+  const isDetailsMode = mode === 'details'
+  const currentItems = isDetailsMode ? visits : summaries
 
   useEffect(() => {
     getCats().then(setCats).catch(e => {
@@ -58,7 +173,7 @@ export default function Visits() {
     let canceled = false
     const controller = new AbortController()
 
-    async function fetchVisits() {
+    async function fetchVisitData() {
       setFetching(true)
       setLoadError(null)
       try {
@@ -68,10 +183,21 @@ export default function Visits() {
         } else if (selectedCat !== null) {
           params.catId = selectedCat
         }
-        const v = await getVisits(params)
+        if (isDetailsMode && detailRange) {
+          params.fromDate = new Date(detailRange.from)
+          params.toDate = new Date(detailRange.to)
+        }
+
+        const result = isDetailsMode
+          ? await getVisits(params)
+          : await getVisitSummary({ ...params, bucket: mode })
         if (canceled) return
-        setHasMore(v.length > PAGE_SIZE)
-        setVisits(v.slice(0, PAGE_SIZE))
+        setHasMore(result.length > PAGE_SIZE)
+        if (isDetailsMode) {
+          setVisits(result.slice(0, PAGE_SIZE))
+        } else {
+          setSummaries(result.slice(0, PAGE_SIZE))
+        }
       } catch (e) {
         if (!canceled && !isCanceled(e)) {
           setLoadError(getApiErrorMessage(e))
@@ -83,15 +209,28 @@ export default function Visits() {
         }
       }
     }
-    fetchVisits()
+    fetchVisitData()
     return () => {
       canceled = true
       controller.abort()
     }
-  }, [selectedCat, page, reloadNonce])
+  }, [selectedCat, mode, detailRange, page, reloadNonce, isDetailsMode])
 
   function selectFilter(cat) {
     setSelectedCat(cat)
+    setDetailRange(null)
+    setPage(0)
+  }
+
+  function selectMode(nextMode) {
+    setMode(nextMode)
+    setDetailRange(null)
+    setPage(0)
+  }
+
+  function viewSummaryDetails(summary) {
+    setMode('details')
+    setDetailRange({ from: summary.bucket_start, to: summary.bucket_end })
     setPage(0)
   }
 
@@ -101,6 +240,7 @@ export default function Visits() {
       await deleteVisit(pendingDelete.id)
       setVisits(prev => prev.filter(v => v.id !== pendingDelete.id))
       setPendingDelete(null)
+      setReloadNonce(n => n + 1)
     } catch (e) {
       console.error('Failed to delete visit', e)
       toast(t('visits.toast.deleteFailed'))
@@ -146,6 +286,7 @@ export default function Visits() {
       const updated = await updateVisit(editingVisit.id, payload)
       setVisits(prev => prev.map(v => v.id === updated.id ? updated : v))
       closeEdit()
+      setReloadNonce(n => n + 1)
       toast(t('visits.toast.updated'), 'success')
     } catch (err) {
       setEditError(getApiErrorMessage(err))
@@ -154,7 +295,6 @@ export default function Visits() {
     }
   }
 
-
   if (initialLoading) return <div className="loading">{t('state.loading')}</div>
 
   return (
@@ -162,6 +302,24 @@ export default function Visits() {
       <PageHeader title={t('visits.title')} subtitle={t('visits.subtitle')} />
 
       <div className="visits-toolbar">
+        <div className="filter-group" aria-label={t('visits.viewModes')}>
+          {SUMMARY_MODES.map(summaryMode => (
+            <button
+              key={summaryMode}
+              className={`filter-chip ${mode === summaryMode ? 'active' : ''}`}
+              onClick={() => selectMode(summaryMode)}
+            >
+              {t(`visits.mode.${summaryMode}`)}
+            </button>
+          ))}
+          <button
+            className={`filter-chip ${mode === 'details' ? 'active' : ''}`}
+            onClick={() => selectMode('details')}
+          >
+            {t('visits.mode.details')}
+          </button>
+        </div>
+
         <div className="filter-group" aria-label={t('visits.filters')}>
           <button
             className={`filter-chip ${selectedCat === null ? 'active' : ''}`}
@@ -187,6 +345,13 @@ export default function Visits() {
         </div>
       </div>
 
+      {detailRange && isDetailsMode && (
+        <div className="visits-detail-range">
+          <span>{t('visits.detailRange', { date: new Date(detailRange.from).toLocaleDateString(locale, { dateStyle: 'medium' }) })}</span>
+          <button className="btn btn-secondary btn-sm" onClick={() => setDetailRange(null)}>{t('visits.clearRange')}</button>
+        </div>
+      )}
+
       <div className={`fetch-state ${fetching ? 'is-fetching' : ''}`}>
         {loadError && (
           <div className="alert alert-yellow mb-4">
@@ -196,13 +361,24 @@ export default function Visits() {
             </button>
           </div>
         )}
-        <VisitsList
-          visits={visits}
-          cats={cats}
-          onEdit={handleEdit}
-          onDelete={setPendingDelete}
-          emptyMessage={selectedCat === null ? t('visits.empty') : t('visits.emptyFilter')}
-        />
+        {isDetailsMode ? (
+          <VisitsList
+            visits={visits}
+            cats={cats}
+            onEdit={handleEdit}
+            onDelete={setPendingDelete}
+            emptyMessage={selectedCat === null ? t('visits.empty') : t('visits.emptyFilter')}
+          />
+        ) : (
+          <SummaryList
+            summaries={summaries}
+            mode={mode}
+            locale={locale}
+            t={t}
+            onViewDetails={viewSummaryDetails}
+            emptyMessage={selectedCat === null ? t('visits.empty') : t('visits.emptyFilter')}
+          />
+        )}
       </div>
 
       {(page > 0 || hasMore) && (
@@ -211,14 +387,13 @@ export default function Visits() {
             {t('common.previous')}
           </button>
           <span className="pagination__label">
-            {t('visits.pageRange', { page: page + 1, from: page * PAGE_SIZE + 1, to: page * PAGE_SIZE + visits.length })}
+            {t('visits.pageRange', { page: page + 1, from: page * PAGE_SIZE + 1, to: page * PAGE_SIZE + currentItems.length })}
           </span>
           <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p + 1)} disabled={!hasMore}>
             {t('common.next')}
           </button>
         </div>
       )}
-
 
       {editingVisit && editForm && (
         <ModalShell

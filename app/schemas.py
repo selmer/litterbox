@@ -13,6 +13,7 @@ WeightConfidence = Literal["normal", "suspect", "ignored"]
 WeightConfidenceReason = Literal["manual", "outlier_delta", "operator_ignored", "operator_restored"]
 CatEventType = Literal["vet_visit", "medication", "diet_change", "grooming", "health_note", "milestone", "other"]
 HealthSignalSeverity = Literal["info", "watch", "attention"]
+VisitSummaryBucket = Literal["day", "week", "month"]
 
 
 # --- Cat schemas ---
@@ -212,6 +213,28 @@ class VisitUpdate(BaseModel):
     duration_seconds: Optional[int] = Field(default=None, gt=0, le=MAX_VISIT_DURATION_SECONDS)
     weight_kg: Optional[float] = Field(default=None, gt=0, le=MAX_CAT_WEIGHT_KG)
     weight_confidence: Optional[WeightConfidence] = None
+
+
+class VisitSummaryCatOut(BaseModel):
+    cat_id: Optional[int]
+    cat_name: Optional[str]
+    visit_count: int
+    average_duration_seconds: Optional[int] = None
+    average_weight_kg: Optional[float] = None
+    latest_visit_at: Optional[datetime] = None
+
+
+class VisitSummaryBucketOut(BaseModel):
+    bucket: VisitSummaryBucket
+    bucket_start: datetime
+    bucket_end: datetime
+    visit_count: int
+    identified_visit_count: int
+    unidentified_visit_count: int
+    average_visits_per_day: float
+    average_duration_seconds: Optional[int] = None
+    latest_visit_at: Optional[datetime] = None
+    cats: list[VisitSummaryCatOut] = Field(default_factory=list)
 
 
 class WeightDataPoint(BaseModel):

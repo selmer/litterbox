@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.durations import trusted_duration_seconds
+from app.timezones import app_timezone, as_utc
 from app.models import Cat, Visit, VisitDiagnostic
-from app.schemas import VisitOut, VisitCreate, VisitUpdate, VisitDiagnosticOut, WeightHistory, WeightDataPoint
+from app.schemas import VisitOut, VisitCreate, VisitUpdate, VisitDiagnosticOut, WeightHistory, WeightDataPoint, VisitSummaryBucket, VisitSummaryBucketOut, VisitSummaryCatOut
 
 router = APIRouter(prefix="/visits", tags=["visits"])
 
@@ -32,6 +34,60 @@ def _record_manual_edit(db: Session, visit: Visit, changes: dict):
         recorded_at=datetime.now(timezone.utc),
     ))
 
+
+
+def _bucket_start(value: datetime, bucket: VisitSummaryBucket) -> datetime:
+    local_value = as_utc(value).astimezone(app_timezone())
+    local_start = local_value.replace(hour=0, minute=0, second=0, microsecond=0)
+    if bucket == "week":
+        local_start = local_start - timedelta(days=local_start.weekday())
+    elif bucket == "month":
+        local_start = local_start.replace(day=1)
+    return local_start
+
+
+def _bucket_end(start: datetime, bucket: VisitSummaryBucket) -> datetime:
+    if bucket == "day":
+        return start + timedelta(days=1)
+    if bucket == "week":
+        return start + timedelta(days=7)
+    year = start.year + (1 if start.month == 12 else 0)
+    month = 1 if start.month == 12 else start.month + 1
+    return start.replace(year=year, month=month, day=1)
+
+
+def _default_summary_range(bucket: VisitSummaryBucket) -> tuple[datetime, datetime]:
+    now_utc = datetime.now(timezone.utc)
+    local_end = _bucket_end(_bucket_start(now_utc, bucket), bucket)
+    if bucket == "day":
+        local_start = local_end - timedelta(days=180)
+    elif bucket == "week":
+        local_start = local_end - timedelta(weeks=104)
+    else:
+        local_start = local_end
+        for _ in range(60):
+            if local_start.month == 1:
+                local_start = local_start.replace(year=local_start.year - 1, month=12, day=1)
+            else:
+                local_start = local_start.replace(month=local_start.month - 1, day=1)
+    return local_start.astimezone(timezone.utc), local_end.astimezone(timezone.utc)
+
+
+def _average_int(values: list[int]) -> int | None:
+    if not values:
+        return None
+    return int(round(sum(values) / len(values)))
+
+
+def _average_float(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return round(sum(values) / len(values), 3)
+
+
+def _bucket_days(start: datetime, end: datetime) -> float:
+    seconds = (end - start).total_seconds()
+    return max(seconds / 86400, 1)
 
 
 @router.post("", response_model=VisitOut, status_code=201)
@@ -65,14 +121,109 @@ def list_visits(
     offset: int = Query(default=0, ge=0),
     cat_id: Optional[int] = Query(default=None, gt=0),
     unidentified: Optional[bool] = None,
+    from_date: Optional[datetime] = Query(default=None),
+    to_date: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),
 ):
+    if from_date and to_date and from_date > to_date:
+        raise HTTPException(status_code=400, detail="from_date must be before to_date")
     query = db.query(Visit).order_by(Visit.started_at.desc())
+    if from_date:
+        query = query.filter(Visit.started_at >= as_utc(from_date))
+    if to_date:
+        query = query.filter(Visit.started_at <= as_utc(to_date))
     if cat_id:
         query = query.filter(Visit.cat_id == cat_id)
     if unidentified:
         query = query.filter(Visit.cat_id == None)  # noqa: E711
     return query.offset(offset).limit(limit).all()
+
+
+@router.get("/summary", response_model=list[VisitSummaryBucketOut])
+def visit_summary(
+    bucket: VisitSummaryBucket = "day",
+    limit: int = Query(default=50, le=500),
+    offset: int = Query(default=0, ge=0),
+    cat_id: Optional[int] = Query(default=None, gt=0),
+    unidentified: Optional[bool] = None,
+    from_date: Optional[datetime] = Query(default=None),
+    to_date: Optional[datetime] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    if from_date and to_date and from_date > to_date:
+        raise HTTPException(status_code=400, detail="from_date must be before to_date")
+
+    default_from, default_to = _default_summary_range(bucket)
+    range_start = as_utc(from_date) if from_date else default_from
+    range_end = as_utc(to_date) if to_date else default_to
+
+    query = (
+        db.query(Visit, Cat.name.label("cat_name"))
+        .outerjoin(Cat, Visit.cat_id == Cat.id)
+        .filter(Visit.started_at >= range_start, Visit.started_at <= range_end)
+    )
+    if cat_id:
+        query = query.filter(Visit.cat_id == cat_id)
+    if unidentified:
+        query = query.filter(Visit.cat_id == None)  # noqa: E711
+
+    rows = query.order_by(Visit.started_at.desc(), Visit.id.desc()).all()
+
+    grouped: dict[datetime, list[tuple[Visit, str | None]]] = defaultdict(list)
+    for visit, cat_name in rows:
+        grouped[_bucket_start(visit.started_at, bucket)].append((visit, cat_name))
+
+    summaries = []
+    for bucket_start in sorted(grouped.keys(), reverse=True)[offset:offset + limit]:
+        bucket_rows = grouped[bucket_start]
+        bucket_end = _bucket_end(bucket_start, bucket)
+        visits = [visit for visit, _ in bucket_rows]
+        durations = [duration for duration in (trusted_duration_seconds(v) for v in visits) if duration is not None]
+        latest_visit_at = max(v.started_at for v in visits) if visits else None
+
+        per_cat: dict[int | None, dict] = {}
+        for visit, cat_name in bucket_rows:
+            key = visit.cat_id
+            entry = per_cat.setdefault(key, {
+                "cat_id": key,
+                "cat_name": cat_name,
+                "visits": [],
+                "durations": [],
+                "weights": [],
+            })
+            entry["visits"].append(visit)
+            duration = trusted_duration_seconds(visit)
+            if duration is not None:
+                entry["durations"].append(duration)
+            if visit.weight_kg is not None and visit.weight_confidence != "ignored":
+                entry["weights"].append(visit.weight_kg)
+
+        cat_summaries = []
+        for entry in sorted(per_cat.values(), key=lambda item: (item["cat_name"] is None, item["cat_name"] or "")):
+            cat_visits = entry["visits"]
+            cat_summaries.append(VisitSummaryCatOut(
+                cat_id=entry["cat_id"],
+                cat_name=entry["cat_name"],
+                visit_count=len(cat_visits),
+                average_duration_seconds=_average_int(entry["durations"]),
+                average_weight_kg=_average_float(entry["weights"]),
+                latest_visit_at=max(v.started_at for v in cat_visits) if cat_visits else None,
+            ))
+
+        summaries.append(VisitSummaryBucketOut(
+            bucket=bucket,
+            bucket_start=bucket_start,
+            bucket_end=bucket_end,
+            visit_count=len(visits),
+            identified_visit_count=sum(1 for v in visits if v.cat_id is not None),
+            unidentified_visit_count=sum(1 for v in visits if v.cat_id is None),
+            average_visits_per_day=round(len(visits) / _bucket_days(bucket_start, bucket_end), 2),
+            average_duration_seconds=_average_int(durations),
+            latest_visit_at=latest_visit_at,
+            cats=cat_summaries,
+        ))
+
+    return summaries
 
 
 @router.get("/weight-history", response_model=list[WeightHistory])

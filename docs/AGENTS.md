@@ -8,6 +8,8 @@ This repository contains a FastAPI backend and a Vite/React frontend for a Tuya-
 
 - `pip install -r requirements.txt`: install backend dependencies.
 - `python3 -m pytest tests/ -v`: run backend tests with mocked Tuya access and in-memory SQLite.
+- In this workspace, prefer the local virtualenv when system Python lacks dependencies: `.venv/bin/python -m pytest tests/ -v`.
+- FastAPI import or route smoke checks require `DATABASE_URL`; for a disposable local smoke check, use `DATABASE_URL=sqlite:////tmp/litterbox-route-smoke.db .venv/bin/python ...`.
 - `uvicorn app.main:app --reload --port 8000`: run the API locally.
 - `alembic upgrade head`: apply database migrations.
 - `cd frontend && npm install`: install frontend dependencies.
@@ -15,6 +17,9 @@ This repository contains a FastAPI backend and a Vite/React frontend for a Tuya-
 - `cd frontend && npm run build`: build `frontend/dist/`.
 - `cd frontend && npm run lint && npm test`: run ESLint and Vitest.
 - If `node`/`npm` are not on PATH for the agent shell, use the local nvm install explicitly: `cd frontend && PATH=/home/selmer/.nvm/versions/node/v24.15.0/bin:$PATH npm run lint` and `cd frontend && PATH=/home/selmer/.nvm/versions/node/v24.15.0/bin:$PATH npm test -- --run`.
+- When running a single frontend test from inside `frontend/`, pass paths relative to that directory, for example `npm test -- --run src/pages/Visits.test.jsx`.
+- The npm warning `Unknown global config "tmp"` is currently non-blocking; continue unless the command exits nonzero for another reason.
+- If a required verification command fails because dependencies or tools are missing, ask the user for help installing or exposing them before treating the verification as skipped.
 - `docker compose up --build -d`: run the app and Postgres.
 
 ## Coding Style & Naming Conventions
