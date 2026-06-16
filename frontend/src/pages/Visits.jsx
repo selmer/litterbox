@@ -25,7 +25,7 @@ function visitToEditForm(visit) {
     started_at: toLocalDateTimeString(visit.started_at),
     duration_min: String(Math.floor(duration / 60)),
     duration_sec: String(duration % 60),
-    weight_kg: visit.weight_kg == null ? '' : String(visit.weight_kg),
+    weight_g: visit.weight_kg == null ? '' : String(Math.round(visit.weight_kg * 1000)),
     weight_confidence: visit.weight_confidence || 'normal',
   }
 }
@@ -68,7 +68,7 @@ function SummaryList({ summaries, mode, locale, t, onViewDetails, emptyMessage }
               <th>{t('field.date')}</th>
               <th>{t('visits.total')}</th>
               <th>{t('visits.byCat')}</th>
-              <th>{t('visits.average')}</th>
+              <th>{mode === 'day' ? t('visits.average') : t('visits.averagePerDayHeader')}</th>
               <th>{t('catCard.lastVisit')}</th>
               <th>{t('field.actions')}</th>
             </tr>
@@ -95,7 +95,7 @@ function SummaryList({ summaries, mode, locale, t, onViewDetails, emptyMessage }
                 <td className="table-small">
                   {mode === 'day'
                     ? formatDuration(summary.average_duration_seconds)
-                    : t('visits.averagePerDay', { count: summary.average_visits_per_day })}
+                    : summary.average_visits_per_day}
                 </td>
                 <td className="text-mono table-small">
                   {summary.latest_visit_at ? new Date(summary.latest_visit_at).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) : '-'}
@@ -127,7 +127,7 @@ function SummaryList({ summaries, mode, locale, t, onViewDetails, emptyMessage }
             </div>
             <div className="visit-summary-card__meta">
               {summary.unidentified_visit_count > 0 && <span>{t('visits.unidentifiedCount', { count: summary.unidentified_visit_count })}</span>}
-              <span>{mode === 'day' ? formatDuration(summary.average_duration_seconds) : t('visits.averagePerDay', { count: summary.average_visits_per_day })}</span>
+              <span>{mode === 'day' ? formatDuration(summary.average_duration_seconds) : summary.average_visits_per_day}</span>
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => onViewDetails(summary)}>
               {t('visits.viewDetails')}
@@ -267,8 +267,8 @@ export default function Visits() {
     const durationMin = parseInt(editForm.duration_min, 10) || 0
     const durationSec = parseInt(editForm.duration_sec, 10) || 0
     const duration = durationMin * 60 + durationSec
-    const weight = parseFloat(editForm.weight_kg)
-    if (!editForm.started_at || duration <= 0 || Number.isNaN(weight) || weight <= 0) {
+    const weightG = parseFloat(editForm.weight_g)
+    if (!editForm.started_at || duration <= 0 || Number.isNaN(weightG) || weightG <= 0) {
       setEditError(t('visits.error.invalidEdit'))
       return
     }
@@ -280,7 +280,7 @@ export default function Visits() {
         cat_id: editForm.cat_id ? Number(editForm.cat_id) : null,
         started_at: new Date(editForm.started_at).toISOString(),
         duration_seconds: duration,
-        weight_kg: weight,
+        weight_kg: weightG / 1000,
         weight_confidence: editForm.weight_confidence,
       }
       const updated = await updateVisit(editingVisit.id, payload)
@@ -452,15 +452,15 @@ export default function Visits() {
             </div>
             <div className="form-row">
               <div className="form-field">
-                <label className="form-label" htmlFor="edit-visit-weight">{t('field.weightKg')}</label>
+                <label className="form-label" htmlFor="edit-visit-weight">{t('field.weightG')}</label>
                 <input
                   id="edit-visit-weight"
                   type="number"
                   className="form-input"
                   min="0"
-                  step="0.001"
-                  value={editForm.weight_kg}
-                  onChange={e => setEditForm(f => ({ ...f, weight_kg: e.target.value }))}
+                  step="1"
+                  value={editForm.weight_g}
+                  onChange={e => setEditForm(f => ({ ...f, weight_g: e.target.value }))}
                   required
                 />
               </div>
@@ -504,7 +504,7 @@ export default function Visits() {
             </div>
             <div>
               <span>{t('field.weight')}</span>
-              <strong>{pendingDelete.weight_kg ? `${pendingDelete.weight_kg.toFixed(3)} kg` : '-'}</strong>
+              <strong>{pendingDelete.weight_kg == null ? '-' : `${Math.round(pendingDelete.weight_kg * 1000)} g`}</strong>
             </div>
           </div>
           <div className="modal-actions">

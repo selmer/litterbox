@@ -12,6 +12,11 @@ function formatDuration(seconds) {
   return `${m}m ${s}s`
 }
 
+function formatWeight(weightKg) {
+  if (weightKg == null) return '-'
+  return `${Math.round(weightKg * 1000)} g`
+}
+
 function IdentificationBadge({ identifiedBy, catId, t }) {
   if (!catId) return <StatusBadge tone="yellow">{t('status.unidentified')}</StatusBadge>
   if (identifiedBy === 'manual') return <StatusBadge tone="accent">{t('status.manual')}</StatusBadge>
@@ -76,7 +81,7 @@ function VisitMobileCard({ visit, catMap, onEdit, onDelete, showId = true, showD
       <dl className="visit-card__details">
         <div>
           <dt>{t('field.started')}</dt>
-          <dd>{format(new Date(visit.started_at), 'dd MMM, HH:mm', { locale: dateLocale })}</dd>
+          <dd>{format(new Date(visit.started_at), 'dd MMM yyyy, HH:mm', { locale: dateLocale })}</dd>
         </div>
         <div>
           <dt>{t('field.duration')}</dt>
@@ -85,7 +90,7 @@ function VisitMobileCard({ visit, catMap, onEdit, onDelete, showId = true, showD
         <div>
           <dt>{t('field.weight')}</dt>
           <dd>
-            {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}
+            {formatWeight(visit.weight_kg)}
             <ConfidenceBadge confidence={visit.weight_confidence} t={t} />
           </dd>
         </div>
@@ -137,11 +142,11 @@ export default function VisitsList({ visits, cats = [], onEdit, onDelete, emptyM
                   {getCatName(visit, catMap, t)}
                 </td>
                 <td className="text-mono table-small">
-                  {format(new Date(visit.started_at), 'dd MMM, HH:mm', { locale: dateLocale })}
+                  {format(new Date(visit.started_at), 'dd MMM yyyy, HH:mm', { locale: dateLocale })}
                 </td>
                 <td>{formatDuration(visit.duration_seconds)}</td>
                 <td className="text-primary">
-                  {visit.weight_kg ? `${visit.weight_kg.toFixed(3)} kg` : '-'}
+                  {formatWeight(visit.weight_kg)}
                   <ConfidenceBadge confidence={visit.weight_confidence} t={t} />
                 </td>
                 <td>

@@ -38,6 +38,8 @@ describe('VisitsList', () => {
     expect(within(mobileList).getByText('#1')).toBeInTheDocument()
     expect(within(mobileList).getByText('#2')).toBeInTheDocument()
     expect(within(mobileList).getByText('unidentified')).toBeInTheDocument()
+    expect(screen.getAllByText(/2024/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('4200 g')).toHaveLength(2)
     expect(screen.getAllByText('ignored').length).toBeGreaterThan(0)
   })
 

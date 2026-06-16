@@ -102,13 +102,16 @@ describe('Visits page', () => {
     expect(client.getVisits).not.toHaveBeenCalled()
   })
 
-  it('switches summary buckets', async () => {
+  it('switches summary buckets and shows weekly averages as plain per-day numbers', async () => {
     renderVisits()
     fireEvent.click(await screen.findByRole('button', { name: 'Per week' }))
 
     await waitFor(() => expect(client.getVisitSummary).toHaveBeenLastCalledWith(
       expect.objectContaining({ bucket: 'week', offset: 0 })
     ))
+    expect(screen.getByRole('columnheader', { name: 'Average (per day)' })).toBeInTheDocument()
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0)
+    expect(screen.queryByText('2/day')).toBeNull()
   })
 
   it('opens summary details as a bounded details query', async () => {
@@ -140,7 +143,7 @@ describe('Visits page', () => {
 
     fireEvent.click(screen.getByText('Edit 1'))
     await waitFor(() => screen.getByText('Edit visit'))
-    fireEvent.change(screen.getByLabelText('Weight (kg)'), { target: { value: '4.25' } })
+    fireEvent.change(screen.getByLabelText('Weight (g)'), { target: { value: '4250' } })
     fireEvent.change(screen.getByLabelText('Confidence'), { target: { value: 'ignored' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save visit' }))
 
