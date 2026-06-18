@@ -226,6 +226,29 @@
 
 .health-signal__body {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.health-signal__dismiss {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.health-signal__dismiss:hover,
+.health-signal__dismiss:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+  outline: none;
 }
 
 .health-signal__message,

@@ -3,6 +3,8 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Dashboard from './Dashboard'
 import { ToastProvider } from '../components/Toast'
+import { LanguageProvider } from '../i18n/LanguageContext'
+import { LANGUAGE_STORAGE_KEY } from '../i18n/translations'
 import * as client from '../api/client'
 
 vi.mock('../api/client')
@@ -23,15 +25,18 @@ const dashboardBase = {
 function renderDashboard() {
   return render(
     <MemoryRouter>
-      <ToastProvider>
-        <Dashboard />
-      </ToastProvider>
+      <LanguageProvider>
+        <ToastProvider>
+          <Dashboard />
+        </ToastProvider>
+      </LanguageProvider>
     </MemoryRouter>
   )
 }
 
 describe('Dashboard', () => {
   beforeEach(() => {
+    window.localStorage.clear()
     vi.clearAllMocks()
     client.getDashboard.mockResolvedValue(dashboardBase)
     client.getWeightHistory.mockResolvedValue([])
@@ -126,7 +131,7 @@ describe('Dashboard', () => {
     expect(screen.getByText('Recent visits')).toBeInTheDocument()
   })
 
-  it("shows health signals on the dashboard and cat card", async () => {
+  it("shows health signals once on the dashboard", async () => {
     const signal = {
       id: "cat:1:weight_1m:down",
       type: "weight_down",
@@ -135,7 +140,11 @@ describe('Dashboard', () => {
       cat_name: "Mochi",
       message: "Weight is down compared with 1 month ago.",
       detail: "4.700 kg now vs 5.000 kg around 1 month ago.",
-      metadata: {},
+      metadata: {
+        comparison_window: "1 month",
+        current_weight_kg: 4.7,
+        baseline_weight_kg: 5.0,
+      },
     }
     client.getDashboard.mockResolvedValue({
       ...dashboardBase,
@@ -161,8 +170,60 @@ describe('Dashboard', () => {
 
     await waitFor(() => expect(screen.getByText("Health signals")).toBeInTheDocument())
     expect(screen.getByText(/Mochi:/)).toBeInTheDocument()
-    expect(screen.getAllByText("Weight is down compared with 1 month ago.")).toHaveLength(2)
-    expect(screen.getAllByText("4.700 kg now vs 5.000 kg around 1 month ago.")).toHaveLength(2)
+    expect(screen.getAllByText("Weight is down compared with 1 month ago.")).toHaveLength(1)
+    expect(screen.getAllByText("4.7 kg now vs 5.0 kg around 1 month ago.")).toHaveLength(1)
+  })
+
+  it("translates health signals in Dutch", async () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'nl')
+    client.getDashboard.mockResolvedValue({
+      ...dashboardBase,
+      health_signals: [{
+        id: "cat:1:weight_1m:up",
+        type: "weight_up",
+        severity: "watch",
+        cat_id: 1,
+        cat_name: "Griezeltje",
+        message: "Weight is up compared with 1 month ago.",
+        detail: "3.200 kg now vs 2.600 kg around 1 month ago.",
+        metadata: {
+          comparison_window: "1 month",
+          current_weight_kg: 3.2,
+          baseline_weight_kg: 2.6,
+        },
+      }],
+      cats: [],
+    })
+
+    renderDashboard()
+
+    await waitFor(() => expect(screen.getByText('Gezondheidssignalen')).toBeInTheDocument())
+    expect(screen.getByText('Gewicht is hoger dan 1 maand geleden.')).toBeInTheDocument()
+    expect(screen.getByText('3,2 kg nu tegenover 2,6 kg rond 1 maand geleden.')).toBeInTheDocument()
+    expect(screen.queryByText('Weight is up compared with 1 month ago.')).toBeNull()
+  })
+
+  it("dismisses health signals", async () => {
+    client.getDashboard.mockResolvedValue({
+      ...dashboardBase,
+      health_signals: [{
+        id: "global:unidentified_visits",
+        type: "unidentified_visits",
+        severity: "watch",
+        message: "Several visits could not be assigned to a cat.",
+        detail: "3 unidentified visits in the last 7 days.",
+        metadata: { unidentified_visits: 3 },
+      }],
+      cats: [],
+    })
+
+    renderDashboard()
+
+    await waitFor(() => expect(screen.getByText('Several visits could not be assigned to a cat.')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss health signal' }))
+
+    expect(screen.queryByText('Several visits could not be assigned to a cat.')).toBeNull()
+    expect(window.localStorage.getItem('cat-health-monitor-dismissed-health-signals')).toContain('global:unidentified_visits')
   })
 
 })

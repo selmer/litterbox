@@ -17,8 +17,10 @@ import { useToast } from '../components/ToastContext'
 import { useLanguage } from '../i18n/useLanguage'
 import Icon from '../components/Icon'
 import { EmptyState, ModalShell, PageHeader } from '../components/ui'
+import { formatHealthSignal } from '../utils/healthSignals'
 
 const REFRESH_INTERVAL_MS = 15000
+const DISMISSED_HEALTH_SIGNALS_KEY = 'cat-health-monitor-dismissed-health-signals'
 
 
 function formatDeviceFaultLabel(fault, t) {
@@ -53,6 +55,13 @@ export default function Dashboard() {
   const [visitForm, setVisitForm] = useState({ date: '', weight_g: '', duration_min: '', duration_sec: '' })
   const [submitError, setSubmitError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [dismissedHealthSignals, setDismissedHealthSignals] = useState(() => {
+    try {
+      return new Set(JSON.parse(window.localStorage?.getItem(DISMISSED_HEALTH_SIGNALS_KEY) || '[]'))
+    } catch {
+      return new Set()
+    }
+  })
   const toast = useToast()
   const { locale, t } = useLanguage()
 
@@ -125,6 +134,15 @@ export default function Dashboard() {
     setSubmitError(null)
   }
 
+  function dismissHealthSignal(signalId) {
+    setDismissedHealthSignals(prev => {
+      const next = new Set(prev)
+      next.add(signalId)
+      window.localStorage?.setItem(DISMISSED_HEALTH_SIGNALS_KEY, JSON.stringify([...next]))
+      return next
+    })
+  }
+
   async function handleSubmitVisit(e) {
     e.preventDefault()
     const weight_g = parseFloat(visitForm.weight_g)
@@ -164,7 +182,7 @@ export default function Dashboard() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
   const deviceFaults = dashboard.device_faults || []
-  const healthSignals = dashboard.health_signals || []
+  const healthSignals = (dashboard.health_signals || []).filter(signal => !dismissedHealthSignals.has(signal.id))
   const deviceFaultLabels = deviceFaults.map(fault => formatDeviceFaultLabel(fault, t)).join(', ')
 
   return (
@@ -206,18 +224,30 @@ export default function Dashboard() {
             <div className="card-label">{t('dashboard.healthSignals')}</div>
           </div>
           <div className="health-signals__list">
-            {healthSignals.slice(0, 4).map(signal => (
-              <div key={signal.id} className={'health-signal health-signal--' + signal.severity}>
-                <Icon name="activity" size={16} />
-                <div className="health-signal__body">
-                  <div className="health-signal__message">
-                    {signal.cat_name && <span>{signal.cat_name}: </span>}
-                    {signal.message}
+            {healthSignals.slice(0, 4).map(signal => {
+              const formattedSignal = formatHealthSignal(signal, t, locale)
+              return (
+                <div key={signal.id} className={'health-signal health-signal--' + signal.severity}>
+                  <Icon name="activity" size={16} />
+                  <div className="health-signal__body">
+                    <div className="health-signal__message">
+                      {signal.cat_name && <span>{signal.cat_name}: </span>}
+                      {formattedSignal.message}
+                    </div>
+                    {formattedSignal.detail && <div className="health-signal__detail">{formattedSignal.detail}</div>}
                   </div>
-                  {signal.detail && <div className="health-signal__detail">{signal.detail}</div>}
+                  <button
+                    type="button"
+                    className="health-signal__dismiss"
+                    onClick={() => dismissHealthSignal(signal.id)}
+                    aria-label={t('dashboard.dismissHealthSignal')}
+                    title={t('dashboard.dismissHealthSignal')}
+                  >
+                    <Icon name="close" size={14} />
+                  </button>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}
@@ -225,7 +255,7 @@ export default function Dashboard() {
       <div className="dashboard-grid mb-6">
         <div className="cat-summary-column">
           {dashboard.cats.map(cat => (
-            <CatCard key={cat.cat_id} cat={cat} onAddVisit={openAddVisit} />
+            <CatCard key={cat.cat_id} cat={cat} onAddVisit={openAddVisit} showHealthSignal={false} />
           ))}
           {catsWithoutVisits.map(cat => (
             <CatCard key={cat.id} cat={cat} isPlaceholder onAddVisit={openAddVisit} />

@@ -32,7 +32,7 @@ function SummaryMetric({ icon, label, value, accent = false }) {
   )
 }
 
-export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhotoChange }) {
+export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhotoChange, showHealthSignal = true }) {
   const catId = getCatId(cat)
   const displayName = cat.cat_name || cat.name
   const { language, t } = useLanguage()
@@ -136,7 +136,7 @@ export default function CatCard({ cat, isPlaceholder = false, onAddVisit, onPhot
         <SummaryMetric icon={<Icon name="activity" size={16} />} label={t('catCard.duration')} value={formatDuration(cat.last_visit_duration_seconds)} />
       </div>
 
-      {cat.health_signal && (
+      {showHealthSignal && cat.health_signal && (
         <div className={'cat-card__signal cat-card__signal--' + cat.health_signal.severity}>
           <Icon name="activity" size={15} />
           <div>
