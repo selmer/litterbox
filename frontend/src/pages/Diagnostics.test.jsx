@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Diagnostics from './Diagnostics'
 import * as client from '../api/client'
@@ -89,10 +89,38 @@ describe('Diagnostics page', () => {
     expect(screen.getAllByText('Open visits').length).toBeGreaterThan(0)
     expect(screen.getAllByText('#73').length).toBeGreaterThan(0)
     expect(screen.getAllByText('reconciliation_attempt').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('1 field').length).toBeGreaterThanOrEqual(2)
+    expect(screen.queryByText(/elapsed_seconds/)).toBeNull()
     expect(screen.getByText((_, element) => element?.textContent === 'GET /diagnostics/summary')).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Open visits' })).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Recent visit diagnostics' })).toBeInTheDocument()
     expect(client.getDiagnosticsSummary).toHaveBeenCalled()
+  })
+
+
+  it('expands and collapses diagnostic payloads on demand', async () => {
+    renderDiagnostics()
+
+    await screen.findByRole('heading', { name: 'Diagnostics' })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Show payload' })[0])
+
+    expect(screen.getByText(/elapsed_seconds/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy payload' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide payload' }))
+    expect(screen.queryByText(/elapsed_seconds/)).toBeNull()
+  })
+
+  it('shows an empty state when there are no recent diagnostic events', async () => {
+    client.getDiagnosticsSummary.mockResolvedValue({
+      ...summary,
+      recent_diagnostics: [],
+    })
+
+    renderDiagnostics()
+
+    expect(await screen.findByText('No visit diagnostics recorded yet')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Recent visit diagnostics' })).toBeNull()
   })
 
   it('highlights a selected visit from the query string', async () => {

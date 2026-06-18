@@ -33,7 +33,28 @@ function JsonSnippet({ value }) {
   return <pre className="diagnostics-json">{JSON.stringify(value, null, 2)}</pre>
 }
 
-function CopyButton({ text, t }) {
+function payloadToText(value) {
+  return JSON.stringify(value, null, 2)
+}
+
+function summarizePayload(payload, t) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return t('diagnostics.payloadValue')
+  }
+
+  const preferredKeys = ['source', 'duration_source', 'weight_kg', 'reason', 'error', 'status']
+  const foundKey = preferredKeys.find(key => payload[key] != null)
+  if (foundKey) return `${foundKey}: ${String(payload[foundKey])}`
+
+  const fieldCount = Object.keys(payload).length
+  return t(fieldCount === 1 ? 'diagnostics.payloadSingleField' : 'diagnostics.payloadFieldCount', { count: fieldCount })
+}
+
+function PayloadSummary({ payload, t }) {
+  return <span className="diagnostics-payload-summary">{summarizePayload(payload, t)}</span>
+}
+
+function CopyButton({ text, t, label }) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
@@ -45,8 +66,35 @@ function CopyButton({ text, t }) {
 
   return (
     <button className="btn btn-secondary btn-sm" onClick={copy} type="button">
-      {copied ? t('diagnostics.copied') : t('common.copy')}
+      {copied ? t('diagnostics.copied') : (label || t('common.copy'))}
     </button>
+  )
+}
+
+function ExpandableJsonPayload({ payload, t }) {
+  const [expanded, setExpanded] = useState(false)
+  const payloadText = payloadToText(payload)
+
+  return (
+    <div className="diagnostics-payload">
+      <div className="diagnostics-payload__summary">
+        <PayloadSummary payload={payload} t={t} />
+        <button
+          className="btn btn-secondary btn-sm"
+          type="button"
+          onClick={() => setExpanded(current => !current)}
+          aria-expanded={expanded}
+        >
+          {expanded ? t('diagnostics.collapsePayload') : t('diagnostics.expandPayload')}
+        </button>
+      </div>
+      {expanded && (
+        <div className="diagnostics-payload__details">
+          <JsonSnippet value={payload} />
+          <CopyButton text={payloadText} t={t} label={t('diagnostics.copyPayload')} />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -73,13 +121,13 @@ function StatCard({ label, value, children }) {
   )
 }
 
-function DiagnosticsEvent({ event, highlighted, locale }) {
+function DiagnosticsEvent({ event, highlighted, locale, t }) {
   return (
     <tr className={highlighted ? 'diagnostics-row-highlight' : ''}>
       <td className="text-mono table-small">#{event.visit_id}</td>
       <td>{event.event_type}</td>
       <td className="text-mono table-small">{formatDateTime(event.recorded_at, locale)}</td>
-      <td><JsonSnippet value={event.payload} /></td>
+      <td><ExpandableJsonPayload payload={event.payload} t={t} /></td>
     </tr>
   )
 }
@@ -109,7 +157,7 @@ function OpenVisitMobileCard({ visit, locale, t }) {
   )
 }
 
-function DiagnosticsEventMobileCard({ event, highlighted, locale }) {
+function DiagnosticsEventMobileCard({ event, highlighted, locale, t }) {
   return (
     <article className={`diagnostics-data-card ${highlighted ? 'diagnostics-data-card--highlighted' : ''}`.trim()} role="listitem">
       <div className="diagnostics-data-card__header">
@@ -119,7 +167,7 @@ function DiagnosticsEventMobileCard({ event, highlighted, locale }) {
       <div className="diagnostics-data-card__timestamp text-mono">
         {formatDateTime(event.recorded_at, locale)}
       </div>
-      <JsonSnippet value={event.payload} />
+      <ExpandableJsonPayload payload={event.payload} t={t} />
     </article>
   )
 }
@@ -278,6 +326,7 @@ export default function Diagnostics() {
                     event={event}
                     highlighted={highlightedVisitId && String(event.visit_id) === highlightedVisitId}
                     locale={locale}
+                    t={t}
                   />
                 ))}
               </tbody>
@@ -289,6 +338,7 @@ export default function Diagnostics() {
                   event={event}
                   highlighted={highlightedVisitId && String(event.visit_id) === highlightedVisitId}
                   locale={locale}
+                  t={t}
                 />
               ))}
             </div>
