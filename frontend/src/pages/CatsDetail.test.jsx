@@ -94,12 +94,15 @@ describe('CatDetail page', () => {
     }
     client.createCatEvent.mockResolvedValue(created)
     renderCatDetail()
-    await waitFor(() => expect(screen.getAllByText('Annual checkup').length).toBeGreaterThan(0))
+    const typeSelect = await screen.findByLabelText('Type')
+    const dateInput = screen.getByLabelText('Date')
+    const titleInput = screen.getByPlaceholderText('e.g. Annual checkup')
+    const costInput = screen.getByPlaceholderText('0.00')
 
-    fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'medication' } })
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-18' } })
-    await userEvent.type(screen.getByPlaceholderText('e.g. Annual checkup'), 'Started medication')
-    await userEvent.type(screen.getByPlaceholderText('0.00'), '12.00')
+    fireEvent.change(typeSelect, { target: { value: 'medication' } })
+    fireEvent.change(dateInput, { target: { value: '2026-05-18' } })
+    await userEvent.type(titleInput, 'Started medication')
+    await userEvent.type(costInput, '12.00')
     fireEvent.click(screen.getByRole('button', { name: 'Add event' }))
 
     await waitFor(() => expect(client.createCatEvent).toHaveBeenCalledWith('1', expect.objectContaining({
@@ -124,10 +127,11 @@ describe('CatDetail page', () => {
     }
     client.createCatEvent.mockResolvedValue(created)
     renderCatDetail()
-    await waitFor(() => expect(screen.getAllByText('Annual checkup').length).toBeGreaterThan(0))
+    const dateInput = await screen.findByLabelText('Date')
+    const titleInput = screen.getByPlaceholderText('e.g. Annual checkup')
 
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-18' } })
-    await userEvent.type(screen.getByPlaceholderText('e.g. Annual checkup'), 'Shared vaccination')
+    fireEvent.change(dateInput, { target: { value: '2026-05-18' } })
+    await userEvent.type(titleInput, 'Shared vaccination')
     const miezCheckbox = screen.getByLabelText('Miez')
     await userEvent.click(miezCheckbox)
     await waitFor(() => expect(miezCheckbox).toBeChecked())
