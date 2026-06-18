@@ -127,7 +127,7 @@ export function ActionMenu({ label, children, className = '' }) {
         aria-expanded={open}
         onClick={() => setOpen(current => !current)}
       >
-        <Icon name="moreHorizontal" size={16} />
+        <Icon name="moreVertical" size={16} />
       </button>
       {popup && createPortal(popup, document.body)}
     </div>

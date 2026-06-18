@@ -856,13 +856,28 @@
 }
 
 .action-menu__trigger {
-  width: 32px;
-  min-height: 30px;
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
+  justify-content: center;
+  gap: 0;
   border-radius: var(--radius-sm);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
   list-style: none;
   cursor: pointer;
   user-select: none;
+}
+
+.action-menu__trigger:hover,
+.action-menu__trigger:focus-visible,
+.action-menu__trigger[aria-expanded="true"] {
+  background: var(--bg-hover);
+  border-color: var(--border-soft);
+  color: var(--text-primary);
 }
 
 .action-menu__trigger::-webkit-details-marker {
