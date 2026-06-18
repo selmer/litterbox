@@ -130,14 +130,14 @@ describe('Cats page', () => {
   })
 
   describe('handleToggleActive', () => {
-    it('keeps deactivate in the secondary More menu and toggles active state on success', async () => {
+    it('keeps deactivate in the secondary action menu and toggles active state on success', async () => {
       const deactivated = { ...mockCats[0], active: false }
       client.updateCat.mockResolvedValue(deactivated)
 
       renderCats()
       await waitFor(() => screen.getAllByRole('button', { name: 'Edit' })[0])
 
-      fireEvent.click(screen.getAllByText('More')[0])
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Mochi' }))
       fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }))
 
       await waitFor(() =>
@@ -150,9 +150,9 @@ describe('Cats page', () => {
       client.updateCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
-      await waitFor(() => screen.getAllByText('More')[0])
+      await waitFor(() => screen.getByRole('button', { name: 'Actions for Mochi' }))
 
-      fireEvent.click(screen.getAllByText('More')[0])
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Mochi' }))
       fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }))
 
       await waitFor(() =>
@@ -161,14 +161,14 @@ describe('Cats page', () => {
       expect(consoleError).toHaveBeenCalledWith('Failed to update cat', expect.any(Error))
     })
 
-    it('keeps reactivate in the secondary More menu and shows an error toast when reactivate fails', async () => {
+    it('keeps reactivate in the secondary action menu and shows an error toast when reactivate fails', async () => {
       const consoleError = silenceConsoleError()
       client.updateCat.mockRejectedValue(new Error('Server error'))
 
       renderCats()
-      await waitFor(() => screen.getAllByText('More')[1])
+      await waitFor(() => screen.getByRole('button', { name: 'Actions for Biscuit' }))
 
-      fireEvent.click(screen.getAllByText('More')[1])
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Biscuit' }))
       fireEvent.click(screen.getByRole('button', { name: 'Reactivate' }))
 
       await waitFor(() =>

@@ -4,7 +4,7 @@ import { getCats, createCat, updateCat } from '../api/client'
 import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
 import { useLanguage } from '../i18n/useLanguage'
-import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
+import { ActionMenu, ActionMenuItem, EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 function CatAvatar({ cat }) {
   return (
@@ -156,16 +156,11 @@ function CatProfileRow({ cat, editing, onEdit, onCancelEdit, onSave, onToggleAct
           <button className="btn btn-secondary btn-sm" onClick={onEdit}>
             {t('common.editDisplay')}
           </button>
-          <details className="cat-profile__more">
-            <summary className="btn btn-secondary btn-sm cat-profile__more-trigger">
-              {t('common.more')}
-            </summary>
-            <div className="cat-profile__more-menu">
-              <button className="cat-profile__more-item" onClick={onToggleActive}>
-                {cat.active ? t('common.deactivate') : t('common.reactivate')}
-              </button>
-            </div>
-          </details>
+          <ActionMenu label={t('common.actionsForCat', { name: cat.name })}>
+            <ActionMenuItem danger={cat.active} onClick={onToggleActive}>
+              {cat.active ? t('common.deactivate') : t('common.reactivate')}
+            </ActionMenuItem>
+          </ActionMenu>
         </div>
       </div>
     </section>

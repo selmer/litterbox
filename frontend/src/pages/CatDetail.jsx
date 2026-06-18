@@ -11,7 +11,7 @@ import {
 import Icon, { CatAvatarIcon } from '../components/Icon'
 import { useToast } from '../components/ToastContext'
 import { useLanguage } from '../i18n/useLanguage'
-import { EmptyState, PageHeader, StatusBadge } from '../components/ui'
+import { ActionMenu, ActionMenuItem, EmptyState, PageHeader, StatusBadge } from '../components/ui'
 
 const EVENT_TYPES = [
   ['vet_visit', 'Vet visit'],
@@ -268,8 +268,10 @@ function CatEventMobileCard({ row, cat, locale, t, onEdit, onDelete }) {
         </div>
       </dl>
       <div className="cat-event-actions">
-        <button className="btn btn-secondary btn-sm" onClick={() => onEdit(event)}>{t('common.editDisplay')}</button>
-        <button className="btn btn-secondary btn-sm text-danger" onClick={() => onDelete(event)}>{t('common.delete')}</button>
+        <ActionMenu label={t('common.actionsForEvent', { title: event.title })}>
+          <ActionMenuItem onClick={() => onEdit(event)}>{t('common.editDisplay')}</ActionMenuItem>
+          <ActionMenuItem danger onClick={() => onDelete(event)}>{t('common.delete')}</ActionMenuItem>
+        </ActionMenu>
       </div>
     </article>
   )
@@ -462,8 +464,10 @@ export default function CatDetail() {
                   <td>{formatCost(event)}</td>
                   <td>
                     <div className="cat-event-actions">
-                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingEvent(event)}>{t('common.editDisplay')}</button>
-                      <button className="btn btn-secondary btn-sm text-danger" onClick={() => handleDeleteEvent(event)}>{t('common.delete')}</button>
+                      <ActionMenu label={t('common.actionsForEvent', { title: event.title })}>
+                        <ActionMenuItem onClick={() => setEditingEvent(event)}>{t('common.editDisplay')}</ActionMenuItem>
+                        <ActionMenuItem danger onClick={() => handleDeleteEvent(event)}>{t('common.delete')}</ActionMenuItem>
+                      </ActionMenu>
                     </div>
                   </td>
                 </tr>

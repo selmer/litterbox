@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { enGB, nl } from 'date-fns/locale'
 import Icon from './Icon'
-import { EmptyState, StatusBadge } from './ui'
+import { ActionMenu, ActionMenuItem, EmptyState, StatusBadge } from './ui'
 import { useLanguage } from '../i18n/useLanguage'
 
 function formatDuration(seconds) {
@@ -38,28 +38,23 @@ function VisitActions({ visit, onEdit, onDelete, showDiagnosticsLink, t }) {
   if (!onEdit && !onDelete && !showDiagnosticsLink) return null
 
   return (
-    <details className="visit-actions">
-      <summary className="btn btn-secondary btn-sm visit-actions__trigger">
-        {t('common.edit')}
-      </summary>
-      <div className="visit-actions__menu">
-        {onEdit && (
-          <button className="visit-actions__item" onClick={() => onEdit(visit)}>
-            {t('common.editVisit')}
-          </button>
-        )}
-        {showDiagnosticsLink && (
-          <a className="visit-actions__item" href={`/diagnostics?visit=${visit.id}`}>
-            {t('nav.diagnostics')}
-          </a>
-        )}
-        {onDelete && (
-          <button className="visit-actions__item text-danger" onClick={() => onDelete(visit)}>
-            {t('common.delete')}
-          </button>
-        )}
-      </div>
-    </details>
+    <ActionMenu label={t('common.actionsForVisit', { id: visit.id })}>
+      {onEdit && (
+        <ActionMenuItem onClick={() => onEdit(visit)}>
+          {t('common.editVisit')}
+        </ActionMenuItem>
+      )}
+      {showDiagnosticsLink && (
+        <ActionMenuItem href={`/diagnostics?visit=${visit.id}`}>
+          {t('nav.diagnostics')}
+        </ActionMenuItem>
+      )}
+      {onDelete && (
+        <ActionMenuItem danger onClick={() => onDelete(visit)}>
+          {t('common.delete')}
+        </ActionMenuItem>
+      )}
+    </ActionMenu>
   )
 }
 

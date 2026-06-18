@@ -114,6 +114,13 @@ const ICON_PATHS = {
       <path d="M12 8v5l3 2" />
     </>
   ),
+  moreHorizontal: (
+    <>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </>
+  ),
   close: (
     <>
       <path d="M18 6 6 18" />

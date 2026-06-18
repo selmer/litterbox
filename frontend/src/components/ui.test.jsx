@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { useState } from 'react'
-import { ModalShell } from './ui'
+import { ActionMenu, ActionMenuItem, ModalShell } from './ui'
 
 function BasicModal({ onClose = () => {} }) {
   return (
@@ -77,6 +77,46 @@ describe('ModalShell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close dialog' }))
 
+    expect(trigger).toHaveFocus()
+  })
+})
+
+
+describe('ActionMenu', () => {
+  it('uses an accessible icon trigger and closes after action selection', () => {
+    const onEdit = vi.fn()
+    render(
+      <ActionMenu label="Actions for visit #12">
+        <ActionMenuItem onClick={onEdit}>Edit visit</ActionMenuItem>
+        <ActionMenuItem danger>Delete</ActionMenuItem>
+      </ActionMenu>
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Actions for visit #12' })
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit visit' }))
+
+    expect(onEdit).toHaveBeenCalledTimes(1)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('closes with Escape and restores focus to the trigger', () => {
+    render(
+      <ActionMenu label="Actions for Mochi">
+        <ActionMenuItem>Deactivate</ActionMenuItem>
+      </ActionMenu>
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Actions for Mochi' })
+    const menu = trigger.closest('.action-menu')
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.keyDown(menu, { key: 'Escape' })
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(trigger).toHaveFocus()
   })
 })

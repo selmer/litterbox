@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
 import Icon from './Icon'
 import { useLanguage } from '../i18n/useLanguage'
 
@@ -49,6 +49,82 @@ export function EmptyState({ icon, message, children, compact = false }) {
 
 export function StatusBadge({ tone = 'muted', children, className = '' }) {
   return <span className={`badge badge-${tone} ${className}`.trim()}>{children}</span>
+}
+
+const ActionMenuContext = createContext({ closeMenu: () => {} })
+
+export function ActionMenu({ label, children, className = '' }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+  const triggerRef = useRef(null)
+
+  function closeMenu({ restoreFocus = true } = {}) {
+    setOpen(false)
+    if (restoreFocus) triggerRef.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    function handlePointerDown(event) {
+      if (!menuRef.current?.contains(event.target)) {
+        closeMenu({ restoreFocus: false })
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
+
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeMenu()
+    }
+  }
+
+  return (
+    <div ref={menuRef} className={`action-menu ${className}`.trim()} onKeyDown={handleKeyDown}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="btn btn-secondary btn-sm action-menu__trigger"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(current => !current)}
+      >
+        <Icon name="moreHorizontal" size={16} />
+      </button>
+      {open && (
+        <div className="action-menu__menu">
+          <ActionMenuContext.Provider value={{ closeMenu }}>
+            {children}
+          </ActionMenuContext.Provider>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function ActionMenuItem({ children, href, onClick, danger = false }) {
+  const { closeMenu } = useContext(ActionMenuContext)
+  const className = `action-menu__item ${danger ? 'action-menu__item--danger' : ''}`.trim()
+
+  function handleClick(event) {
+    onClick?.(event)
+    closeMenu({ restoreFocus: false })
+  }
+
+  if (href) {
+    return <a className={className} href={href} onClick={handleClick}>{children}</a>
+  }
+
+  return (
+    <button type="button" className={className} onClick={handleClick}>
+      {children}
+    </button>
+  )
 }
 
 export function ModalShell({ title, description, children, onClose, className = '' }) {

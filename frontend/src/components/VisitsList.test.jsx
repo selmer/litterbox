@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import VisitsList from './VisitsList'
 
 const cats = [{ id: 10, name: 'Mochi' }]
@@ -57,18 +57,23 @@ describe('VisitsList', () => {
     render(<VisitsList visits={visits} cats={cats} showDiagnosticsLinks />)
 
     expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Diagnostics' })[0]).toHaveAttribute('href', '/diagnostics?visit=1')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Actions for visit #1' })[0])
+    expect(screen.getByRole('link', { name: 'Diagnostics' })).toHaveAttribute('href', '/diagnostics?visit=1')
   })
 
-  it('keeps row actions in an edit menu without inline delete confirmation', () => {
+  it('keeps row actions in an accessible compact menu without inline delete confirmation', () => {
     const onEdit = vi.fn()
     const onDelete = vi.fn()
     render(<VisitsList visits={[visits[0]]} cats={cats} onEdit={onEdit} onDelete={onDelete} />)
 
-    expect(screen.getAllByText('edit')).toHaveLength(2)
-    expect(screen.getAllByRole('button', { name: 'Edit visit' })).toHaveLength(2)
+    const triggers = screen.getAllByRole('button', { name: 'Actions for visit #1' })
+    expect(triggers).toHaveLength(2)
+
+    fireEvent.click(triggers[0])
+
+    expect(screen.getByRole('button', { name: 'Edit visit' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reassign' })).toBeNull()
-    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
     expect(screen.queryByText('Yes, delete')).toBeNull()
   })
 

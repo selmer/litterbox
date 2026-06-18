@@ -158,6 +158,7 @@ describe('CatDetail page', () => {
     renderCatDetail()
     await waitFor(() => expect(screen.getAllByText('Annual checkup').length).toBeGreaterThan(0))
 
+    fireEvent.click(screen.getAllByRole('button', { name: 'Actions for Annual checkup' })[0])
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
 
     await waitFor(() => expect(client.deleteCatEvent).toHaveBeenCalledWith('1', 10))
