@@ -114,6 +114,12 @@ const ICON_PATHS = {
       <path d="M12 8v5l3 2" />
     </>
   ),
+  close: (
+    <>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </>
+  ),
   archive: (
     <>
       <rect x="4" y="4" width="16" height="5" rx="1" />
