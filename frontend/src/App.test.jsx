@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import App from './App'
 
 vi.mock('./api/client', () => ({
@@ -34,4 +34,31 @@ describe('App navigation', () => {
     expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Diagnostics' })).not.toBeInTheDocument()
   })
+  it('selects and persists the Commodore 64 theme', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'C64' }))
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'commodore-64')
+    expect(window.localStorage.getItem('cat-health-monitor-theme')).toBe('commodore-64')
+  })
+
+  it('restores a stored Commodore 64 theme', () => {
+    window.localStorage.setItem('cat-health-monitor-theme', 'commodore-64')
+
+    render(<App />)
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'commodore-64')
+    expect(screen.getByRole('button', { name: 'C64' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('falls back to the light theme for unknown stored themes', () => {
+    window.localStorage.setItem('cat-health-monitor-theme', 'unknown-theme')
+
+    render(<App />)
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light-professional')
+    expect(window.localStorage.getItem('cat-health-monitor-theme')).toBe('light-professional')
+  })
+
 })

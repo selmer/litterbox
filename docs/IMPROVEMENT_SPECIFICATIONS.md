@@ -89,4 +89,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 054 | [Semantic Color and Theme Balance](specs/archive/054-2026-06-18-semantic-color-and-theme-balance.md) | P2 |
 | 055 | [Modal Accessibility and Ergonomics](specs/archive/055-2026-06-18-modal-accessibility-and-ergonomics.md) | P1 |
 | 056 | [Diagnostics Scan and Payload Disclosure](specs/archive/056-2026-06-18-diagnostics-scan-and-payload-disclosure.md) | P2 |
-| 057 | [Commodore 64 Theme](specs/057-2026-06-18-commodore-64-theme.md) | P2 |
+| 057 | [Commodore 64 Theme](specs/archive/057-2026-06-18-commodore-64-theme.md) | P2 |

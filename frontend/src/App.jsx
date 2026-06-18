@@ -16,11 +16,43 @@ const Admin = lazy(() => import('./pages/Admin'))
 
 const LIGHT_THEME = 'light-professional'
 const DARK_THEME = 'dark-elegant'
+const C64_THEME = 'commodore-64'
 
-function Sidebar({ theme, onToggleTheme }) {
+const THEME_OPTIONS = [
+  { id: LIGHT_THEME, labelKey: 'theme.lightProfessional', shortLabelKey: 'theme.lightShort' },
+  { id: DARK_THEME, labelKey: 'theme.darkElegant', shortLabelKey: 'theme.darkShort' },
+  { id: C64_THEME, labelKey: 'theme.commodore64', shortLabelKey: 'theme.c64Short' },
+]
+
+function normalizeTheme(value) {
+  if (value === DARK_THEME || value === 'dark') return DARK_THEME
+  if (value === C64_THEME) return C64_THEME
+  return LIGHT_THEME
+}
+
+function ThemeSelector({ theme, onThemeChange, compact = false }) {
   const { t } = useLanguage()
-  const darkTheme = theme === DARK_THEME
-  const targetThemeLabel = darkTheme ? t('theme.lightProfessional') : t('theme.darkElegant')
+
+  return (
+    <div className={`theme-selector ${compact ? 'theme-selector--compact' : ''}`} role="group" aria-label={t('theme.selectTheme')}>
+      {THEME_OPTIONS.map(option => (
+        <button
+          key={option.id}
+          type="button"
+          className={`theme-option ${theme === option.id ? 'active' : ''}`}
+          onClick={() => onThemeChange(option.id)}
+          aria-pressed={theme === option.id}
+          title={t(option.labelKey)}
+        >
+          {t(compact ? option.shortLabelKey : option.labelKey)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Sidebar({ theme, onThemeChange }) {
+  const { t } = useLanguage()
 
   return (
     <aside className="sidebar">
@@ -54,14 +86,7 @@ function Sidebar({ theme, onToggleTheme }) {
       </nav>
 
       <div className="sidebar-footer">
-        <button
-          className="btn btn-secondary btn-sm w-full theme-toggle"
-          onClick={onToggleTheme}
-          aria-label={t('theme.switchTo', { theme: targetThemeLabel })}
-        >
-          <Icon name={darkTheme ? 'sun' : 'moon'} size={15} />
-          {targetThemeLabel}
-        </button>
+        <ThemeSelector theme={theme} onThemeChange={onThemeChange} />
       </div>
     </aside>
   )
@@ -71,7 +96,7 @@ function AppShell() {
   const { t } = useLanguage()
   const [theme, setTheme] = useState(() => {
     const storedTheme = localStorage.getItem('cat-health-monitor-theme') || localStorage.getItem('theme')
-    return storedTheme === DARK_THEME || storedTheme === 'dark' ? DARK_THEME : LIGHT_THEME
+    return normalizeTheme(storedTheme)
   })
 
   useEffect(() => {
@@ -79,24 +104,14 @@ function AppShell() {
     localStorage.setItem('cat-health-monitor-theme', theme)
   }, [theme])
 
-  const darkTheme = theme === DARK_THEME
-  const targetThemeLabel = darkTheme ? t('theme.lightProfessional') : t('theme.darkElegant')
-  const toggleTheme = () => setTheme(current => current === DARK_THEME ? LIGHT_THEME : DARK_THEME)
-
   return (
     <div className="app-shell">
       <header className="mobile-header">
         <span className="mobile-logo">{t('app.name')}</span>
-        <button
-          className="btn btn-secondary btn-sm mobile-theme-toggle"
-          onClick={toggleTheme}
-          aria-label={t('theme.switchTo', { theme: targetThemeLabel })}
-        >
-          <Icon name={darkTheme ? 'sun' : 'moon'} size={15} />
-        </button>
+        <ThemeSelector theme={theme} onThemeChange={setTheme} compact />
       </header>
 
-      <Sidebar theme={theme} onToggleTheme={toggleTheme} />
+      <Sidebar theme={theme} onThemeChange={setTheme} />
       <main className="main-content">
         <Suspense fallback={<div className="loading">{t('state.loading')}</div>}>
           <Routes>
