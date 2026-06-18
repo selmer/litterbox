@@ -141,110 +141,143 @@ export default function Admin() {
         actions={<StatusBadge tone="accent">{t('status.backupV1')}</StatusBadge>}
       />
 
-      <div className="admin-layout">
-
-        <section className="card admin-section">
-          <div className="admin-section__header">
-            <div className="admin-section__icon" aria-hidden="true">
-              <Icon name="activity" size={18} />
-            </div>
-            <div>
-              <h3>{t('admin.languageTitle')}</h3>
-              <p>{t('admin.languageDescription')}</p>
-            </div>
+      <div className="admin-page-sections">
+        <section className="admin-group" aria-labelledby="admin-preferences-title">
+          <div className="admin-group__heading">
+            <h2 id="admin-preferences-title">{t('admin.preferences')}</h2>
+            <p>{t('admin.preferencesDescription')}</p>
           </div>
-          <select
-            className="form-input"
-            value={language}
-            onChange={event => setLanguage(event.target.value)}
-            aria-label={t('admin.languageTitle')}
-          >
-            {languages.map(item => (
-              <option key={item.code} value={item.code}>{item.label}</option>
-            ))}
-          </select>
+          <div className="admin-layout admin-layout--single">
+            <section className="card admin-section">
+              <div className="admin-section__header">
+                <div className="admin-section__icon" aria-hidden="true">
+                  <Icon name="activity" size={18} />
+                </div>
+                <div>
+                  <h3>{t('admin.languageTitle')}</h3>
+                  <p>{t('admin.languageDescription')}</p>
+                </div>
+              </div>
+              <select
+                className="form-input"
+                value={language}
+                onChange={event => setLanguage(event.target.value)}
+                aria-label={t('admin.languageTitle')}
+              >
+                {languages.map(item => (
+                  <option key={item.code} value={item.code}>{item.label}</option>
+                ))}
+              </select>
+            </section>
+          </div>
         </section>
 
-        <section className="card admin-section">
-          <div className="admin-section__header">
-            <div className="admin-section__icon" aria-hidden="true">
-              <Icon name="activity" size={18} />
-            </div>
-            <div>
-              <h3>{t('admin.operationalTools')}</h3>
-              <p>{t('admin.operationalToolsDescription')}</p>
-            </div>
+        <section className="admin-group" aria-labelledby="admin-operations-title">
+          <div className="admin-group__heading">
+            <h2 id="admin-operations-title">{t('admin.operations')}</h2>
+            <p>{t('admin.operationsDescription')}</p>
           </div>
-          <Link className="btn btn-secondary" to="/diagnostics">
-            <Icon name="activity" size={16} />
-            {t('nav.diagnostics')}
-          </Link>
+          <div className="admin-layout admin-layout--single">
+            <section className="card admin-section">
+              <div className="admin-section__header">
+                <div className="admin-section__icon" aria-hidden="true">
+                  <Icon name="activity" size={18} />
+                </div>
+                <div>
+                  <h3>{t('admin.operationalTools')}</h3>
+                  <p>{t('admin.operationalToolsDescription')}</p>
+                </div>
+              </div>
+              <Link className="btn btn-secondary" to="/diagnostics">
+                <Icon name="activity" size={16} />
+                {t('nav.diagnostics')}
+              </Link>
+            </section>
+          </div>
         </section>
 
-        <section className="card admin-section">
-          <div className="admin-section__header">
-            <div className="admin-section__icon" aria-hidden="true">
-              <Icon name="download" size={18} />
-            </div>
-            <div>
-              <h3>{t('admin.createBackup')}</h3>
-              <p>{t('admin.createBackupDescription')}</p>
-            </div>
+        <section className="admin-group" aria-labelledby="admin-backup-title">
+          <div className="admin-group__heading">
+            <h2 id="admin-backup-title">{t('admin.backup')}</h2>
+            <p>{t('admin.backupDescription')}</p>
           </div>
-          <button className="btn btn-primary" type="button" onClick={handleBackup} disabled={backupLoading}>
-            <Icon name="download" size={16} />
-            {backupLoading ? t('common.preparing') : t('admin.downloadBackup')}
-          </button>
+          <div className="admin-layout admin-layout--single">
+            <section className="card admin-section">
+              <div className="admin-section__header">
+                <div className="admin-section__icon" aria-hidden="true">
+                  <Icon name="download" size={18} />
+                </div>
+                <div>
+                  <h3>{t('admin.createBackup')}</h3>
+                  <p>{t('admin.createBackupDescription')}</p>
+                </div>
+              </div>
+              <button className="btn btn-primary" type="button" onClick={handleBackup} disabled={backupLoading}>
+                <Icon name="download" size={16} />
+                {backupLoading ? t('common.preparing') : t('admin.downloadBackup')}
+              </button>
+            </section>
+          </div>
         </section>
 
-        <section className="card admin-section">
-          <div className="admin-section__header">
-            <div className="admin-section__icon" aria-hidden="true">
-              <Icon name="upload" size={18} />
-            </div>
-            <div>
-              <h3>{t('admin.restoreBackup')}</h3>
-              <p>{t('admin.restoreBackupDescription')}</p>
-            </div>
+        <section className="admin-group admin-group--danger" aria-labelledby="admin-danger-title">
+          <div className="admin-group__heading">
+            <h2 id="admin-danger-title">{t('admin.dangerZone')}</h2>
+            <p>{t('admin.dangerZoneDescription')}</p>
           </div>
+          <div className="admin-layout admin-layout--single">
+            <section className="card admin-section admin-section--danger">
+              <div className="admin-section__header">
+                <div className="admin-section__icon" aria-hidden="true">
+                  <Icon name="upload" size={18} />
+                </div>
+                <div>
+                  <h3>{t('admin.restoreBackup')}</h3>
+                  <p>{t('admin.restoreBackupDescription')}</p>
+                </div>
+              </div>
 
-          <label className="admin-file-picker">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".zip,application/zip"
-              onChange={handleFileChange}
-              disabled={restoreLoading}
-            />
-            <Icon name="upload" size={16} />
-            <span>{selectedFile ? selectedFile.name : t('admin.chooseBackupArchive')}</span>
-          </label>
+              <p className="admin-danger-note">{t('admin.restoreWarning')}</p>
 
-          {validation ? (
-            <>
-              <ValidationSummary validation={validation} locale={locale} t={t} />
-              <label className="admin-confirm">
+              <label className="admin-file-picker">
                 <input
-                  type="checkbox"
-                  checked={confirmRestore}
-                  onChange={event => setConfirmRestore(event.target.checked)}
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={handleFileChange}
                   disabled={restoreLoading}
                 />
-                <span>{t('admin.confirmRestore')}</span>
+                <Icon name="upload" size={16} />
+                <span>{selectedFile ? selectedFile.name : t('admin.chooseBackupArchive')}</span>
               </label>
-              <button
-                className="btn btn-danger"
-                type="button"
-                onClick={handleRestore}
-                disabled={!restoreReady || restoreLoading}
-              >
-                <Icon name="restore" size={16} />
-                {restoreLoading ? t('common.restoring') : t('admin.restoreBackup')}
-              </button>
-            </>
-          ) : (
-            <EmptyState icon={<Icon name="archive" />} message={t('admin.noBackupSelected')} compact />
-          )}
+
+              {validation ? (
+                <>
+                  <ValidationSummary validation={validation} locale={locale} t={t} />
+                  <label className="admin-confirm">
+                    <input
+                      type="checkbox"
+                      checked={confirmRestore}
+                      onChange={event => setConfirmRestore(event.target.checked)}
+                      disabled={restoreLoading}
+                    />
+                    <span>{t('admin.confirmRestore')}</span>
+                  </label>
+                  <button
+                    className="btn btn-danger"
+                    type="button"
+                    onClick={handleRestore}
+                    disabled={!restoreReady || restoreLoading}
+                  >
+                    <Icon name="restore" size={16} />
+                    {restoreLoading ? t('common.restoring') : t('admin.restoreBackup')}
+                  </button>
+                </>
+              ) : (
+                <EmptyState icon={<Icon name="archive" />} message={t('admin.noBackupSelected')} compact />
+              )}
+            </section>
+          </div>
         </section>
       </div>
     </div>

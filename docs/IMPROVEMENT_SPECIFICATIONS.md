@@ -85,7 +85,7 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 050 | [Visits Partial Period Averages](specs/archive/050-2026-06-15-visits-partial-period-averages.md) | P1 |
 | 051 | [Responsive Data Layout Standardization](specs/archive/051-2026-06-18-responsive-data-layout-standardization.md) | P1 |
 | 052 | [Action Menu Affordance Polish](specs/052-2026-06-18-action-menu-affordance-polish.md) | P2 |
-| 053 | [Admin Information Architecture and Danger Zone](specs/053-2026-06-18-admin-information-architecture-and-danger-zone.md) | P1 |
+| 053 | [Admin Information Architecture and Danger Zone](specs/archive/053-2026-06-18-admin-information-architecture-and-danger-zone.md) | P1 |
 | 054 | [Semantic Color and Theme Balance](specs/054-2026-06-18-semantic-color-and-theme-balance.md) | P2 |
 | 055 | [Modal Accessibility and Ergonomics](specs/archive/055-2026-06-18-modal-accessibility-and-ergonomics.md) | P1 |
 | 056 | [Diagnostics Scan and Payload Disclosure](specs/archive/056-2026-06-18-diagnostics-scan-and-payload-disclosure.md) | P2 |
