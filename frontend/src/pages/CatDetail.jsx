@@ -222,6 +222,60 @@ function EventForm({ initial, onSave, onCancel, cats = [], currentCatId, t }) {
   )
 }
 
+function getSharedCatLabel(event, currentCatName, t) {
+  if ((event.cat_names || []).length <= 1) return null
+  const names = event.cat_names.filter(name => name !== currentCatName).join(', ') || t('catDetail.multipleCats')
+  return t('catDetail.sharedWith', { names })
+}
+
+function CatEventMobileCard({ row, cat, locale, t, onEdit, onDelete }) {
+  if (row.kind === 'birthday') {
+    return (
+      <article className="cat-event-card cat-event-card--birthday" role="listitem">
+        <div className="cat-event-card__header">
+          <div>
+            <span className="cat-event-card__date">{formatBirthDate(cat.birth_date, locale, t)}</span>
+            <h3>{t('catDetail.born')}</h3>
+          </div>
+          <StatusBadge tone="accent">{t('catDetail.birthday')}</StatusBadge>
+        </div>
+        <p>{t('catDetail.profileBirthday')}</p>
+      </article>
+    )
+  }
+
+  const { event } = row
+  const sharedLabel = getSharedCatLabel(event, cat.name, t)
+
+  return (
+    <article className="cat-event-card" role="listitem">
+      <div className="cat-event-card__header">
+        <div>
+          <span className="cat-event-card__date">{formatEventDate(event.occurred_at, locale, t)}</span>
+          <h3>{event.title}</h3>
+          {sharedLabel && <div className="cat-event-shared-label">{sharedLabel}</div>}
+        </div>
+        <StatusBadge tone="muted">{t(`event.${event.event_type}`)}</StatusBadge>
+      </div>
+      <dl className="cat-event-card__details">
+        <div>
+          <dt>{t('field.notes')}</dt>
+          <dd>{event.notes || '-'}</dd>
+        </div>
+        <div>
+          <dt>{t('field.cost')}</dt>
+          <dd>{formatCost(event)}</dd>
+        </div>
+      </dl>
+      <div className="cat-event-actions">
+        <button className="btn btn-secondary btn-sm" onClick={() => onEdit(event)}>{t('common.editDisplay')}</button>
+        <button className="btn btn-secondary btn-sm text-danger" onClick={() => onDelete(event)}>{t('common.delete')}</button>
+      </div>
+    </article>
+  )
+}
+
+
 export default function CatDetail() {
   const { catId } = useParams()
   const [cat, setCat] = useState(null)
@@ -385,31 +439,28 @@ export default function CatDetail() {
               if (row.kind === 'birthday') {
                 return (
                   <tr key="birthday" className="cat-event-row cat-event-row--birthday">
-                    <td data-label={t('field.date')}>{formatBirthDate(cat.birth_date, locale, t)}</td>
-                    <td data-label={t('field.type')}><StatusBadge tone="accent">{t('catDetail.birthday')}</StatusBadge></td>
-                    <td data-label={t('field.title')}>{t('catDetail.born')}</td>
-                    <td data-label={t('field.notes')}>{t('catDetail.profileBirthday')}</td>
-                    <td data-label={t('field.cost')}>-</td>
-                    <td data-label={t('field.actions')}>-</td>
+                    <td>{formatBirthDate(cat.birth_date, locale, t)}</td>
+                    <td><StatusBadge tone="accent">{t('catDetail.birthday')}</StatusBadge></td>
+                    <td>{t('catDetail.born')}</td>
+                    <td>{t('catDetail.profileBirthday')}</td>
+                    <td>-</td>
+                    <td>-</td>
                   </tr>
                 )
               }
               const { event } = row
+              const sharedLabel = getSharedCatLabel(event, cat.name, t)
               return (
                 <tr key={event.id} className="cat-event-row">
-                  <td data-label={t('field.date')}>{formatEventDate(event.occurred_at, locale, t)}</td>
-                  <td data-label={t('field.type')}><StatusBadge tone="muted">{t(`event.${event.event_type}`)}</StatusBadge></td>
-                  <td data-label={t('field.title')} className="text-primary">
+                  <td>{formatEventDate(event.occurred_at, locale, t)}</td>
+                  <td><StatusBadge tone="muted">{t(`event.${event.event_type}`)}</StatusBadge></td>
+                  <td className="text-primary">
                     <div>{event.title}</div>
-                    {(event.cat_names || []).length > 1 && (
-                      <div className="cat-event-shared-label">
-                        {t('catDetail.sharedWith', { names: event.cat_names.filter(name => name !== cat.name).join(', ') || t('catDetail.multipleCats') })}
-                      </div>
-                    )}
+                    {sharedLabel && <div className="cat-event-shared-label">{sharedLabel}</div>}
                   </td>
-                  <td data-label={t('field.notes')}>{event.notes || '-'}</td>
-                  <td data-label={t('field.cost')}>{formatCost(event)}</td>
-                  <td data-label={t('field.actions')}>
+                  <td>{event.notes || '-'}</td>
+                  <td>{formatCost(event)}</td>
+                  <td>
                     <div className="cat-event-actions">
                       <button className="btn btn-secondary btn-sm" onClick={() => setEditingEvent(event)}>{t('common.editDisplay')}</button>
                       <button className="btn btn-secondary btn-sm text-danger" onClick={() => handleDeleteEvent(event)}>{t('common.delete')}</button>
@@ -428,6 +479,22 @@ export default function CatDetail() {
           </tbody>
         </table>
       </section>
+
+      {timelineRows.length > 0 && (
+        <div className="cat-event-card-list" role="list" aria-label={t('catDetail.events')}>
+          {timelineRows.map(row => (
+            <CatEventMobileCard
+              key={row.kind === 'birthday' ? 'birthday-card' : row.event.id}
+              row={row}
+              cat={cat}
+              locale={locale}
+              t={t}
+              onEdit={setEditingEvent}
+              onDelete={handleDeleteEvent}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -74,9 +74,10 @@ describe('CatDetail page', () => {
     await waitFor(() => expect(screen.getAllByRole('heading', { name: 'Plurk' }).length).toBeGreaterThanOrEqual(1))
     expect(screen.getByText('3.860 kg')).toBeInTheDocument()
     expect(screen.getAllByText('18 May 2020').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Annual checkup')).toBeInTheDocument()
-    expect(screen.getByText('EUR 45.50')).toBeInTheDocument()
-    expect(screen.getByText('Born')).toBeInTheDocument()
+    expect(screen.getAllByText('Annual checkup').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('EUR 45.50').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('Born').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByRole('list', { name: 'Events' })).toBeInTheDocument()
   })
 
   it('creates an event from the form', async () => {
@@ -93,7 +94,7 @@ describe('CatDetail page', () => {
     }
     client.createCatEvent.mockResolvedValue(created)
     renderCatDetail()
-    await waitFor(() => screen.getByText('Annual checkup'))
+    await waitFor(() => expect(screen.getAllByText('Annual checkup').length).toBeGreaterThan(0))
 
     fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'medication' } })
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-18' } })
@@ -109,7 +110,7 @@ describe('CatDetail page', () => {
       cost_currency: 'EUR',
       cat_ids: [1],
     })))
-    await waitFor(() => expect(screen.getByText('Started medication')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Started medication').length).toBeGreaterThan(0))
   })
 
 
@@ -123,7 +124,7 @@ describe('CatDetail page', () => {
     }
     client.createCatEvent.mockResolvedValue(created)
     renderCatDetail()
-    await waitFor(() => screen.getByText('Annual checkup'))
+    await waitFor(() => expect(screen.getAllByText('Annual checkup').length).toBeGreaterThan(0))
 
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-05-18' } })
     await userEvent.type(screen.getByPlaceholderText('e.g. Annual checkup'), 'Shared vaccination')
@@ -149,15 +150,15 @@ describe('CatDetail page', () => {
 
     renderCatDetail()
 
-    await waitFor(() => expect(screen.getByText('Shared with Miez')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Shared with Miez').length).toBeGreaterThanOrEqual(2))
   })
 
   it('deletes an event', async () => {
     client.deleteCatEvent.mockResolvedValue()
     renderCatDetail()
-    await waitFor(() => screen.getByText('Annual checkup'))
+    await waitFor(() => expect(screen.getAllByText('Annual checkup').length).toBeGreaterThan(0))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
 
     await waitFor(() => expect(client.deleteCatEvent).toHaveBeenCalledWith('1', 10))
     await waitFor(() => expect(screen.queryByText('Annual checkup')).toBeNull())

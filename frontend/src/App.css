@@ -1913,3 +1913,121 @@
     flex-direction: column;
   }
 }
+
+/* ===================== RESPONSIVE DATA CARDS ===================== */
+.cat-event-card-list,
+.diagnostics-card-list {
+  display: none;
+}
+
+.cat-event-card,
+.diagnostics-data-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--card-background);
+  box-shadow: var(--shadow-sm);
+}
+
+.cat-event-card--birthday,
+.diagnostics-data-card--highlighted {
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border-soft));
+}
+
+.cat-event-card__header,
+.diagnostics-data-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.cat-event-card__header h3,
+.diagnostics-data-card__header strong {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.cat-event-card__date,
+.diagnostics-data-card__timestamp,
+.diagnostics-data-card__header span {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.cat-event-card p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.cat-event-card__details,
+.diagnostics-data-card__details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.diagnostics-data-card__details {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.cat-event-card__details dt,
+.diagnostics-data-card__details dt {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cat-event-card__details dd,
+.diagnostics-data-card__details dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .cat-event-table-card,
+  .diagnostics-section .diagnostics-table {
+    display: none;
+  }
+
+  .cat-event-card-list,
+  .diagnostics-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .cat-event-card__header,
+  .diagnostics-data-card__header {
+    flex-direction: column;
+  }
+
+  .cat-event-card__details,
+  .diagnostics-data-card__details {
+    grid-template-columns: 1fr;
+  }
+
+  .cat-event-card .cat-event-actions {
+    width: 100%;
+  }
+
+  .cat-event-card .cat-event-actions .btn {
+    flex: 1;
+  }
+}

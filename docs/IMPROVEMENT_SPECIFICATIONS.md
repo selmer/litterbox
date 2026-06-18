@@ -83,7 +83,7 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 048 | [Shared Cat Lifecycle Events](specs/archive/048-2026-06-10-shared-cat-lifecycle-events.md) | P1 |
 | 049 | [Visits Aggregate History View](specs/archive/049-2026-06-15-visits-aggregate-history-view.md) | P1 |
 | 050 | [Visits Partial Period Averages](specs/archive/050-2026-06-15-visits-partial-period-averages.md) | P1 |
-| 051 | [Responsive Data Layout Standardization](specs/051-2026-06-18-responsive-data-layout-standardization.md) | P1 |
+| 051 | [Responsive Data Layout Standardization](specs/archive/051-2026-06-18-responsive-data-layout-standardization.md) | P1 |
 | 052 | [Action Menu Affordance Polish](specs/052-2026-06-18-action-menu-affordance-polish.md) | P2 |
 | 053 | [Admin Information Architecture and Danger Zone](specs/053-2026-06-18-admin-information-architecture-and-danger-zone.md) | P1 |
 | 054 | [Semantic Color and Theme Balance](specs/054-2026-06-18-semantic-color-and-theme-balance.md) | P2 |

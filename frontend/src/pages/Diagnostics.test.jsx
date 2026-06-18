@@ -88,8 +88,10 @@ describe('Diagnostics page', () => {
     expect(screen.getAllByText('Healthy').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Open visits').length).toBeGreaterThan(0)
     expect(screen.getAllByText('#73').length).toBeGreaterThan(0)
-    expect(screen.getByText('reconciliation_attempt')).toBeInTheDocument()
+    expect(screen.getAllByText('reconciliation_attempt').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText((_, element) => element?.textContent === 'GET /diagnostics/summary')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Open visits' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Recent visit diagnostics' })).toBeInTheDocument()
     expect(client.getDiagnosticsSummary).toHaveBeenCalled()
   })
 

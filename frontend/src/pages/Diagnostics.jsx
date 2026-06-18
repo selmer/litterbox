@@ -84,6 +84,46 @@ function DiagnosticsEvent({ event, highlighted, locale }) {
   )
 }
 
+function OpenVisitMobileCard({ visit, locale, t }) {
+  return (
+    <article className="diagnostics-data-card" role="listitem">
+      <div className="diagnostics-data-card__header">
+        <Link to={`/diagnostics?visit=${visit.id}`} className="text-mono">#{visit.id}</Link>
+        <span>{visit.duration_source}</span>
+      </div>
+      <dl className="diagnostics-data-card__details">
+        <div>
+          <dt>{t('field.started')}</dt>
+          <dd>{formatDateTime(visit.started_at, locale)}</dd>
+        </div>
+        <div>
+          <dt>{t('field.duration')}</dt>
+          <dd>{formatDuration(visit.age_seconds)}</dd>
+        </div>
+        <div>
+          <dt>{t('field.weight')}</dt>
+          <dd>{formatWeight(visit.weight_kg)}</dd>
+        </div>
+      </dl>
+    </article>
+  )
+}
+
+function DiagnosticsEventMobileCard({ event, highlighted, locale }) {
+  return (
+    <article className={`diagnostics-data-card ${highlighted ? 'diagnostics-data-card--highlighted' : ''}`.trim()} role="listitem">
+      <div className="diagnostics-data-card__header">
+        <span className="text-mono">#{event.visit_id}</span>
+        <strong>{event.event_type}</strong>
+      </div>
+      <div className="diagnostics-data-card__timestamp text-mono">
+        {formatDateTime(event.recorded_at, locale)}
+      </div>
+      <JsonSnippet value={event.payload} />
+    </article>
+  )
+}
+
 export default function Diagnostics() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -166,28 +206,35 @@ export default function Diagnostics() {
           {summary.open_visits.visits.length === 0 ? (
             <EmptyState icon={<Icon name="visits" />} message={t('diagnostics.noOpenVisits')} compact />
           ) : (
-            <table className="table diagnostics-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>{t('field.started')}</th>
-                  <th>{t('field.duration')}</th>
-                  <th>{t('field.weight')}</th>
-                  <th>{t('field.source')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.open_visits.visits.map(visit => (
-                  <tr key={visit.id}>
-                    <td><Link to={`/diagnostics?visit=${visit.id}`} className="text-mono">#{visit.id}</Link></td>
-                    <td className="text-mono table-small">{formatDateTime(visit.started_at, locale)}</td>
-                    <td>{formatDuration(visit.age_seconds)}</td>
-                    <td>{formatWeight(visit.weight_kg)}</td>
-                    <td>{visit.duration_source}</td>
+            <>
+              <table className="table diagnostics-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>{t('field.started')}</th>
+                    <th>{t('field.duration')}</th>
+                    <th>{t('field.weight')}</th>
+                    <th>{t('field.source')}</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {summary.open_visits.visits.map(visit => (
+                    <tr key={visit.id}>
+                      <td><Link to={`/diagnostics?visit=${visit.id}`} className="text-mono">#{visit.id}</Link></td>
+                      <td className="text-mono table-small">{formatDateTime(visit.started_at, locale)}</td>
+                      <td>{formatDuration(visit.age_seconds)}</td>
+                      <td>{formatWeight(visit.weight_kg)}</td>
+                      <td>{visit.duration_source}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="diagnostics-card-list" role="list" aria-label={t('diagnostics.openVisits')}>
+                {summary.open_visits.visits.map(visit => (
+                  <OpenVisitMobileCard key={visit.id} visit={visit} locale={locale} t={t} />
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </section>
 
@@ -214,26 +261,38 @@ export default function Diagnostics() {
         {summary.recent_diagnostics.length === 0 ? (
           <EmptyState icon={<Icon name="activity" />} message={t('diagnostics.none')} compact />
         ) : (
-          <table className="table diagnostics-table diagnostics-events-table">
-            <thead>
-              <tr>
-                <th>{t('diagnostics.visit')}</th>
-                <th>{t('diagnostics.event')}</th>
-                <th>{t('diagnostics.recorded')}</th>
-                <th>{t('diagnostics.payload')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <table className="table diagnostics-table diagnostics-events-table">
+              <thead>
+                <tr>
+                  <th>{t('diagnostics.visit')}</th>
+                  <th>{t('diagnostics.event')}</th>
+                  <th>{t('diagnostics.recorded')}</th>
+                  <th>{t('diagnostics.payload')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.recent_diagnostics.map(event => (
+                  <DiagnosticsEvent
+                    key={event.id}
+                    event={event}
+                    highlighted={highlightedVisitId && String(event.visit_id) === highlightedVisitId}
+                    locale={locale}
+                  />
+                ))}
+              </tbody>
+            </table>
+            <div className="diagnostics-card-list diagnostics-card-list--events" role="list" aria-label={t('diagnostics.recentVisitDiagnostics')}>
               {summary.recent_diagnostics.map(event => (
-                <DiagnosticsEvent
+                <DiagnosticsEventMobileCard
                   key={event.id}
                   event={event}
                   highlighted={highlightedVisitId && String(event.visit_id) === highlightedVisitId}
                   locale={locale}
                 />
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </section>
 
