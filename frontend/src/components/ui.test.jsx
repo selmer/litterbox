@@ -85,7 +85,7 @@ describe('ModalShell', () => {
 describe('ActionMenu', () => {
   it('uses an accessible icon trigger and closes after action selection', () => {
     const onEdit = vi.fn()
-    render(
+    const { container } = render(
       <ActionMenu label="Actions for visit #12">
         <ActionMenuItem onClick={onEdit}>Edit visit</ActionMenuItem>
         <ActionMenuItem danger>Delete</ActionMenuItem>
@@ -95,6 +95,8 @@ describe('ActionMenu', () => {
     const trigger = screen.getByRole('button', { name: 'Actions for visit #12' })
     fireEvent.click(trigger)
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.action-menu__menu')).toBeNull()
+    expect(document.body.querySelector('.action-menu__menu')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit visit' }))
 

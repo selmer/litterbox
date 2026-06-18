@@ -178,7 +178,7 @@
 .cat-card__actions {
   width: 100%;
   padding: var(--space-4) var(--space-6);
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: color-mix(in srgb, var(--bg-subtle) 68%, transparent);
 }
 
 .cat-card__placeholder-text {
@@ -261,7 +261,8 @@
 
 .health-signal--info,
 .cat-card__signal--info {
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: var(--info-soft);
+  border-color: var(--info-border);
 }
 
 .cat-card__signal {
@@ -315,19 +316,19 @@
 
 .chart-range-btn:hover {
   color: var(--text-primary);
-  border-color: var(--accent-border);
+  border-color: var(--selection-border);
 }
 
 .chart-range-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent-border);
+  background: var(--selection-bg);
+  color: var(--selection-text);
+  border-color: var(--selection-border);
 }
 
 [data-theme="dark-elegant"] .chart-range-btn.active {
-  background: var(--accent);
+  background: var(--selection-bg);
   color: #FFFFFF;
-  border-color: var(--accent);
+  border-color: var(--selection-border);
 }
 
 .chart-tooltip {
@@ -1011,15 +1012,15 @@
 }
 
 .filter-chip.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent-border);
+  background: var(--selection-bg);
+  color: var(--selection-text);
+  border-color: var(--selection-border);
 }
 
 [data-theme="dark-elegant"] .filter-chip.active {
   color: #FFFFFF;
-  background: rgba(139, 108, 255, 0.28);
-  border-color: rgba(139, 108, 255, 0.32);
+  background: var(--selection-bg);
+  border-color: var(--selection-border);
 }
 
 .filter-chip--warning.active {
@@ -1097,8 +1098,8 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 42%, transparent);
+  background: var(--data-1);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--data-1) 35%, transparent);
   flex-shrink: 0;
 }
 
@@ -1370,8 +1371,8 @@
 
 .cat-event-form__cat-option:has(input:checked) {
   color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border-soft));
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--selection-border);
+  background: var(--selection-bg);
 }
 
 .cat-event-form__cat-option input:disabled {
@@ -1539,7 +1540,7 @@
 }
 
 .diagnostics-row-highlight {
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  background: var(--highlight-bg);
 }
 
 .diagnostics-display-preview {
@@ -1961,8 +1962,8 @@
 
 .cat-event-card--birthday,
 .diagnostics-data-card--highlighted {
-  background: color-mix(in srgb, var(--accent) 7%, var(--bg-card));
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border-soft));
+  background: var(--highlight-bg);
+  border-color: var(--highlight-border);
 }
 
 .cat-event-card__header,

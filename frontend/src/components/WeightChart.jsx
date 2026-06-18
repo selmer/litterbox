@@ -33,8 +33,7 @@ function formatKg(value) {
   return `${number.toFixed(1)} kg`
 }
 
-// One colour per cat — accent for first, then a softer second
-const CAT_COLORS = ['var(--chart-line)', 'var(--success)', '#38BDF8', '#F59E0B']
+const CAT_COLORS = ['var(--data-1)', 'var(--data-2)', 'var(--data-3)', 'var(--data-4)', 'var(--data-5)', 'var(--data-6)']
 
 function CustomTooltip({ active, payload, label, t, dateLocale }) {
   const rows = payload?.filter(entry => Number.isFinite(Number(entry.value))) || []

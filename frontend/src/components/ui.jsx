@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Icon from './Icon'
 import { useLanguage } from '../i18n/useLanguage'
 
@@ -55,7 +56,9 @@ const ActionMenuContext = createContext({ closeMenu: () => {} })
 
 export function ActionMenu({ label, children, className = '' }) {
   const [open, setOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState(null)
   const menuRef = useRef(null)
+  const popupRef = useRef(null)
   const triggerRef = useRef(null)
 
   function closeMenu({ restoreFocus = true } = {}) {
@@ -63,11 +66,33 @@ export function ActionMenu({ label, children, className = '' }) {
     if (restoreFocus) triggerRef.current?.focus()
   }
 
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return undefined
+
+    function updatePosition() {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setMenuStyle({
+        position: 'fixed',
+        top: `${Math.round(rect.bottom + 6)}px`,
+        right: `${Math.max(8, Math.round(window.innerWidth - rect.right))}px`,
+      })
+    }
+
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return undefined
 
     function handlePointerDown(event) {
-      if (!menuRef.current?.contains(event.target)) {
+      const target = event.target
+      if (!menuRef.current?.contains(target) && !popupRef.current?.contains(target)) {
         closeMenu({ restoreFocus: false })
       }
     }
@@ -83,6 +108,14 @@ export function ActionMenu({ label, children, className = '' }) {
     }
   }
 
+  const popup = open && (
+    <div ref={popupRef} className="action-menu__menu" style={menuStyle || undefined} onKeyDown={handleKeyDown}>
+      <ActionMenuContext.Provider value={{ closeMenu }}>
+        {children}
+      </ActionMenuContext.Provider>
+    </div>
+  )
+
   return (
     <div ref={menuRef} className={`action-menu ${className}`.trim()} onKeyDown={handleKeyDown}>
       <button
@@ -96,13 +129,7 @@ export function ActionMenu({ label, children, className = '' }) {
       >
         <Icon name="moreHorizontal" size={16} />
       </button>
-      {open && (
-        <div className="action-menu__menu">
-          <ActionMenuContext.Provider value={{ closeMenu }}>
-            {children}
-          </ActionMenuContext.Provider>
-        </div>
-      )}
+      {popup && createPortal(popup, document.body)}
     </div>
   )
 }

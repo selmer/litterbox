@@ -34,8 +34,8 @@
   --bg-sidebar: #FFFFFF;
   --bg-card: #FFFFFF;
   --bg-card-elevated: #FFFFFF;
-  --bg-subtle: #F4F1FF;
-  --bg-hover: #F6F2FF;
+  --bg-subtle: #F4F6FA;
+  --bg-hover: #F1F4F9;
 
   --border-soft: #E7EAF0;
   --border: #E7EAF0;
@@ -53,12 +53,26 @@
   --accent-light: #EEE9FF;
   --accent-mid: #D9CEFF;
   --accent-border: #D9CEFF;
+  --selection-bg: #EEE9FF;
+  --selection-border: #D9CEFF;
+  --selection-text: #6847F5;
+  --info: #0284C7;
+  --info-soft: #E0F2FE;
+  --info-border: #BAE6FD;
+  --highlight-bg: #EEF6FF;
+  --highlight-border: #BBDDFE;
+  --data-1: #0EA5E9;
+  --data-2: #22C55E;
+  --data-3: #F59E0B;
+  --data-4: #EC4899;
+  --data-5: #14B8A6;
+  --data-6: #8B5CF6;
 
   --success: #22C55E;
   --green: #22C55E;
   --success-soft: #DCFCE7;
   --warning: #F59E0B;
-  --chart-line: #7C5CFF;
+  --chart-line: var(--data-1);
   --chart-grid: #E6EAF2;
 
   --shadow-sm: 0 12px 30px rgba(17, 24, 39, 0.06);
@@ -74,7 +88,7 @@
   --bg-card: #131D2E;
   --bg-card-elevated: #172236;
   --bg-subtle: #1D2940;
-  --bg-hover: rgba(139, 108, 255, 0.10);
+  --bg-hover: rgba(255, 255, 255, 0.055);
 
   --border-soft: #253247;
   --border: #253247;
@@ -92,12 +106,26 @@
   --accent-light: rgba(139, 108, 255, 0.16);
   --accent-mid: rgba(139, 108, 255, 0.38);
   --accent-border: rgba(139, 108, 255, 0.38);
+  --selection-bg: rgba(139, 108, 255, 0.20);
+  --selection-border: rgba(139, 108, 255, 0.38);
+  --selection-text: #C4B5FD;
+  --info: #38BDF8;
+  --info-soft: rgba(56, 189, 248, 0.14);
+  --info-border: rgba(56, 189, 248, 0.28);
+  --highlight-bg: rgba(56, 189, 248, 0.10);
+  --highlight-border: rgba(56, 189, 248, 0.26);
+  --data-1: #38BDF8;
+  --data-2: #34D399;
+  --data-3: #FBBF24;
+  --data-4: #F472B6;
+  --data-5: #2DD4BF;
+  --data-6: #A78BFA;
 
   --success: #34D399;
   --green: #34D399;
   --success-soft: rgba(52, 211, 153, 0.14);
   --warning: #F59E0B;
-  --chart-line: #8B6CFF;
+  --chart-line: var(--data-1);
   --chart-grid: rgba(148, 163, 184, 0.14);
 
   --shadow-sm: 0 18px 48px rgba(0, 0, 0, 0.28);
@@ -177,9 +205,9 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
+  background: var(--info-soft);
+  border: 1px solid var(--info-border);
+  color: var(--info);
 }
 
 .app-icon {
@@ -193,7 +221,7 @@ textarea {
 }
 
 .cat-avatar-icon {
-  color: var(--accent);
+  color: var(--info);
 }
 
 [data-theme="dark-elegant"] .sidebar-logo-mark {
@@ -241,15 +269,15 @@ textarea {
 }
 
 .nav-item.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent-border);
+  background: var(--selection-bg);
+  color: var(--selection-text);
+  border-color: var(--selection-border);
 }
 
 [data-theme="dark-elegant"] .nav-item.active {
   color: #FFFFFF;
-  background: linear-gradient(135deg, rgba(139, 108, 255, 0.34), rgba(139, 108, 255, 0.16));
-  border-color: rgba(139, 108, 255, 0.28);
+  background: var(--selection-bg);
+  border-color: var(--selection-border);
 }
 
 .nav-item .nav-icon {
@@ -382,7 +410,7 @@ textarea {
 .badge-green  { background: var(--success-soft); color: var(--success); border-color: color-mix(in srgb, var(--success) 16%, transparent); }
 .badge-red    { background: rgba(239, 68, 68, 0.12); color: #dc2626; border-color: rgba(239, 68, 68, 0.16); }
 .badge-yellow { background: rgba(245, 158, 11, 0.12); color: #d97706; border-color: rgba(245, 158, 11, 0.16); }
-.badge-accent { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-border); }
+.badge-accent { background: var(--info-soft); color: var(--info); border-color: var(--info-border); }
 .badge-muted  { background: var(--bg-subtle); color: var(--text-muted); border-color: var(--border-soft); }
 
 [data-theme="dark-elegant"] .badge-green {
@@ -494,11 +522,11 @@ textarea {
 .table tr:last-child td { border-bottom: none; }
 
 .visit-row:nth-child(even) td {
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: color-mix(in srgb, var(--bg-subtle) 52%, transparent);
 }
 
 .visit-row:hover td {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--bg-hover);
 }
 
 .visit-cat {
@@ -511,10 +539,10 @@ textarea {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--data-1);
   display: inline-block;
   margin-right: 10px;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--data-1) 35%, transparent);
 }
 
 /* ===================== POLLER STATUS ===================== */
