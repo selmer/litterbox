@@ -37,7 +37,7 @@ describe('App navigation', () => {
   it('selects and persists the Commodore 64 theme', () => {
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'C64' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'C64' })[0])
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'commodore-64')
     expect(window.localStorage.getItem('cat-health-monitor-theme')).toBe('commodore-64')
@@ -49,7 +49,7 @@ describe('App navigation', () => {
     render(<App />)
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'commodore-64')
-    expect(screen.getByRole('button', { name: 'C64' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getAllByRole('button', { name: 'C64' })[0]).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('falls back to the light theme for unknown stored themes', () => {

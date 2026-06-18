@@ -88,7 +88,7 @@ describe('CatDetail page', () => {
       title: 'Started medication',
       occurred_at: '2026-05-18',
       notes: null,
-      cost_amount: '12',
+      cost_amount: '12.00',
       cat_ids: [1],
       cat_names: ['Plurk'],
     }
@@ -101,15 +101,15 @@ describe('CatDetail page', () => {
 
     fireEvent.change(typeSelect, { target: { value: 'medication' } })
     fireEvent.change(dateInput, { target: { value: '2026-05-18' } })
-    await userEvent.type(titleInput, 'Started medication')
-    await userEvent.type(costInput, '12.00')
-    fireEvent.click(screen.getByRole('button', { name: 'Add event' }))
+    fireEvent.change(titleInput, { target: { value: 'Started medication' } })
+    fireEvent.change(costInput, { target: { value: '12.00' } })
+    fireEvent.submit(titleInput.closest('form'))
 
     await waitFor(() => expect(client.createCatEvent).toHaveBeenCalledWith('1', expect.objectContaining({
       event_type: 'medication',
       title: 'Started medication',
       occurred_at: '2026-05-18',
-      cost_amount: '12',
+      cost_amount: '12.00',
       cost_currency: 'EUR',
       cat_ids: [1],
     })))

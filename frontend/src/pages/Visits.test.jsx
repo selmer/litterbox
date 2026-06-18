@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import Visits from './Visits'
 import { ToastProvider } from '../components/Toast'
 import * as client from '../api/client'
@@ -74,7 +74,7 @@ function renderVisits() {
 }
 
 async function switchToDetails() {
-  fireEvent.click(await screen.findByRole('button', { name: 'Details' }))
+  fireEvent.click(within(await screen.findByLabelText('Visit view modes')).getByRole('button', { name: 'Details' }))
   await waitFor(() => expect(client.getVisits).toHaveBeenCalled())
 }
 
@@ -116,7 +116,7 @@ describe('Visits page', () => {
 
   it('opens summary details as a bounded details query', async () => {
     renderVisits()
-    fireEvent.click((await screen.findAllByRole('button', { name: 'View details' }))[0])
+    fireEvent.click(within(await screen.findByRole('table')).getByRole('button', { name: 'Details' }))
 
     await waitFor(() => expect(client.getVisits).toHaveBeenCalledWith(
       expect.objectContaining({

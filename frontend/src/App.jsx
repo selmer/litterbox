@@ -86,7 +86,7 @@ function Sidebar({ theme, onThemeChange }) {
       </nav>
 
       <div className="sidebar-footer">
-        <ThemeSelector theme={theme} onThemeChange={onThemeChange} />
+        <ThemeSelector theme={theme} onThemeChange={onThemeChange} compact />
       </div>
     </aside>
   )
