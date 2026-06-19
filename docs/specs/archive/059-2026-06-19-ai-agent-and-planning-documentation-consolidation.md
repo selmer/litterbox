@@ -8,13 +8,13 @@ Repository documentation, GitHub automation, active planning files, and agent ha
 ## Summary
 
 - Remove Claude-specific GitHub workflows and documentation.
-- Consolidate agent instructions into one canonical repo document.
+- Consolidate agent instructions into a root bootstrap plus one canonical repo guidance document.
 - Remove or archive old AI planning folders that are not part of the current spec-driven workflow.
 - Update README documentation links so contributors know where current planning and agent guidance live.
 
 ## Problem
 
-The repository still contains Claude-specific workflows and planning artifacts even though project operation now assumes Codex is the only AI agent. Multiple agent instruction surfaces create ambiguity about which rules apply, and old planning folders make it harder to distinguish active specs from historical notes.
+The repository still contains Claude-specific workflows and planning artifacts even though project operation now assumes Codex is the only AI agent. Multiple agent instruction surfaces create ambiguity about which rules apply, and old planning folders make it harder to distinguish active specs from historical notes. The root `AGENTS.md` should remain as a small bootstrap so agents reliably discover `docs/AGENTS.md`.
 
 Observed examples:
 
@@ -37,8 +37,8 @@ Observed examples:
 
 Canonicalize agent guidance:
 
-- Keep one agent instruction file:
-  - `docs/AGENTS.md`
+- Keep `AGENTS.md` as a short root bootstrap pointing to `docs/AGENTS.md`.
+- Keep `docs/AGENTS.md` as the authoritative project guidance document.
 - Rewrite it to describe the current Codex-oriented collaboration rules at a repository level:
   - spec-first workflow for non-trivial changes.
   - respect for user changes and dirty worktrees.
@@ -61,7 +61,7 @@ Handle old planning folders:
 
 Update README:
 
-- Mention `docs/AGENTS.md` as the single agent guidance file.
+- Mention `AGENTS.md` as the root bootstrap and `docs/AGENTS.md` as the authoritative project guidance file.
 - Keep `docs/specs/` as the only active planning/spec location.
 - Remove any references to deprecated agent/planning locations.
 
@@ -85,9 +85,9 @@ Update README:
 
 - No tracked Claude workflow files remain.
 - No tracked `docs/CLAUDE.md` remains.
-- `docs/AGENTS.md` is the only agent guidance document.
+- `AGENTS.md` is a short bootstrap and `docs/AGENTS.md` is the authoritative agent guidance document.
 - `MEMORY/` and `Plans/` are removed or their still-useful content is migrated to the canonical docs/spec structure.
-- README points contributors to `docs/AGENTS.md` and `docs/specs/`.
+- README points contributors to `AGENTS.md`, `docs/AGENTS.md`, and `docs/specs/`.
 - Repository search for `CLAUDE`, `Claude Code`, `MEMORY/`, and `Plans/` returns no active-process references outside historical archived notes, if any.
 
 ## Verification Plan
@@ -102,7 +102,7 @@ rg -n 'CLAUDE|Claude Code|MEMORY/|Plans/' . -g '!frontend/node_modules/**' -g '!
 - Run:
 
 ```bash
-git ls-files '.github/workflows/*' docs/CLAUDE.md docs/AGENTS.md MEMORY Plans
+git ls-files '.github/workflows/*' docs/CLAUDE.md AGENTS.md docs/AGENTS.md MEMORY Plans
 ```
 
 - Confirm only the intended canonical documentation remains.

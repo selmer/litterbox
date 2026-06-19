@@ -25,6 +25,7 @@ The project is built for a real household setup: a FastAPI backend talks to the 
 | `docs/specs/` | Active numbered implementation specs |
 | `docs/specs/archive/` | Built implementation specs |
 | `docs/IMPROVEMENT_SPECIFICATIONS.md` | Spec index |
+| `AGENTS.md` / `docs/AGENTS.md` | Agent bootstrap and project working guidelines |
 | `alembic/` | Database migrations |
 | `docker-compose.yml` | App + PostgreSQL runtime stack |
 
@@ -173,13 +174,15 @@ The project is intentionally spec-driven. New features should get a numbered spe
 
 Start here:
 
+- `AGENTS.md` — root bootstrap for agent instructions
+- `docs/AGENTS.md` — project working guidelines for Codex and future automation
 - `docs/IMPROVEMENT_SPECIFICATIONS.md` — index of all specs
 - `docs/specs/` — active implementation-ready specs
 - `docs/specs/archive/` — built specs
 - `docs/SPECIFICATION.md` — broader codebase specification
 - `docs/update-modes.md` — polling and webhook setup
 
-Recent active areas include visit correction, weight confidence, e-paper display profiles, and diagnostics.
+Active implementation planning belongs in `docs/specs/`; ad-hoc planning folders are intentionally not used.
 
 ## Testing Notes
 

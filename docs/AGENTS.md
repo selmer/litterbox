@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+This is the authoritative project guidance for Codex and any future repository automation. The root `AGENTS.md` exists only as a bootstrap that points here before work begins.
+
 ## Project Structure & Module Organization
 
 This repository contains a FastAPI backend and a Vite/React frontend for a Tuya-connected litterbox dashboard. Backend code lives in `app/`: routers in `app/routers/`, models in `app/models.py`, schemas in `app/schemas.py`, and polling logic in `app/poller.py` and `app/cat_identifier.py`. Backend tests are in `tests/`; shared pytest setup is in `conftest.py`. Alembic migrations live in `alembic/versions/`. Frontend source is in `frontend/src/`, with pages in `pages/`, components in `components/`, and assets in `public/` or `src/assets/`. Runtime uploads belong in `uploads/`.
@@ -31,6 +33,10 @@ Use Python 3 style with 4-space indentation, snake_case functions and variables,
 ## Testing Guidelines
 
 Add or update pytest tests in `tests/` for backend behavior, using names like `test_api_cats.py` and `test_poller.py`. Device and Tuya calls should stay mocked unless an integration test is explicit. Frontend tests live beside UI code as `*.test.jsx` and use Vitest with Testing Library. Run backend and frontend tests before submitting behavior changes.
+
+## Planning & Spec Workflow
+
+Use `docs/specs/` as the only active planning location for non-trivial implementation work. Completed specs move to `docs/specs/archive/` and their links in `docs/IMPROVEMENT_SPECIFICATIONS.md` should be updated in the same cleanup. Do not recreate ad-hoc planning folders such as `Plans/` or `MEMORY/`. Keep generated files, local device data, credentials, and runtime uploads out of git.
 
 ## Agent Collaboration Guidelines
 
