@@ -261,14 +261,16 @@ def test_display_summary_excludes_chart_points_older_than_30_days(client, db_ses
     assert weights == [3.7, 3.8]
 
 
-def test_display_summary_returns_weight_comparisons_for_multiple_cats(client, db_session):
+def test_display_summary_returns_weight_comparisons_for_multiple_cats(client, db_session, monkeypatch):
     _mark_poller_healthy()
+    now = datetime(2026, 6, 19, 12, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(display_router, "_utc_now", lambda: now)
+
     plurk = Cat(name="Plurk", reference_weight_kg=3.8)
     griezeltje = Cat(name="Griezeltje", reference_weight_kg=4.4)
     db_session.add_all([plurk, griezeltje])
     db_session.commit()
 
-    now = datetime.now(timezone.utc)
     db_session.add_all([
         Visit(cat_id=plurk.id, identified_by="auto", started_at=now - timedelta(days=92), duration_seconds=60, weight_kg=3.91),
         Visit(cat_id=plurk.id, identified_by="auto", started_at=now - timedelta(days=29), duration_seconds=60, weight_kg=3.77),
