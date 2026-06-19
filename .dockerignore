@@ -7,5 +7,15 @@ tests/
 .git
 *.md
 .env
+.env.*
+*.env
+*.jar
+snapshot.json
+devices.json
+tinytuya.json
+tuya-raw.json
+uploads/cat_photos
 frontend/node_modules
 frontend/dist
+firmware/epaper-display/.pio
+firmware/epaper-display/include/config.h
