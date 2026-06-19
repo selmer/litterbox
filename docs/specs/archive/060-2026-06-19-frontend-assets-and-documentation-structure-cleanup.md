@@ -28,7 +28,7 @@ Observed examples:
 
 - The application uses `frontend/src/components/Icon.jsx` for inline SVG icons.
 - Searches show no active imports of `frontend/src/assets/react.svg` or `frontend/public/vite.svg`.
-- `frontend/public/cat.svg` may be a real static asset or favicon-like asset and needs confirmation before removal.
+- `frontend/public/cat.svg` was confirmed unused; `frontend/index.html` uses an inline data-SVG favicon instead.
 - Vite config uses Vitest with `frontend/src/test-setup.js`.
 - Tests are colocated under `frontend/src/pages/*.test.jsx` and `frontend/src/components/*.test.jsx`.
 
@@ -82,7 +82,7 @@ Optional later improvement:
 
 - `frontend/src/assets/react.svg` is removed if unused.
 - `frontend/public/vite.svg` is removed if unused.
-- `frontend/public/cat.svg` is either removed as unused or documented/kept as an intentional static asset.
+- `frontend/public/cat.svg` is removed as unused; `frontend/index.html` keeps the inline favicon.
 - No source file, CSS file, test, or HTML file references deleted assets.
 - Frontend tests remain discoverable by Vitest.
 - Frontend documentation has one clear home:

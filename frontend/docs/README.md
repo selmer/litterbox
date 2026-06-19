@@ -12,11 +12,4 @@ The frontend is a React/Vite app for the litterbox dashboard. Source files live 
 
 ## Test Coverage
 
-Current Vitest coverage includes selected page and component behavior:
-
-- `frontend/src/pages/Visits.test.jsx`
-- `frontend/src/pages/Cats.test.jsx`
-- `frontend/src/components/WeightChart.test.jsx`
-- `frontend/src/components/Toast.test.jsx`
-
-Add tests beside the component or page as `*.test.jsx`.
+Vitest tests live beside the page or component they cover as `*.test.jsx`. Keep new frontend tests colocated with the code under test so related behavior stays easy to find.

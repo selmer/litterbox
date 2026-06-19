@@ -92,5 +92,5 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 057 | [Commodore 64 Theme](specs/archive/057-2026-06-18-commodore-64-theme.md) | P2 |
 | 058 | [Repository Hygiene and Generated File Cleanup](specs/archive/058-2026-06-19-repository-hygiene-and-generated-file-cleanup.md) | P1 |
 | 059 | [AI Agent and Planning Documentation Consolidation](specs/archive/059-2026-06-19-ai-agent-and-planning-documentation-consolidation.md) | P2 |
-| 060 | [Frontend Assets and Documentation Structure Cleanup](specs/060-2026-06-19-frontend-assets-and-documentation-structure-cleanup.md) | P2 |
+| 060 | [Frontend Assets and Documentation Structure Cleanup](specs/archive/060-2026-06-19-frontend-assets-and-documentation-structure-cleanup.md) | P2 |
 | 061 | [Secret History Audit and Remediation](specs/archive/061-2026-06-19-secret-history-audit-and-remediation.md) | P1 |
