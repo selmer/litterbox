@@ -1,9 +1,13 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   createBackup,
   getApiErrorMessage,
+  getTuyaConfig,
+  reloadTuyaConfig,
   restoreBackup,
+  testTuyaConfig,
+  updateTuyaConfig,
   validateRestoreArtifact,
 } from '../api/client'
 import Icon from '../components/Icon'
@@ -27,6 +31,27 @@ function formatDateTime(value, locale) {
 
 function formatTableName(name) {
   return name.replaceAll('_', ' ')
+}
+
+
+function emptyTuyaForm() {
+  return {
+    device_id: '',
+    device_ip: '',
+    api_region: 'eu',
+    api_key: '',
+    api_secret: '',
+  }
+}
+
+function tuyaFormFromConfig(config) {
+  return {
+    device_id: config?.device_id || '',
+    device_ip: config?.device_ip || '',
+    api_region: config?.api_region || 'eu',
+    api_key: '',
+    api_secret: '',
+  }
 }
 
 function ValidationSummary({ validation, locale, t }) {
@@ -69,6 +94,33 @@ export default function Admin() {
   const [archiveData, setArchiveData] = useState(null)
   const [validation, setValidation] = useState(null)
   const [confirmRestore, setConfirmRestore] = useState(false)
+  const [tuyaConfig, setTuyaConfig] = useState(null)
+  const [tuyaForm, setTuyaForm] = useState(emptyTuyaForm)
+  const [tuyaLoading, setTuyaLoading] = useState(true)
+  const [tuyaSaving, setTuyaSaving] = useState(false)
+  const [tuyaTesting, setTuyaTesting] = useState(false)
+  const [tuyaReloading, setTuyaReloading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadTuyaConfig() {
+      setTuyaLoading(true)
+      try {
+        const config = await getTuyaConfig()
+        if (cancelled) return
+        setTuyaConfig(config)
+        setTuyaForm(tuyaFormFromConfig(config))
+      } catch (error) {
+        if (!cancelled) toast(getApiErrorMessage(error), 'error')
+      } finally {
+        if (!cancelled) setTuyaLoading(false)
+      }
+    }
+    loadTuyaConfig()
+    return () => {
+      cancelled = true
+    }
+  }, [toast])
 
   const restoreReady = useMemo(() => Boolean(archiveData && validation?.valid && confirmRestore), [archiveData, validation, confirmRestore])
 
@@ -115,6 +167,60 @@ export default function Admin() {
       setSelectedFile(null)
     } finally {
       setRestoreLoading(false)
+    }
+  }
+
+  function handleTuyaFieldChange(field, value) {
+    setTuyaForm(current => ({ ...current, [field]: value }))
+  }
+
+  function updateTuyaState(result) {
+    const config = result.config || result
+    setTuyaConfig(config)
+    setTuyaForm(tuyaFormFromConfig(config))
+    return result
+  }
+
+  async function handleTuyaSave(event) {
+    event.preventDefault()
+    setTuyaSaving(true)
+    try {
+      const result = await updateTuyaConfig(tuyaForm)
+      updateTuyaState(result)
+      if (result.reloaded) {
+        toast(t('admin.toast.tuyaSaved'), 'success')
+      } else {
+        toast(result.message || t('admin.toast.tuyaReloadFailed'), 'error')
+      }
+    } catch (error) {
+      toast(getApiErrorMessage(error), 'error')
+    } finally {
+      setTuyaSaving(false)
+    }
+  }
+
+  async function handleTuyaTest() {
+    setTuyaTesting(true)
+    try {
+      const result = await testTuyaConfig(tuyaForm)
+      toast(result.message || (result.ok ? t('admin.toast.tuyaTestSucceeded') : t('admin.toast.tuyaTestFailed')), result.ok ? 'success' : 'error')
+    } catch (error) {
+      toast(getApiErrorMessage(error), 'error')
+    } finally {
+      setTuyaTesting(false)
+    }
+  }
+
+  async function handleTuyaReload() {
+    setTuyaReloading(true)
+    try {
+      const result = await reloadTuyaConfig()
+      updateTuyaState(result)
+      toast(result.message || (result.reloaded ? t('admin.toast.tuyaReloaded') : t('admin.toast.tuyaReloadFailed')), result.reloaded ? 'success' : 'error')
+    } catch (error) {
+      toast(getApiErrorMessage(error), 'error')
+    } finally {
+      setTuyaReloading(false)
     }
   }
 
@@ -192,6 +298,93 @@ export default function Admin() {
                 <Icon name="activity" size={16} />
                 {t('nav.diagnostics')}
               </Link>
+            </section>
+            <section className="card admin-section">
+              <div className="admin-section__header">
+                <div className="admin-section__icon" aria-hidden="true">
+                  <Icon name="activity" size={18} />
+                </div>
+                <div>
+                  <h3>{t('admin.tuyaTitle')}</h3>
+                  <p>{t('admin.tuyaDescription')}</p>
+                </div>
+              </div>
+
+              <form className="admin-config-form" onSubmit={handleTuyaSave}>
+                <div className="admin-config-grid">
+                  <label className="form-field">
+                    <span className="form-label">{t('admin.tuyaDeviceId')}</span>
+                    <input
+                      className="form-input"
+                      value={tuyaForm.device_id}
+                      onChange={event => handleTuyaFieldChange('device_id', event.target.value)}
+                      disabled={tuyaLoading || tuyaSaving}
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span className="form-label">{t('admin.tuyaDeviceIp')}</span>
+                    <input
+                      className="form-input"
+                      value={tuyaForm.device_ip}
+                      onChange={event => handleTuyaFieldChange('device_ip', event.target.value)}
+                      disabled={tuyaLoading || tuyaSaving}
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span className="form-label">{t('admin.tuyaApiRegion')}</span>
+                    <input
+                      className="form-input"
+                      value={tuyaForm.api_region}
+                      onChange={event => handleTuyaFieldChange('api_region', event.target.value)}
+                      disabled={tuyaLoading || tuyaSaving}
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span className="form-label">{t('admin.tuyaApiKey')}</span>
+                    <input
+                      className="form-input"
+                      type="password"
+                      autoComplete="off"
+                      value={tuyaForm.api_key}
+                      placeholder={tuyaConfig?.api_key_configured ? '••••••••' : ''}
+                      onChange={event => handleTuyaFieldChange('api_key', event.target.value)}
+                      disabled={tuyaLoading || tuyaSaving}
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span className="form-label">{t('admin.tuyaApiSecret')}</span>
+                    <input
+                      className="form-input"
+                      type="password"
+                      autoComplete="off"
+                      value={tuyaForm.api_secret}
+                      placeholder={tuyaConfig?.api_secret_configured ? '••••••••' : ''}
+                      onChange={event => handleTuyaFieldChange('api_secret', event.target.value)}
+                      disabled={tuyaLoading || tuyaSaving}
+                    />
+                  </label>
+                </div>
+
+                <div className="admin-config-status">
+                  <span>{t(tuyaConfig?.api_key_configured ? 'admin.tuyaApiKeyConfigured' : 'admin.tuyaApiKeyMissing')}</span>
+                  <span>{t(tuyaConfig?.api_secret_configured ? 'admin.tuyaApiSecretConfigured' : 'admin.tuyaApiSecretMissing')}</span>
+                </div>
+
+                <div className="admin-actions">
+                  <button className="btn btn-primary" type="submit" disabled={tuyaLoading || tuyaSaving}>
+                    <Icon name="download" size={16} />
+                    {tuyaSaving ? t('common.saving') : t('admin.tuyaSave')}
+                  </button>
+                  <button className="btn btn-secondary" type="button" onClick={handleTuyaTest} disabled={tuyaLoading || tuyaTesting}>
+                    <Icon name="activity" size={16} />
+                    {tuyaTesting ? t('common.testing') : t('admin.tuyaTest')}
+                  </button>
+                  <button className="btn btn-secondary" type="button" onClick={handleTuyaReload} disabled={tuyaLoading || tuyaReloading}>
+                    <Icon name="restore" size={16} />
+                    {tuyaReloading ? t('common.reloading') : t('admin.tuyaReload')}
+                  </button>
+                </div>
+              </form>
             </section>
           </div>
         </section>

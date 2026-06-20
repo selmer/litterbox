@@ -18,6 +18,19 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Base
+from app.poller import make_cloud
+from app.poller_runtime import reload_active_poller
+from app.schemas import TuyaConfigMutationOut, TuyaConfigOut, TuyaConfigTestOut, TuyaConfigUpdate
+from app.settings import (
+    TUYA_API_KEY_KEY,
+    TUYA_API_REGION_KEY,
+    TUYA_API_SECRET_KEY,
+    TUYA_DEVICE_ID_KEY,
+    TUYA_DEVICE_IP_KEY,
+    get_tuya_config_status,
+    resolve_tuya_config,
+    upsert_tuya_config,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -60,7 +73,10 @@ def _json_value(value: Any) -> Any:
 def _db_export(db: Session) -> dict[str, list[dict[str, Any]]]:
     export: dict[str, list[dict[str, Any]]] = {}
     for table in Base.metadata.sorted_tables:
-        rows = db.execute(table.select().order_by(*table.primary_key.columns)).mappings().all()
+        stmt = table.select()
+        if table.name == "app_settings":
+            stmt = stmt.where(table.c.is_secret.is_(False))
+        rows = db.execute(stmt.order_by(*table.primary_key.columns)).mappings().all()
         export[table.name] = [
             {column.name: _json_value(row[column.name]) for column in table.columns}
             for row in rows
@@ -74,6 +90,7 @@ def _metadata(db: Session) -> dict[str, Any]:
         "app": BACKUP_APP_NAME,
         "created_at": _utc_now().isoformat(),
         "schema_revision": _get_schema_revision(db),
+        "secrets_excluded": ["app_settings"],
     }
 
 
@@ -194,6 +211,75 @@ def _restore_uploads(archive_bytes: bytes) -> int:
         if temp_root.exists():
             shutil.rmtree(temp_root)
         raise
+
+
+def _tuya_status_out(db: Session) -> TuyaConfigOut:
+    return TuyaConfigOut(**get_tuya_config_status(db))
+
+
+def _tuya_overrides(body: TuyaConfigUpdate) -> dict[str, str | None]:
+    overrides: dict[str, str | None] = {}
+    data = body.model_dump(exclude_unset=True)
+    field_to_key = {
+        "device_id": TUYA_DEVICE_ID_KEY,
+        "device_ip": TUYA_DEVICE_IP_KEY,
+        "api_region": TUYA_API_REGION_KEY,
+        "api_key": TUYA_API_KEY_KEY,
+        "api_secret": TUYA_API_SECRET_KEY,
+    }
+    for field, key in field_to_key.items():
+        if field not in data:
+            continue
+        value = data[field]
+        if key in {TUYA_API_KEY_KEY, TUYA_API_SECRET_KEY} and value is None:
+            continue
+        overrides[key] = value
+    return overrides
+
+
+def _test_tuya_config(db: Session, body: TuyaConfigUpdate | None = None) -> TuyaConfigTestOut:
+    overrides = _tuya_overrides(body) if body is not None else None
+    config = resolve_tuya_config(db, overrides=overrides)
+    if not config.cloud_configured:
+        return TuyaConfigTestOut(ok=False, message="Tuya Cloud configuration is incomplete")
+    try:
+        cloud = make_cloud(config)
+        result = cloud.getstatus(config.device_id)
+    except Exception:
+        return TuyaConfigTestOut(ok=False, message="Tuya Cloud connection failed")
+    if result and result.get("success"):
+        return TuyaConfigTestOut(ok=True, message="Tuya Cloud connection succeeded")
+    return TuyaConfigTestOut(ok=False, message="Tuya Cloud returned an unsuccessful response")
+
+
+@router.get("/tuya-config", response_model=TuyaConfigOut)
+def get_tuya_config(db: Session = Depends(get_db)):
+    return _tuya_status_out(db)
+
+
+@router.put("/tuya-config", response_model=TuyaConfigMutationOut)
+def update_tuya_config(body: TuyaConfigUpdate, db: Session = Depends(get_db)):
+    upsert_tuya_config(
+        db,
+        device_id=body.device_id,
+        device_ip=body.device_ip,
+        api_key=body.api_key,
+        api_secret=body.api_secret,
+        api_region=body.api_region,
+    )
+    reloaded, message = reload_active_poller()
+    return TuyaConfigMutationOut(config=_tuya_status_out(db), reloaded=reloaded, message=message)
+
+
+@router.post("/tuya-config/test", response_model=TuyaConfigTestOut)
+def test_tuya_config(body: TuyaConfigUpdate | None = None, db: Session = Depends(get_db)):
+    return _test_tuya_config(db, body)
+
+
+@router.post("/tuya-config/reload", response_model=TuyaConfigMutationOut)
+def reload_tuya_config(db: Session = Depends(get_db)):
+    reloaded, message = reload_active_poller()
+    return TuyaConfigMutationOut(config=_tuya_status_out(db), reloaded=reloaded, message=message)
 
 
 @router.get("/backup")

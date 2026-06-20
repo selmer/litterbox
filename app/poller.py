@@ -10,14 +10,11 @@ import tinytuya
 from app.cat_identifier import IDENTIFICATION_THRESHOLD_KG, identify_cat, update_reference_weight
 from app.models import Cat, CleaningCycle, DeviceSnapshot, SettingsHistory, Visit, VisitDiagnostic
 from app.device_faults import decode_device_faults
+from app.settings import TuyaConfig, resolve_tuya_config
 
 logger = logging.getLogger(__name__)
 
 # --- Device configuration ---
-DEVICE_ID = os.getenv("TUYA_DEVICE_ID")
-TUYA_API_KEY = os.getenv("TUYA_API_KEY")
-TUYA_API_SECRET = os.getenv("TUYA_API_SECRET")
-TUYA_API_REGION = os.getenv("TUYA_API_REGION", "eu")
 
 SNAPSHOT_INTERVAL_SECONDS = int(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "300"))
 ADAPTIVE_VISIT_POLLING = os.getenv("ADAPTIVE_VISIT_POLLING", "false").lower() in {"1", "true", "yes", "on"}
@@ -59,14 +56,15 @@ class ReportLogCompletion:
     strategy: str = "counter"
 
 
-def make_cloud() -> tinytuya.Cloud:
-    if not TUYA_API_KEY or not TUYA_API_SECRET:
-        raise RuntimeError("Tuya API credentials not configured (polling mode requires TUYA_API_KEY and TUYA_API_SECRET)")
+def make_cloud(config: TuyaConfig | None = None) -> tinytuya.Cloud:
+    config = config or resolve_tuya_config()
+    if not config.cloud_configured:
+        raise RuntimeError("Tuya Cloud credentials are not fully configured")
     return tinytuya.Cloud(
-        apiRegion=TUYA_API_REGION,
-        apiKey=TUYA_API_KEY,
-        apiSecret=TUYA_API_SECRET,
-        apiDeviceID=DEVICE_ID,
+        apiRegion=config.api_region,
+        apiKey=config.api_key,
+        apiSecret=config.api_secret,
+        apiDeviceID=config.device_id,
     )
 
 
@@ -87,6 +85,7 @@ class LitterboxPoller:
         self.session_factory = session_factory
         self.db = None
         self.cloud: Optional[tinytuya.Cloud] = None
+        self.device_id: Optional[str] = None
         self.previous_dps: dict = {}
         self.current_visit: Optional[Visit] = None
         self.current_visit_id: Optional[int] = None
@@ -105,21 +104,33 @@ class LitterboxPoller:
             self._init_cloud()
         self._recover_open_state()
 
-    def _init_cloud(self):
+    def _init_cloud(self) -> bool:
         try:
-            self.cloud = make_cloud()
+            db = self.session_factory()
+            try:
+                config = resolve_tuya_config(db)
+            finally:
+                db.close()
+            self.device_id = config.device_id
+            self.cloud = make_cloud(config)
             logger.info("Cloud connection initialized")
             # Prime previous_dps silently to avoid firing events on startup
-            result = self.cloud.getstatus(DEVICE_ID)
+            result = self.cloud.getstatus(self.device_id)
             if result and result.get("success"):
                 self.previous_dps = {
                     item["code"]: item["value"]
                     for item in result.get("result", [])
                 }
                 logger.info("Initial device state loaded")
+            return True
         except Exception as e:
-            logger.error(f"Failed to initialize cloud connection: {e}")
+            logger.error("Failed to initialize cloud connection: %s", e)
             self.cloud = None
+            return False
+
+    def reload_cloud(self) -> bool:
+        with self._lock:
+            return self._init_cloud()
 
     def _recover_open_state(self):
         db = self.session_factory()
@@ -173,7 +184,7 @@ class LitterboxPoller:
             return PollOutcome(False, "cloud_unavailable", "Cloud connection is not initialized")
 
         try:
-            result = self.cloud.getstatus(DEVICE_ID)
+            result = self.cloud.getstatus(self.device_id)
         except Exception as e:
             logger.exception("Failed to read device status from cloud")
             self._init_cloud()
@@ -588,7 +599,7 @@ class LitterboxPoller:
             now + timedelta(seconds=REPORT_LOG_LOOKAHEAD_BUFFER_SECONDS)
         )
         response = self.cloud.cloudrequest(
-            f"/v2.0/cloud/thing/{DEVICE_ID}/report-logs",
+            f"/v2.0/cloud/thing/{self.device_id}/report-logs",
             query={
                 "codes": REPORT_LOG_CODES,
                 "start_time": start_time,

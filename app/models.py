@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float,
-    ForeignKey, Index, Integer, String, JSON, Numeric, TypeDecorator, UniqueConstraint
+    ForeignKey, Index, Integer, String, Text, JSON, Numeric, TypeDecorator, UniqueConstraint
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -23,6 +23,20 @@ class TZDateTime(TypeDecorator):
 
 class Base(DeclarativeBase):
     pass
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key = Column(String(120), primary_key=True)
+    value = Column(Text, nullable=True)
+    is_secret = Column(Boolean, default=False, nullable=False)
+    updated_at = Column(
+        TZDateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
 
 class Cat(Base):

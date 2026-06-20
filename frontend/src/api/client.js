@@ -20,6 +20,18 @@ export const validateRestoreArtifact = (archiveData) =>
 export const restoreBackup = ({ archiveData, confirm }) =>
   api.post('/admin/restore', { archive_data: archiveData, confirm }).then(r => r.data)
 
+export const getTuyaConfig = () =>
+  api.get('/admin/tuya-config').then(r => r.data)
+
+export const updateTuyaConfig = (data) =>
+  api.put('/admin/tuya-config', data).then(r => r.data)
+
+export const testTuyaConfig = (data) =>
+  api.post('/admin/tuya-config/test', data).then(r => r.data)
+
+export const reloadTuyaConfig = () =>
+  api.post('/admin/tuya-config/reload').then(r => r.data)
+
 // --- Dashboard ---
 
 export const getDashboard = ({ signal } = {}) =>

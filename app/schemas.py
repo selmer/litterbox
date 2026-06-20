@@ -16,6 +16,44 @@ HealthSignalSeverity = Literal["info", "watch", "attention"]
 VisitSummaryBucket = Literal["day", "week", "month"]
 
 
+# --- Admin Tuya config schemas ---
+
+class TuyaConfigOut(BaseModel):
+    device_id: Optional[str] = None
+    device_ip: Optional[str] = None
+    api_region: str = "eu"
+    api_key_configured: bool = False
+    api_secret_configured: bool = False
+    cloud_configured: bool = False
+
+
+class TuyaConfigUpdate(BaseModel):
+    device_id: Optional[str] = Field(default=None, max_length=160)
+    device_ip: Optional[str] = Field(default=None, max_length=160)
+    api_key: Optional[str] = Field(default=None, max_length=500)
+    api_secret: Optional[str] = Field(default=None, max_length=500)
+    api_region: Optional[str] = Field(default="eu", max_length=40)
+
+    @field_validator("device_id", "device_ip", "api_key", "api_secret", "api_region")
+    @classmethod
+    def strip_strings(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        return value or None
+
+
+class TuyaConfigMutationOut(BaseModel):
+    config: TuyaConfigOut
+    reloaded: bool
+    message: Optional[str] = None
+
+
+class TuyaConfigTestOut(BaseModel):
+    ok: bool
+    message: Optional[str] = None
+
+
 # --- Cat schemas ---
 
 class CatCreate(BaseModel):

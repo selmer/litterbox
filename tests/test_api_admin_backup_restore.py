@@ -3,7 +3,7 @@ import io
 import zipfile
 from datetime import date, datetime, timezone
 
-from app.models import Cat, CatEvent, DeviceSnapshot, SettingsHistory, Visit, VisitDiagnostic
+from app.models import AppSetting, Cat, CatEvent, DeviceSnapshot, SettingsHistory, Visit, VisitDiagnostic
 
 
 def _backup_to_base64(response):
@@ -89,6 +89,37 @@ def test_restore_recreates_database_and_uploads(client, db_session, tmp_path, mo
     assert db_session.query(DeviceSnapshot).count() == 1
     assert db_session.query(SettingsHistory).count() == 1
     assert (uploads_root / "cat_photos" / "1.png").read_bytes() == b"photo"
+
+
+def test_backup_excludes_secret_app_settings(client, db_session):
+    db_session.add_all([
+        AppSetting(key="tuya.device_id", value="device-1", is_secret=False),
+        AppSetting(key="tuya.api_key", value="secret-key", is_secret=True),
+    ])
+    db_session.commit()
+
+    response = client.get("/admin/backup")
+
+    assert response.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        metadata = archive.read("metadata.json").decode("utf-8")
+        database = archive.read("database.json").decode("utf-8")
+        assert "app_settings" in database
+        assert "device-1" in database
+        assert "secret-key" not in database
+        assert "secrets_excluded" in metadata
+
+
+def test_restore_imports_only_non_secret_app_settings_from_backup(client, db_session):
+    db_session.add(AppSetting(key="tuya.api_key", value="current-secret", is_secret=True))
+    db_session.commit()
+
+    backup = _backup_to_base64(client.get("/admin/backup"))
+
+    restore_response = client.post("/admin/restore", json={"archive_data": backup, "confirm": True})
+
+    assert restore_response.status_code == 200
+    assert db_session.get(AppSetting, "tuya.api_key") is None
 
 
 def test_restore_requires_confirmation(client):

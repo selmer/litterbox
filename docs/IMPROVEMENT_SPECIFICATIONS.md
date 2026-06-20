@@ -94,3 +94,4 @@ After a spec is implemented and verified, move it from `docs/specs/` to `docs/sp
 | 059 | [AI Agent and Planning Documentation Consolidation](specs/archive/059-2026-06-19-ai-agent-and-planning-documentation-consolidation.md) | P2 |
 | 060 | [Frontend Assets and Documentation Structure Cleanup](specs/archive/060-2026-06-19-frontend-assets-and-documentation-structure-cleanup.md) | P2 |
 | 061 | [Secret History Audit and Remediation](specs/archive/061-2026-06-19-secret-history-audit-and-remediation.md) | P1 |
+| 062 | [Admin Tuya Configuration Management](specs/archive/062-2026-06-20-admin-tuya-configuration-management.md) | P1 |

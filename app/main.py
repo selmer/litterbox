@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from starlette.middleware.gzip import GZipMiddleware
 
 from app.routers import admin, cats, visits, cleaning_cycles, dashboard, display, diagnostics
+from app.poller_runtime import set_active_poller
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ def run_poller():
     while True:
         try:
             poller = LitterboxPoller(SessionLocal)
+            set_active_poller(poller)
             while True:
                 outcome = poller.poll()
                 with dashboard_state._poll_lock:
@@ -51,8 +53,22 @@ def run_poller():
             time.sleep(10)
 
 
+def seed_startup_settings():
+    from app.database import SessionLocal
+    from app.settings import seed_env_tuya_settings
+
+    db = SessionLocal()
+    try:
+        seed_env_tuya_settings(db)
+    except Exception:
+        logger.exception("Failed to seed Tuya settings from environment")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    seed_startup_settings()
     if UPDATE_MODE == "polling":
         thread = threading.Thread(target=run_poller, daemon=True)
         thread.start()
@@ -61,6 +77,7 @@ async def lifespan(app: FastAPI):
         from app.database import SessionLocal
         from app.poller import LitterboxPoller
         app.state.webhook_poller = LitterboxPoller(SessionLocal, mode="webhook")
+        set_active_poller(app.state.webhook_poller)
         import app.routers.dashboard as dashboard_state
         dashboard_state.update_mode = "webhook"
         logger.info("Webhook poller ready (webhook mode)")

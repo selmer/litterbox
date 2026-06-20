@@ -2,32 +2,35 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
 
+from app.database import get_db
 from app.schemas import TuyaWebhookPayload
+from app.settings import resolve_tuya_config
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 logger = logging.getLogger(__name__)
 
 _WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
-_DEVICE_ID = os.getenv("TUYA_DEVICE_ID")
 
 
 @router.post("/tuya", status_code=status.HTTP_204_NO_CONTENT)
-async def receive_tuya_webhook(payload: TuyaWebhookPayload, request: Request):
+async def receive_tuya_webhook(payload: TuyaWebhookPayload, request: Request, db: Session = Depends(get_db)):
     if _WEBHOOK_SECRET:
         if request.headers.get("X-Webhook-Secret") != _WEBHOOK_SECRET:
             raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
-    if _DEVICE_ID and payload.devId != _DEVICE_ID:
-        logger.debug(f"Ignoring webhook for device {payload.devId!r}")
+    device_id = resolve_tuya_config(db).device_id
+    if device_id and payload.devId != device_id:
+        logger.debug("Ignoring webhook for device %r", payload.devId)
         return
 
     changed_dps = {item.code: item.value for item in payload.status}
     if not changed_dps:
         return
 
-    logger.info(f"Webhook received: {list(changed_dps.keys())}")
+    logger.info("Webhook received: %s", list(changed_dps.keys()))
 
     poller = request.app.state.webhook_poller
     try:
