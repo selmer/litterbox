@@ -36,6 +36,66 @@ The project is built for a real household setup: a FastAPI backend talks to the 
 - Device integration: Tuya polling/webhook support
 - Firmware: ESP32 DevKit + Waveshare/Pico 4.2 inch black/white/red e-paper display
 
+## Architecture
+
+```mermaid
+flowchart LR
+    user[Browser / household user]
+    esp[ESP32 e-paper display]
+    tuya[Tuya Cloud / litterbox]
+    nas[NAS / Docker host]
+
+    subgraph runtime[Docker runtime]
+        app[FastAPI application container]
+        db[(PostgreSQL database)]
+    end
+
+    subgraph backend[FastAPI backend]
+        api["API routers<br/>Dashboard / Cats / Visits / Admin / Diagnostics / Display"]
+        poller["Litterbox poller<br/>Polling mode or webhook mode"]
+        settings["Settings service<br/>DB first, env fallback"]
+        backup["Backup / restore service<br/>Uploads included, secrets excluded"]
+    end
+
+    subgraph frontend[React/Vite frontend]
+        ui[Dashboard, Visits, Cats, Admin, Diagnostics]
+    end
+
+    uploads[(Uploaded cat photos)]
+    env["Environment config<br/>DATABASE_URL, Tuya fallback, deploy settings"]
+    specs["Specs and docs<br/>docs/specs and archive"]
+
+    user -->|HTTP :8001| app
+    app -->|serves built assets| ui
+    ui -->|REST API calls| api
+
+    app --> api
+    api --> db
+    api --> uploads
+    api --> backup
+    api --> settings
+    settings --> db
+    settings -. fallback .-> env
+    backup --> db
+    backup --> uploads
+
+    app --> poller
+    poller -->|status, report logs| tuya
+    poller -->|visits, cleaning cycles, diagnostics| db
+    poller --> settings
+
+    tuya -->|optional webhook| app
+    esp -->|GET /display/summary| api
+    api -->|display payload| esp
+
+    nas --> runtime
+    specs -. guide changes .-> app
+```
+
+The backend is the integration hub: it serves the built React app, exposes the REST API, owns database access, and runs the Tuya poller in the selected update mode. Tuya credentials can now be managed from Admin through `app_settings`; environment variables remain a fallback for first boot and deployment continuity.
+
+Backups package the database export and uploaded cat photos. Secret `app_settings` rows are intentionally excluded, so Tuya API keys/secrets must be re-entered through Admin or provided by environment fallback after a restore.
+
 ## Quick Start
 
 Create local environment config:
