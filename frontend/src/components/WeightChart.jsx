@@ -34,6 +34,63 @@ function formatKg(value) {
 }
 
 const CAT_COLORS = ['var(--data-1)', 'var(--data-2)', 'var(--data-3)', 'var(--data-4)', 'var(--data-5)', 'var(--data-6)']
+const MIN_SMOOTHING_POINTS = 3
+const MAX_SMOOTHING_GAP_MS = 14 * 24 * 60 * 60 * 1000
+
+function smoothSegment(segment) {
+  if (segment.length < MIN_SMOOTHING_POINTS) {
+    return segment.map(point => ({ ...point, displayWeight: point.recordedWeight }))
+  }
+
+  return segment.map((point, index) => {
+    const previous = segment[index - 1]
+    const next = segment[index + 1]
+
+    if (!previous || !next) {
+      return { ...point, displayWeight: point.recordedWeight }
+    }
+
+    return {
+      ...point,
+      displayWeight: (previous.recordedWeight * 0.25) + (point.recordedWeight * 0.5) + (next.recordedWeight * 0.25),
+    }
+  })
+}
+
+function buildTrendPoints(points = []) {
+  const sorted = points
+    .map(point => {
+      const date = new Date(point.timestamp)
+      const recordedWeight = Number(point.weight_kg)
+      if (!Number.isFinite(date.getTime()) || !Number.isFinite(recordedWeight)) return null
+      return {
+        source: point,
+        date,
+        timestamp: date.getTime(),
+        recordedWeight,
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.timestamp - b.timestamp || (a.source.visit_id || 0) - (b.source.visit_id || 0))
+
+  const smoothed = []
+  let segment = []
+
+  sorted.forEach(point => {
+    const previous = segment[segment.length - 1]
+    if (previous && point.timestamp - previous.timestamp > MAX_SMOOTHING_GAP_MS) {
+      smoothed.push(...smoothSegment(segment))
+      segment = []
+    }
+    segment.push(point)
+  })
+
+  if (segment.length > 0) {
+    smoothed.push(...smoothSegment(segment))
+  }
+
+  return smoothed
+}
 
 function CustomTooltip({ active, payload, label, t, dateLocale }) {
   const rows = payload?.filter(entry => Number.isFinite(Number(entry.value))) || []
@@ -46,6 +103,9 @@ function CustomTooltip({ active, payload, label, t, dateLocale }) {
           <span style={{ color: entry.color }}>{entry.name}</span>
           <span>
             {Number(entry.value).toFixed(3)} kg
+            {Number.isFinite(Number(entry.payload?.[`${entry.name}RecordedWeight`])) && Math.abs(Number(entry.payload[`${entry.name}RecordedWeight`]) - Number(entry.value)) >= 0.001 && (
+              ` · ${t('chart.recordedWeight', { weight: Number(entry.payload[`${entry.name}RecordedWeight`]).toFixed(3) })}`
+            )}
             {entry.payload?.[`${entry.name}VisitId`] && ` · ${t('chart.visitId', { id: entry.payload[`${entry.name}VisitId`] })}`}
           </span>
         </div>
@@ -72,15 +132,18 @@ export default function WeightChart({ weightHistory, onRangeChange, weightLoadin
 
     const byPoint = {}
     weightHistory.forEach(catData => {
-      catData.data.forEach(point => {
-        const date = new Date(point.timestamp)
-        const pointKey = `${date.toISOString()}-${point.visit_id}`
+      buildTrendPoints(catData.data).forEach(point => {
+        const date = point.date
+        const source = point.source
+        const pointKey = `${date.toISOString()}-${source.visit_id}`
         byPoint[pointKey] = {
           ...(byPoint[pointKey] || {}),
           date: format(date, 'dd MMM yyyy, HH:mm', { locale: dateLocale }),
           timestamp: date.getTime(),
-          [catData.cat_name]: point.weight_kg,
-          [`${catData.cat_name}VisitId`]: point.visit_id,
+          [catData.cat_name]: point.displayWeight,
+          [`${catData.cat_name}RecordedWeight`]: point.recordedWeight,
+          [`${catData.cat_name}VisitId`]: source.visit_id,
+          [`${catData.cat_name}WeightConfidence`]: source.weight_confidence,
         }
       })
     })
