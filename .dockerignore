@@ -10,6 +10,9 @@ tests/
 .env.*
 *.env
 *.jar
+*.log*
+coverage
+node_modules
 snapshot.json
 devices.json
 tinytuya.json
