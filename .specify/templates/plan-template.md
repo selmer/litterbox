@@ -52,7 +52,7 @@
 - Database durability: Schema changes include Alembic migration, data preservation/rollback notes, and backup/restore impact.
 - Security and secrets: Secret values are not logged, returned, committed, or included in backups; new sensitive surfaces describe the threat model.
 - Observability: Operational failures are visible through logs, diagnostics, health state, persisted diagnostic rows, or UI error states.
-- Tests and gates: Required backend/frontend/migration/deploy commands are identified for the touched areas.
+- Tests and gates: Required backend/frontend/migration/deploy commands are identified for the touched areas; required package-manager and dependency-audit commands must finish without unresolved warnings, vulnerabilities, or errors.
 - Legacy behavior: Duration trust, poller recovery, Tuya DP handling, identification, backup format, and SPA fallback regressions are covered when touched.
 
 ## Project Structure

@@ -1,19 +1,15 @@
 <!--
 Sync Impact Report
-Version change: template -> 1.0.0
+Version change: 1.0.0 -> 1.1.0
 Modified principles:
-- Placeholder Principle 1 -> I. Evidence-Based Change Control
-- Placeholder Principle 2 -> II. Runtime and Module Boundaries
-- Placeholder Principle 3 -> III. Stable APIs and Data Contracts
-- Placeholder Principle 4 -> IV. Database Durability and Migration Discipline
-- Placeholder Principle 5 -> V. Security, Secrets, Observability, and Verification
+- V. Security, Secrets, Observability, and Verification: required package-manager and
+  dependency-audit commands must finish without unresolved warnings or errors
+- Development Workflow and Quality Gates: unresolved audit/tooling findings now block
+  completion and may not be suppressed or deferred
 Added sections:
-- Supported Runtime and Framework Baseline
-- Development Workflow and Quality Gates
-- Legacy Code Rules
-- Aspirational Improvements
+- None
 Removed sections:
-- Template placeholder sections only
+- None
 Templates requiring updates:
 - updated .specify/templates/plan-template.md
 - updated .specify/templates/spec-template.md
@@ -179,6 +175,11 @@ Standards for new or changed code:
 - Required automated tests for changed behavior MUST pass before merge. Mock Tuya
   access by default; live hardware/cloud tests are optional and MUST be isolated from
   the normal suite.
+- Required package-manager and dependency/security-audit commands MUST finish without
+  unresolved warnings, vulnerabilities, or errors before coding is declared complete.
+  Findings MUST be resolved safely and the affected gates rerun; suppressing output,
+  ignoring findings, or using unreviewed force/breaking upgrades does not satisfy the
+  gate.
 
 Rationale: this project handles local network details, Tuya credentials, household
 activity, photos, backups, and operational diagnostics. Safety depends on both secrecy
@@ -243,6 +244,14 @@ Standards for new or changed code:
 - If a required command cannot run because tools, dependencies, credentials, or command
   approval are unavailable, the final report MUST state the blocker and MUST NOT imply
   the gate passed.
+- Every warning, vulnerability, or error emitted by a required package-manager or
+  dependency/security-audit command (including `npm` and `npm audit`) MUST be resolved
+  before coding is declared complete. After remediation, rerun the audit plus affected
+  lint, test, and build gates.
+- Do not silence warnings, add ignore flags, or apply force/breaking dependency updates
+  merely to make a gate appear clean. If a safe resolution depends on host-global
+  configuration, unavailable advisory infrastructure, or a breaking upgrade requiring
+  user direction, report the work as blocked and request that direction.
 
 Aspirational improvements:
 
@@ -318,4 +327,4 @@ maintenance unless a spec adopts them:
   files. Aspirational improvements are tracked separately and are not evidence that
   current code already satisfies them.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
+**Version**: 1.1.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-16

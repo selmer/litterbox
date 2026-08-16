@@ -163,6 +163,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Frontend lint and relevant Vitest tests in frontend/
 - [ ] TXXX Security/secrets review for changed admin/upload/webhook/diagnostics surfaces
 - [ ] TXXX Migration smoke check with alembic upgrade head if schema changed
+- [ ] TXXX Run required package-manager and dependency/security-audit commands, resolve every warning, vulnerability, and error, then rerun affected lint/test/build gates
 - [ ] TXXX Run quickstart.md validation and required merge commands
 
 ---

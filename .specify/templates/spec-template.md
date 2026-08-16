@@ -125,7 +125,7 @@
 
 - **Backend tests**: [pytest files/scenarios required, or "None"]
 - **Frontend tests**: [Vitest/Testing Library files/scenarios required, or "None"]
-- **Migration/config/deploy checks**: [Alembic smoke check, npm audit/build, deploy validation, or "None"]
+- **Migration/config/deploy checks**: [Alembic smoke check, npm audit/build, deploy validation, or "None"; required package-manager/audit commands must have no unresolved warnings, vulnerabilities, or errors]
 
 ## Success Criteria *(mandatory)*
 
