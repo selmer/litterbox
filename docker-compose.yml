@@ -1,8 +1,11 @@
 services:
   app:
     build: .
-    ports:
-      - "8001:8000"
+    expose:
+      - "8000"
+    networks:
+      - default
+      - proxy
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-litterbox}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-litterbox}
       - TUYA_DEVICE_ID=${TUYA_DEVICE_ID}
@@ -41,3 +44,8 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+
+networks:
+  proxy:
+    external: true
+    name: proxy
